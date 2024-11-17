@@ -1,5 +1,4 @@
-Package: DataGenomics
-Type: LearnGenViz
+Package: LearnGenViz
 Title: Comprehensive Toolkit for Genomic Data Visualization and Analysis
 Version: 0.1.0
 Author: Loukas Theodosiou, PhD
@@ -15,36 +14,40 @@ Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.2
 LazyDataCompression: xz
-Imports: 
-    tidyverse,
-    Biostrings,
-    DESeq2,
+Imports:
     ape,
-    grid,
-    cowplot,
-    ggplotify,
-    here,
-    patchwork,
     beepr,
-    gt,
-    gtsummary,
-    showtext,
-    scales,
-    gtools,
-    xlsx,
-    ggraph,
-    tidygraph,
-    nlme,
+    Biostrings,
     bipartite,
-    maxnodf,
-    vegan,
+    cowplot,
+    DESeq2,
+    dplyr,
+    ggcorrplot,
+    GGally,
+    ggplot2,
+    ggplotify,
+    gghighlight,
+    ggraph,
+    ggpubr,
     ggrepel,
+    gplots,
+    grid,
+    gt,
+    gtools,
+    gtsummary,
+    here,
+    MetBrewer,
+    nlme,
+    patchwork,
+    pheatmap,
     plotly,
     RColorBrewer,
-    MetBrewer,
-    gplots,
-    pheatmap,
-    d3heatmap
+    scales,
+    showtext,
+    tidygraph,
+    tidyverse,
+    vegan,
+    xlsx
 Suggests: 
     BiocManager,
     AnnotationHub,

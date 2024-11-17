@@ -8,7 +8,7 @@
 A data frame with 35,238 rows and 904 variables:
 \describe{
   \item{genes}{Character vector of gene symbols (e.g., "A1BG", "A1CF", "A2M")}
-  \item{GSMxxxxxxx}{Integer values representing expression levels of each gene in specific samples, with each column corresponding to a unique sample (e.g., "GSM742944", "GSM2326089")}
+  \item{GSMxxxxx}{Numeric values representing expression levels for each sample. The dataset contains expression data from multiple samples labeled as 'GSM' followed by a unique identifier (e.g., GSM1067795, GSM1416804, etc.).}
 }
 }
 \usage{
