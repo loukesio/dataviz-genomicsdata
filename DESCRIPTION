@@ -21,6 +21,7 @@ Imports:
     bipartite,
     cowplot,
     DESeq2,
+    devtools,
     dplyr,
     ggcorrplot,
     GGally,

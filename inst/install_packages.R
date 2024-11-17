@@ -5,13 +5,13 @@ cran_packages <- c(
   "ggforce", "ggraph", "ggpubr", "ggrepel", "gplots", "grid", "gt",
   "gtools", "gtsummary", "here", "MetBrewer", "nlme", "patchwork", "pheatmap",
   "plotly", "RColorBrewer", "scales", "showtext", "tidygraph", "tidyverse",
-  "vegan", "xlsx", "Rtsne", "uwot"
+  "vegan", "xlsx", "Rtsne", "uwot", "devtools"
 )
 
 # Create a vector of required Bioconductor packages
 bioc_packages <- c(
   "BiocManager", "AnnotationHub", "circlize", "karyoploteR", "msa", "seqinr",
-  "DECIPHER", "DESeq2"
+  "DECIPHER","Biostrings", "DESeq2"
 )
 
 # Install missing CRAN packages with verbose output
