@@ -59,4 +59,9 @@ If you encounter any issues:
 
 By following these steps, you'll have the LearnGenViz package and all required dependencies set up for the course.
 
+Note: if you still face a problem try installing LearnGenViz directly to make sure it is in your renv environment:
+```
+devtools::install_github("loukesio/dataviz-genomicsdata")
+library(LearnGenViz)
+```
 
