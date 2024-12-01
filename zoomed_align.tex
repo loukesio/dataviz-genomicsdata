@@ -1,0 +1,41 @@
+\documentclass[10pt]{article}
+
+\usepackage{texshade}
+
+\headheight=0pt
+\headsep=0pt
+\hoffset=0pt
+\voffset=0pt
+\paperwidth=11in
+\paperheight=8.5in
+\ifx\pdfoutput\undefined
+\relax
+\else
+\pdfpagewidth=\paperwidth
+\pdfpageheight=\paperheight
+\fi
+\oddsidemargin=-0.9in
+\topmargin=-0.7in
+\textwidth=10.8in
+\textheight=7.9in
+
+\pagestyle{empty}
+
+\begin{document}
+\begin{texshade}{/var/folders/fc/kqr5vp3x1wg4z_8jvxpwqp1m0000gn/T//RtmpelyAzG/seq10cd41d539e96.fasta}
+\seqtype{P}
+\setends{consensus}{10..30}
+\shadingmode{identical}
+\threshold{50}
+\showconsensus[ColdHot]{bottom}
+\shadingcolors{blues}
+\showsequencelogo[chemical]{top}
+\hidelogoscale
+\shownames{left}
+\nameseq{1}{HBA HUMAN}
+\nameseq{2}{HBA MOUSE}
+\nameseq{3}{HBAZ CAPHI}
+\shownumbering{right}
+\showlegend
+\end{texshade}
+\end{document}
