@@ -60,3 +60,115 @@ If you encounter any issues:
 By following these steps, you'll have the LearnGenViz package and all required dependencies set up for the course.
 
 
+## Heatmaps 
+
+### 1. Understanding the Data
+Before any analysis, it's crucial to understand the data. Use `skimr` to generate an overview of the dataset.
+
+```r
+# Install and load the package
+devtools::install_github("loukesio/dataviz-genomicsdata")
+library(LearnGenViz)
+library(skimr)
+
+# Load the dataset
+data("five_disease")
+
+# Overview of the dataset
+five_disease %>% skim()
+```
+
+### 2. Creating Pairwise Scatter Plots
+```
+# Load GGally
+library(GGally)
+
+# Filter Alzheimer's data
+alz <- five_disease %>% filter(disease == "Alzheimers")
+
+# Select relevant columns
+ggally_data <- alz %>% select(a, b, c)
+
+# Create pairwise scatter plots
+ggpairs(ggally_data, 
+        title = "Pairwise Scatter Plots for Replicates a, b, c", 
+        upper = list(continuous = "cor")) +
+  theme_minimal()
+```
+### 3. Correlation Analysis with ggcorrplot
+
+```
+library(ggcorrplot)
+
+# Select columns and calculate correlation matrix
+cor_alz <- alz %>% select(a, b, c)
+cor_matrix <- cor(cor_alz, use = "pairwise.complete.obs")
+
+# Plot correlation matrix
+ggcorrplot(cor_matrix, 
+           method = "square", 
+           type = "upper", 
+           ggtheme = theme_minimal(),
+           title = "Correlation Matrix for Alzheimer") +
+  scale_fill_gradient2(low = "#BB4444", mid = "#FFFFFF", high = "#4477AA", midpoint = 0.5,
+                       limits = c(0, 1)) +
+  theme(legend.title = element_blank())
+
+```
+### R Heatmaps
+```
+library(MetBrewer)
+pal <- met.brewer("Hokusai1", n = 256)
+
+# Clean and scale data
+df_clean <- cor_alz[complete.cases(cor_alz), ]
+df_clean_scale <- scale(df_clean)
+
+# Generate heatmap
+heatmap(df_clean_scale, col = pal, main = "Correlation Heatmap")
+```
+
+### Interactive heatmaps
+```
+library(plotly)
+
+# Convert to matrix
+df_clean_scale <- as.matrix(df_clean_scale)
+
+# Create an interactive heatmap
+plot_ly(z = df_clean_scale, type = "heatmap") %>%
+  layout(title = list(text = "Correlation Heatmap"),
+         font = list(family = "Georgia", size = 12))
+```
+
+### Additional Heatmap Methods with heatmaply and Base R
+
+```
+# Install and load heatmaply
+# https://www.datanovia.com/en/blog/how-to-create-a-beautiful-interactive-heatmap-in-r/
+library("heatmaply")
+
+# Basic interactive heatmap
+heatmaply(df_clean)
+
+# Static heatmap using ggheatmap
+ggheatmap(df_clean)
+
+# Static heatmap using gplots::heatmap.2
+library(gplots)
+gplots::heatmap.2(
+  as.matrix(df_clean),
+  trace = "none",
+  col = viridis(100),
+  key = FALSE
+)
+
+# Enhanced interactive heatmap with row dendrogram
+heatmaply(
+  as.matrix(df_clean),
+  seriate = "mean", 
+  row_dend_left = TRUE,
+  plot_method = "plotly"
+)
+```
+
