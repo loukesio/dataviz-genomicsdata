@@ -1,6 +1,31 @@
+# R and RStudio files
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
-*.Rproj
+.Rprofile
+.Rbuildignore
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*~
+*.swp
+*.swo
+
+# Output files
+*.html
+*.pdf
+*_cache/
+*_files/
+
+# Exclude fonts if they're proprietary
+# fonts/
 
