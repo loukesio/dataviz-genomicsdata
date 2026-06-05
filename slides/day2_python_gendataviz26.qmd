@@ -1,0 +1,1269 @@
+---
+title: "Genomics Data Visualization"
+subtitle: "<span style='font-size:1.25em;'>with Python — Day 2</span>"
+author: "<div style='width: 100%; text-align: center; margin-left: auto; margin-right: auto;'><a href='https://github.com/loukesio' style='color:#28a87d;font-weight:600;'>Dr. Loukas Theodosiou</a>&ensp;//&ensp;Day 2 &ensp;//&ensp; May 2026</div>"
+title-slide-attributes:
+    data-background-color: "#E8F5F1"
+format:
+  revealjs:
+    theme: slides.scss
+    footer: '**L.Theodosiou** // Genomics Data Visualization with Python'
+    transition: fade
+    progress: true
+    multiplex: false
+    preview-links: true
+    scrollable: false
+    hide-inactive-cursor: true
+    highlight-style: printing
+    pause: true
+    embed-resources: false
+editor: source
+jupyter: python3
+execute:
+  freeze: auto
+  cache: true
+  echo: true
+  fig-width: 10
+  fig-height: 6
+---
+
+```{python}
+#| label: setup
+#| include: false
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import seaborn as sns
+import warnings
+warnings.filterwarnings('ignore')
+
+BRAND       = '#28A87D'
+BRAND_LIGHT = '#79DFBD'
+BRAND_BG    = '#E8F5F1'
+ACCENT_YLW  = '#E8A838'
+ACCENT_PURP = '#7754BF'
+GRAY_DARK   = '#606060'
+RED         = '#E74C3C'
+
+COURSE_PAL = [
+    '#28A87D', '#E8A838', '#7754BF', '#E74C3C', '#3498DB',
+    '#F39C12', '#16A085', '#8E44AD', '#C0392B', '#2980B9',
+    '#1ABC9C', '#D35400',
+]
+
+plt.rcParams.update({
+    'figure.facecolor'    : 'white',
+    'axes.facecolor'      : 'white',
+    'axes.grid'           : True,
+    'grid.color'          : '#e8e8e8',
+    'grid.linestyle'      : '--',
+    'grid.linewidth'      : 0.5,
+    'axes.spines.top'     : False,
+    'axes.spines.right'   : False,
+    'font.size'           : 11,
+    'axes.titlesize'      : 14,
+    'axes.titleweight'    : 'bold',
+    'axes.labelsize'      : 12,
+    'xtick.labelsize'     : 10,
+    'ytick.labelsize'     : 10,
+    'legend.fontsize'     : 10,
+    'figure.dpi'          : 150,
+})
+```
+
+```{=html}
+<!-- slide 2 -->
+```
+
+## Day 2 — Overview
+
+**What we cover today (13:00 – 18:00 Berlin time):**
+
+| Time | Topic |
+|------|-------|
+| 13:00 – 13:45 | Stacked bar plots |
+| 13:45 – 14:30 | Time series plots |
+| 14:30 – 15:15 | Multiple sequence alignment visualization |
+| 15:15 – 15:30 | *Break* |
+| 15:30 – 16:30 | Manhattan plots |
+| 16:30 – 18:00 | Genome statistics plots |
+
+::: fragment
+**Libraries we will use today:**
+
+`matplotlib` · `seaborn` · `pandas` · `pyMSAviz` · `plotly` · `scipy`
+:::
+
+::: {.footer style="font-size: 0.7em; color: #606060;"}
+All notebooks for today are in `notebooks/day2_python_genomics_viz.ipynb`
+:::
+
+```{=html}
+<!-- slide 3 -->
+```
+
+# Stacked Bar Plots {background-color="#28A87D"}
+
+```{=html}
+<!-- slide 4 -->
+```
+
+## Stacked Bar Plots: Theory
+
+:::::: columns
+:::: {.column width="55%"}
+**Purpose:** Show part-to-whole composition across multiple samples or categories.
+
+**Two key variants:**
+
+| Variant | Y-axis | Best for |
+|---------|--------|----------|
+| **Absolute stacked** | Raw counts / values | Comparing totals AND composition |
+| **100% stacked** | Proportions (0–100%) | Comparing composition only |
+
+**Common genomics uses:**
+
+- Microbiome taxonomic composition across samples
+- Cell-type proportions in scRNA-seq
+- Variant class breakdown per sample
+- Immune cell infiltration across tissue types
+
+**Key rules:**
+
+- ≤ 8–10 categories for readability
+- Order categories consistently (largest first, or biologically meaningful)
+- Use distinct, colorblind-friendly palette
+::::
+
+::: {.column width="45%"}
+```{python}
+#| echo: false
+#| fig-width: 5
+#| fig-height: 5
+
+np.random.seed(42)
+samples = [f'S{i:02d}' for i in range(1, 9)]
+taxa = ['Firmicutes', 'Bacteroidetes', 'Proteobacteria',
+        'Actinobacteria', 'Verrucomicrobia', 'Other']
+
+mat = np.random.dirichlet(np.ones(6) * 2, size=8) * 100
+df = pd.DataFrame(mat, index=samples, columns=taxa)
+
+fig, ax = plt.subplots(figsize=(5, 5))
+bottom = np.zeros(8)
+for taxon, color in zip(taxa, COURSE_PAL[:6]):
+    ax.bar(samples, df[taxon], bottom=bottom,
+           color=color, width=0.7, alpha=0.9, label=taxon)
+    bottom += df[taxon].values
+ax.set_ylabel('Relative Abundance (%)'); ax.set_xlabel('')
+ax.set_title('Microbiome Composition', fontsize=11, fontweight='bold')
+ax.set_xticklabels(samples, rotation=45, ha='right', fontsize=8)
+ax.legend(fontsize=7, frameon=False, bbox_to_anchor=(1.01, 1), loc='upper left')
+ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+:::
+::::::
+
+```{=html}
+<!-- slide 5 -->
+```
+
+## Stacked Bar Plots: Code Walkthrough
+
+```{python}
+#| echo: true
+#| eval: false
+#| code-line-numbers: "1-12|14-22|24-36"
+
+# Step 1: Build a composition matrix
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+np.random.seed(42)
+samples = [f'Sample_{i:02d}' for i in range(1, 13)]
+taxa    = ['Firmicutes','Bacteroidetes','Proteobacteria',
+           'Actinobacteria','Verrucomicrobia','Other']
+
+mat = np.random.dirichlet(np.ones(6) * 2, size=12) * 100
+df  = pd.DataFrame(mat, index=samples, columns=taxa)
+
+# Step 2: Build 100% stacked bar plot
+fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
+palette = ['#28A87D','#E8A838','#7754BF','#E74C3C','#3498DB','#606060']
+
+for ax, title in zip(axes, ['Absolute','100% Stacked']):
+    data = df if title == 'Absolute' else df.div(df.sum(axis=1), axis=0) * 100
+    bottom = np.zeros(len(samples))
+    for taxon, color in zip(taxa, palette):
+        ax.bar(samples, data[taxon], bottom=bottom,
+               color=color, width=0.7, alpha=0.9, label=taxon)
+        bottom += data[taxon].values
+    ax.set_title(title, fontweight='bold')
+    ax.set_xticklabels(samples, rotation=45, ha='right', fontsize=8)
+    ax.spines[['top','right']].set_visible(False)
+
+# Step 3: Shared legend
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(handles, labels, fontsize=9, frameon=False,
+           loc='center right', bbox_to_anchor=(1.02, 0.5))
+axes[0].set_ylabel('Abundance (%)'); axes[1].set_ylabel('Relative Abundance (%)')
+fig.suptitle('Microbiome Taxonomic Composition', fontsize=14, fontweight='bold')
+plt.tight_layout(); plt.show()
+```
+
+```{=html}
+<!-- slide 6 -->
+```
+
+## Stacked Bar Plots: Output
+
+```{python}
+#| echo: false
+#| fig-width: 13
+#| fig-height: 5.5
+#| fig-align: center
+
+np.random.seed(42)
+samples = [f'S{i:02d}' for i in range(1, 13)]
+taxa    = ['Firmicutes','Bacteroidetes','Proteobacteria',
+           'Actinobacteria','Verrucomicrobia','Other']
+mat = np.random.dirichlet(np.ones(6) * 2, size=12) * 100
+df  = pd.DataFrame(mat, index=samples, columns=taxa)
+palette = COURSE_PAL[:6]
+
+fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
+for ax, (title, norm) in zip(axes, [('Absolute Stacked', False), ('100% Stacked', True)]):
+    data = df.div(df.sum(axis=1), axis=0) * 100 if norm else df
+    bottom = np.zeros(12)
+    for taxon, color in zip(taxa, palette):
+        ax.bar(samples, data[taxon], bottom=bottom, color=color,
+               width=0.7, alpha=0.9, label=taxon)
+        bottom += data[taxon].values
+    ax.set_title(title, fontweight='bold')
+    ax.set_xticklabels(samples, rotation=45, ha='right', fontsize=8)
+    ax.spines[['top','right']].set_visible(False)
+    ax.set_ylabel('Abundance (%)')
+
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(handles, labels, fontsize=8.5, frameon=False,
+           loc='center right', bbox_to_anchor=(1.03, 0.5))
+fig.suptitle('Microbiome Taxonomic Composition', fontsize=13, fontweight='bold')
+plt.tight_layout(); plt.show()
+```
+
+```{=html}
+<!-- slide 7 -->
+```
+
+## Exercise: Stacked Bar Plots
+
+::: {.question}
+**Coding Exercise**
+
+Visualize cell-type composition across treatment groups:
+```{python}
+#| echo: true
+#| eval: false
+
+np.random.seed(2026)
+cell_types = ['CD4+ T', 'CD8+ T', 'B cell', 'NK', 'Macrophage', 'Dendritic', 'Other']
+conditions = ['Healthy', 'Early_Disease', 'Late_Disease', 'Treated']
+n_patients = 8   # per condition
+
+# Dirichlet-sampled compositions
+alpha_map = {
+    'Healthy'      : [5, 4, 3, 2, 2, 1, 1],
+    'Early_Disease': [3, 6, 2, 1, 4, 1, 1],
+    'Late_Disease' : [2, 7, 1, 1, 6, 1, 2],
+    'Treated'      : [4, 5, 3, 2, 3, 1, 1],
+}
+rows = []
+for cond, alpha in alpha_map.items():
+    comps = np.random.dirichlet(alpha, size=n_patients) * 100
+    for i, comp in enumerate(comps):
+        rows.append({'condition': cond, 'patient': f'{cond}_{i}', **dict(zip(cell_types, comp))})
+composition_df = pd.DataFrame(rows)
+
+# Your tasks:
+# 1. Compute mean composition per condition
+# 2. Plot a 100% stacked bar chart (one bar per condition)
+# 3. Add the individual patient data as jittered dots (optional: use seaborn stripplot)
+# 4. Color each cell type consistently across both plots
+# 5. Add a legend and annotate the dominant cell type per condition
+
+# Bonus: Arrange absolute stacked + 100% stacked side by side
+```
+:::
+
+```{=html}
+<!-- slide 8 -->
+```
+
+# Time Series Plots {background-color="#28A87D"}
+
+```{=html}
+<!-- slide 9 -->
+```
+
+## Time Series: Theory
+
+:::::: columns
+:::: {.column width="55%"}
+**Purpose:** Track how a measured variable changes over time or across ordered conditions.
+
+**Key genomics applications:**
+
+- Gene expression dynamics (developmental time courses)
+- Tumor evolution under treatment
+- Microbiome community shifts
+- Longitudinal cohort studies
+
+**Design decisions:**
+
+| Choice | When |
+|--------|------|
+| Line only | Clean trend, few groups |
+| Line + ribbon | Show uncertainty (mean ± CI) |
+| Area chart | Emphasise cumulative totals |
+| Faceted lines | Many groups, avoid overplotting |
+
+**Common pitfalls:**
+
+- Not showing individual replicates (hide variance)
+- Connecting non-ordered points (pseudo-time ≠ real time)
+- Too many lines on one panel (> 5–6 is hard to read)
+::::
+
+::: {.column width="45%"}
+```{python}
+#| echo: false
+#| fig-width: 5
+#| fig-height: 5
+
+np.random.seed(42)
+timepoints = np.array([0, 2, 4, 8, 12, 24, 48])
+genes = ['GeneA', 'GeneB', 'GeneC']
+means = {
+    'GeneA': 5 + 3 * np.exp(-timepoints / 10),
+    'GeneB': 3 + 2 * np.log1p(timepoints / 5),
+    'GeneC': 4 + np.sin(timepoints / 8) * 2,
+}
+fig, ax = plt.subplots(figsize=(5, 5))
+for gene, color in zip(genes, [BRAND, ACCENT_YLW, ACCENT_PURP]):
+    mu = means[gene]
+    sigma = 0.4
+    for _ in range(5):
+        ax.plot(timepoints, mu + np.random.normal(0, sigma, len(timepoints)),
+                color=color, alpha=0.2, linewidth=0.8)
+    ax.plot(timepoints, mu, color=color, linewidth=2.2, label=gene, marker='o', ms=5)
+ax.set_xlabel('Time (hours)'); ax.set_ylabel('Expression (log2-CPM)')
+ax.set_title('Gene Expression\nTime Course', fontsize=11, fontweight='bold')
+ax.legend(frameon=False, fontsize=9)
+ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+:::
+::::::
+
+```{=html}
+<!-- slide 10 -->
+```
+
+## Time Series: Code Walkthrough
+
+```{python}
+#| echo: true
+#| eval: false
+#| code-line-numbers: "1-14|16-26|28-42"
+
+# Step 1: Simulate replicated time-course data
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import sem
+
+np.random.seed(42)
+timepoints = [0, 2, 4, 8, 12, 24, 48]
+n_reps     = 6
+genes      = ['GeneA', 'GeneB', 'GeneC']
+
+rows = []
+for gene, base_fn in zip(genes,
+    [lambda t: 5 + 3*np.exp(-t/10),
+     lambda t: 3 + 2*np.log1p(t/5),
+     lambda t: 4 + np.sin(t/8)*2]):
+    for tp in timepoints:
+        for rep in range(n_reps):
+            rows.append({'gene': gene, 'time': tp,
+                         'expr': base_fn(tp) + np.random.normal(0, 0.4)})
+tc = pd.DataFrame(rows)
+
+# Step 2: Compute mean ± SEM
+summary = tc.groupby(['gene','time'])['expr'].agg(['mean','sem']).reset_index()
+
+# Step 3: Plot mean line + confidence ribbon
+palette = {'GeneA': '#28A87D', 'GeneB': '#E8A838', 'GeneC': '#7754BF'}
+fig, ax = plt.subplots(figsize=(10, 5.5))
+
+for gene, grp in summary.groupby('gene'):
+    color = palette[gene]
+    ax.plot(grp['time'], grp['mean'], marker='o', color=color,
+            linewidth=2.2, markersize=6, label=gene, zorder=3)
+    ax.fill_between(grp['time'],
+                    grp['mean'] - grp['sem'],
+                    grp['mean'] + grp['sem'],
+                    color=color, alpha=0.2, zorder=2)
+
+ax.set_xlabel('Time (hours)', fontsize=12, labelpad=8)
+ax.set_ylabel('Expression (log2-CPM)', fontsize=12, labelpad=8)
+ax.set_title('Gene Expression Time Course — mean ± SEM',
+             fontsize=14, fontweight='bold')
+ax.legend(title='Gene', frameon=False)
+ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+
+```{=html}
+<!-- slide 11 -->
+```
+
+## Time Series: Output
+
+```{python}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 5.5
+#| fig-align: center
+
+np.random.seed(42)
+timepoints = [0, 2, 4, 8, 12, 24, 48]
+genes = ['GeneA', 'GeneB', 'GeneC']
+fns = [lambda t: 5 + 3*np.exp(-t/10),
+       lambda t: 3 + 2*np.log1p(t/5),
+       lambda t: 4 + np.sin(t/8)*2]
+
+rows = []
+for gene, fn in zip(genes, fns):
+    for tp in timepoints:
+        for _ in range(6):
+            rows.append({'gene': gene, 'time': tp,
+                         'expr': fn(tp) + np.random.normal(0, 0.4)})
+tc = pd.DataFrame(rows)
+summary = tc.groupby(['gene','time'])['expr'].agg(['mean','sem']).reset_index()
+palette = {'GeneA': BRAND, 'GeneB': ACCENT_YLW, 'GeneC': ACCENT_PURP}
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5.5))
+
+for gene, grp in summary.groupby('gene'):
+    c = palette[gene]
+    ax1.plot(grp['time'], grp['mean'], marker='o', color=c,
+             linewidth=2.2, markersize=6, label=gene, zorder=3)
+    ax1.fill_between(grp['time'], grp['mean'] - grp['sem'],
+                     grp['mean'] + grp['sem'], color=c, alpha=0.2)
+ax1.set_xlabel('Time (hours)'); ax1.set_ylabel('Expression (log2-CPM)')
+ax1.set_title('Line + Ribbon (mean ± SEM)', fontweight='bold')
+ax1.legend(frameon=False); ax1.spines[['top','right']].set_visible(False)
+
+# Faceted version
+for i, (gene, grp) in enumerate(summary.groupby('gene')):
+    c = palette[gene]
+    raw = tc[tc['gene'] == gene]
+    for tp, sub in raw.groupby('time'):
+        ax2.scatter([tp]*len(sub), sub['expr'], color=c,
+                    s=15, alpha=0.3, zorder=2)
+    ax2.plot(grp['time'], grp['mean'], marker='o', color=c,
+             linewidth=2, markersize=5, label=gene, zorder=3)
+ax2.set_xlabel('Time (hours)'); ax2.set_ylabel('Expression (log2-CPM)')
+ax2.set_title('Individual replicates + mean', fontweight='bold')
+ax2.legend(frameon=False); ax2.spines[['top','right']].set_visible(False)
+
+fig.suptitle('Gene Expression Time Course', fontsize=13, fontweight='bold')
+plt.tight_layout(); plt.show()
+```
+
+```{=html}
+<!-- slide 12 -->
+```
+
+## Exercise: Time Series
+
+::: {.question}
+**Coding Exercise**
+```{python}
+#| echo: true
+#| eval: false
+
+np.random.seed(2026)
+weeks    = np.array([0, 1, 2, 4, 6, 8, 12, 16])
+drugs    = ['Drug_A', 'Drug_B', 'Placebo']
+n_patients = 15   # per drug arm
+
+# Simulate tumor volume over time (Response: Drug_A > Drug_B > Placebo)
+response = {
+    'Drug_A' : lambda w: 100 * np.exp(-0.15 * w),
+    'Drug_B' : lambda w: 100 * np.exp(-0.08 * w),
+    'Placebo': lambda w: 100 * np.exp( 0.03 * w),
+}
+
+rows = []
+for drug, fn in response.items():
+    for pat in range(n_patients):
+        noise_scale = np.random.uniform(0.8, 1.2)
+        for w in weeks:
+            rows.append({
+                'drug': drug, 'week': w, 'patient': f'{drug}_{pat}',
+                'volume': fn(w) * noise_scale + np.random.normal(0, 5),
+            })
+trial_df = pd.DataFrame(rows)
+
+# Your tasks:
+# 1. Compute median + IQR (25th–75th percentile) per drug × week
+# 2. Plot median line + IQR ribbon for each drug
+# 3. Color by drug (green = Drug_A, orange = Drug_B, gray = Placebo)
+# 4. Mark the timepoints with symbols on the median line
+# 5. Add a reference line at 50% of baseline (partial response threshold)
+# 6. Add a legend and clean axis labels
+
+# Bonus: Plot individual patient trajectories as thin background lines
+```
+:::
+
+```{=html}
+<!-- slide 13 -->
+```
+
+# Multiple Sequence Alignment Visualization {background-color="#28A87D"}
+
+```{=html}
+<!-- slide 14 -->
+```
+
+## MSA Visualization: Theory
+
+:::::: columns
+:::: {.column width="55%"}
+**Purpose:** Display aligned sequences to show conservation, variation, and structural patterns.
+
+**What an MSA shows:**
+
+- **Conservation:** positions identical across all sequences
+- **Gaps (–):** insertions/deletions relative to other sequences
+- **Physicochemical properties:** residue color encodes amino-acid or nucleotide type
+
+**Color schemes:**
+
+| Scheme | Usage |
+|--------|-------|
+| Clustal | Classic amino-acid chemistry |
+| Taylor | Physicochemical classes |
+| Nucleotide (A/T/C/G) | DNA / RNA alignments |
+| Conservation gradient | Identity % per column |
+
+**Key library: `pyMSAviz`**
+
+- Wraps Biopython's MSA objects
+- Handles FASTA, CLUSTAL, Stockholm formats
+- Outputs publication-quality figures
+
+```bash
+pip install pyMSAviz
+```
+::::
+
+::: {.column width="45%"}
+```{python}
+#| echo: false
+#| fig-width: 5
+#| fig-height: 5
+
+# Manual MSA mini-preview (pyMSAviz requires actual alignment file)
+sequences = {
+    'Seq1': 'MKTAYIAKQRQISFVKSH--PGFPFNPPTAEELKQ',
+    'Seq2': 'MKTAYIAKQRQISFVKSH--PGFPFNPPTAEELKQ',
+    'Seq3': 'MKTAYIAKQRQ-SFVKSHAHPGFPFNP-TAEELKQ',
+    'Seq4': 'MKTAFVAKQRE-SFVKSH--PGFPFNPPTAEELKL',
+    'Seq5': 'MKTAYIAKQRQ-SFVTSH--SGFPFNPPTASELKQ',
+}
+aa_colors = {
+    'A':'#80A0F0','R':'#F01505','N':'#00FF00','D':'#C048C0',
+    'C':'#F08080','Q':'#00FF00','E':'#C048C0','G':'#F09048',
+    'H':'#15A4A4','I':'#80A0F0','L':'#80A0F0','K':'#F01505',
+    'M':'#80A0F0','F':'#80A0F0','P':'#FFFF00','S':'#00FF82',
+    'T':'#00FF82','W':'#80A0F0','Y':'#15A4A4','V':'#80A0F0',
+    '-':'#FFFFFF',
+}
+seq_names = list(sequences.keys())
+seq_data  = list(sequences.values())
+n_seq = len(seq_names); n_pos = len(seq_data[0])
+
+fig, ax = plt.subplots(figsize=(5, 5))
+ax.set_xlim(-0.5, n_pos); ax.set_ylim(-0.5, n_seq)
+ax.set_yticks(range(n_seq))
+ax.set_yticklabels(seq_names[::-1], fontsize=7, fontfamily='monospace')
+ax.set_xticks([]); ax.spines[:].set_visible(False); ax.grid(False)
+ax.set_title('MSA Preview', fontsize=10, fontweight='bold')
+
+for row_i, seq in enumerate(reversed(seq_data)):
+    for col_i, aa in enumerate(seq):
+        color = aa_colors.get(aa.upper(), 'lightgray')
+        rect = mpatches.FancyBboxPatch(
+            (col_i - 0.48, row_i - 0.45), 0.96, 0.9,
+            boxstyle='square,pad=0', facecolor=color, edgecolor='none')
+        ax.add_patch(rect)
+        if aa != '-':
+            ax.text(col_i, row_i, aa, ha='center', va='center',
+                    fontsize=5.5, fontfamily='monospace', fontweight='bold')
+plt.tight_layout(); plt.show()
+```
+:::
+::::::
+
+```{=html}
+<!-- slide 15 -->
+```
+
+## MSA Visualization: pyMSAviz Code
+
+```{python}
+#| echo: true
+#| eval: false
+#| code-line-numbers: "1-6|8-14|16-28"
+
+# Step 1: Load alignment (FASTA or fetch from NCBI)
+from pymsaviz import MsaViz, get_msa_testdata
+from Bio import AlignIO
+
+# Use bundled test data or load your own FASTA
+msa_file = get_msa_testdata('MRGPRG.fa')   # example protein alignment
+msa      = AlignIO.read(msa_file, 'fasta')
+
+# Step 2: Basic MSA plot
+mv = MsaViz(msa_file, wrap_length=60,
+            show_label=True, show_count=True)
+mv.plotfig()
+
+# Step 3: Add conservation track and custom annotations
+mv = MsaViz(msa_file, color_scheme='Taylor',
+            wrap_length=60, show_label=True)
+
+# Add conservation bar above alignment
+mv.add_text_annotation(
+    start=10, end=25,
+    text='Conserved domain',
+    text_color='white',
+    rect_color='#28A87D',
+)
+
+# Add per-column conservation score track
+mv.add_consensus_sequence(threshold=0.7)
+
+# Export to PDF / PNG
+fig = mv.plotfig()
+fig.savefig('msa_figure.pdf', bbox_inches='tight', dpi=200)
+```
+
+::: {.footer style="font-size: 0.7em; color: #606060;"}
+`pip install pyMSAviz` — supports ClustalW, FASTA, Stockholm, and PIR formats.
+:::
+
+```{=html}
+<!-- slide 16 -->
+```
+
+## MSA Visualization: Custom Matplotlib
+
+```{python}
+#| echo: true
+#| fig-width: 11
+#| fig-height: 5
+
+# Hand-crafted MSA renderer (no external files required)
+seqs = {
+    'Human':  'MKTAYIAKQRQISFVKSH--PGFPFNPPTAEELKQ',
+    'Mouse':  'MKTAYIAKQRQISFVKSH--PGFPFNPPTAEELKQ',
+    'Rat':    'MKTAYIAKQRQ-SFVKSHAHPGFPFNP-TAEELKQ',
+    'Zebrafish':'MKTAFVAKQRE-SFVKSH--PGFPFNPPTAEELKL',
+    'Drosophila':'MKTAYIAKQRQ-SFVTSH--SGFPFNPPTASELKQ',
+}
+nuc_col = {'A':'#66BB6A','T':'#EF5350','C':'#42A5F5',
+           'G':'#FFA726','M':'#AB47BC','K':'#26C6DA',
+           '-':'#F5F5F5'}
+
+names = list(seqs.keys()); seqlist = list(seqs.values())
+n_seq = len(names); n_pos = len(seqlist[0])
+
+fig, (ax_msa, ax_cons) = plt.subplots(2, 1, figsize=(11, 5),
+                                       gridspec_kw={'height_ratios':[5,1]},
+                                       constrained_layout=True)
+
+for row_i, seq in enumerate(seqlist):
+    for col_i, aa in enumerate(seq):
+        color = nuc_col.get(aa.upper(), '#CFD8DC')
+        ax_msa.add_patch(mpatches.Rectangle(
+            (col_i, row_i), 1, 1,
+            facecolor=color, edgecolor='white', linewidth=0.3))
+        if aa != '-':
+            ax_msa.text(col_i + 0.5, row_i + 0.5, aa,
+                        ha='center', va='center', fontsize=7,
+                        fontfamily='monospace', fontweight='bold', color='black')
+
+ax_msa.set_yticks([i + 0.5 for i in range(n_seq)])
+ax_msa.set_yticklabels(names, fontsize=9, fontfamily='monospace')
+ax_msa.set_xlim(0, n_pos); ax_msa.set_ylim(0, n_seq)
+ax_msa.set_xticks(range(0, n_pos, 5))
+ax_msa.set_xticklabels(range(0, n_pos, 5), fontsize=7)
+ax_msa.spines[:].set_visible(False); ax_msa.grid(False)
+ax_msa.set_title('Multiple Sequence Alignment', fontsize=12, fontweight='bold')
+
+# Conservation track
+conservation = []
+for col_i in range(n_pos):
+    col = [seq[col_i] for seq in seqlist if seq[col_i] != '-']
+    if not col:
+        conservation.append(0)
+    else:
+        most_common = max(set(col), key=col.count)
+        conservation.append(col.count(most_common) / n_seq)
+
+ax_cons.bar(range(n_pos), conservation,
+            color=[BRAND if c > 0.8 else BRAND_LIGHT if c > 0.5 else '#CFD8DC'
+                   for c in conservation], width=1, edgecolor='none')
+ax_cons.set_ylabel('Conservation', fontsize=8); ax_cons.set_ylim(0, 1)
+ax_cons.spines[['top','right']].set_visible(False)
+ax_cons.set_xlim(0, n_pos)
+plt.show()
+```
+
+```{=html}
+<!-- slide 17 -->
+```
+
+## Exercise: MSA Visualization
+
+::: {.question}
+**Coding Exercise**
+```{python}
+#| echo: true
+#| eval: false
+
+# Simulated SARS-CoV-2 Spike protein variants alignment
+spike_variants = {
+    'Wuhan-Hu-1'  : 'MFVFLVLLPLVSSQCVNLTTRTQLPPAYTNSFTRGVYYPDKVFRSSVLHSTQDLFLPFFSNVTWFHAIHVSGTNGTKRFDNPVLPFNDGVYFASTEKSNIIRGWIFGTTLDSKTQSLLIVNNATNVVIKVCEFQFCNDPFLGVYYHKNNKSWMESEFRVYSSANNCTFEYVSQPFLMDLEGKQGNFKNLREFVFKNIDGYFKIYSKHTPINLVRDLPQGFSALEPLVDLPIGINITRFQTLLALHRSYLTPGDSSSGWTAGAAAYYVGYLQPRTFLLKYNENGTITDAVDCALDPLSETKCTLKSFTVEKGIYQTSNFRVQPTESIVRFPNITNLCPFGEVFNATRFASVYAWNRKRISNCVADYSVLYNSASFSTFKCYGVSPTKLNDLCFTNVYADSFVIRGDEVRQIAPGQTGKIADYNYKLPDDFTGCVIAWNSNNLDSKVGGNYNYLYRLFRKSNLKPFERDISTEIYQAGSTPCNGVEGFNCYFPLQSYGFQPTYGVGYQPYRVVVLSFELLHAPATVCGPKKSTNLVKNKCVNFNFNGLTGTGVLTESNKKFLPFQQFGRDIADTTDAVRDPQTLEILDITPCSFGGVSVITPGTNTSNQVAVLYQ',
+    'Alpha_B.1.1.7': 'MFVFLVLLPLVSSQCVNLTTRTQLPPAYTNSFTRGVYYPDKVFRSSVLHSTQDLFLPFFSNVTWFHAIHVSGTNGTKRFDNPVLPFNDGVYFASTEKSNIIRGWIFGTTLDSKTQSLLIVNNATNVVIKVCEFQFCNDPFLGVYYHKNNKSWMESEFRVYSSANNCTFEYVSQPFLMDLEGKQGNFKNLREFVFKNIDGYFKIYSKHTPINLVRDLPQGFSALEPLVDLPIGINITRFQTLLALHRSYLTPGDSSSGWTAGAAAYYVGYLQPRTFLLKYNENGTITDAVDCALDPLSETKCTLKSFTVEKGIYQTSNFRVQPTESIVRFPNITNLCPFGEVFNATRFASVYAWNRKRISNCVADYSVLYNSASFSTFKCYGVSPTKLNDLCFTNVYADSFVIRGDEVRQIAPGQTGKIADYNYKLPDDFTGCVIAWNSNNLDSKVGGNYNYLYRLFRKSNLKPFERDISTEIYQAGSTPCNGVEGFNCYFPLQSYGFQPTYGVGYQPYRVVVLSFELLHAPATVCGPKKSTNLVKNKCVNFNFNGLTGTGVLTESNKKFLPFQQFGRDIADTTDAVRDPQTLEILDITPCSFGGVSVITPGTNTSNQVAVLYQ',
+}
+# (Sequences truncated for brevity — use full sequences in practice)
+
+# Your tasks:
+# 1. Write a function that accepts a dict of {name: sequence} and renders an MSA
+# 2. Color nucleotides/amino acids by physicochemical class
+# 3. Add a per-column conservation bar track below the alignment
+# 4. Highlight positions that differ from the reference (Wuhan-Hu-1)
+# 5. Wrap the alignment to 60 characters per row
+
+# Bonus: Use pyMSAviz to generate the same figure from a real FASTA file
+```
+:::
+
+```{=html}
+<!-- slide 18 -->
+```
+
+# Manhattan Plots {background-color="#28A87D"}
+
+```{=html}
+<!-- slide 19 -->
+```
+
+## Manhattan Plots: Theory
+
+:::::: columns
+:::: {.column width="55%"}
+**Purpose:** Visualize genome-wide association study (GWAS) results — identify SNPs significantly associated with a trait.
+
+**Plot anatomy:**
+
+- **X-axis:** chromosomal position (chr1 → chrX)
+- **Y-axis:** −log₁₀(p-value) from association test
+- **Colors:** alternate per chromosome (improves readability)
+- **Thresholds:**
+  - Genome-wide significance: p < 5×10⁻⁸ (−log₁₀ ≈ 7.3)
+  - Suggestive threshold: p < 1×10⁻⁵ (−log₁₀ = 5)
+
+**Key library options:**
+
+| Library | Notes |
+|---------|-------|
+| `matplotlib` (manual) | Full control, works on any data |
+| `DashBio.ManhattanPlot` | Interactive, browser-based |
+| `qqman` (R port) | Minimal API |
+
+**Companion plot:** Q-Q (quantile–quantile) plot to assess test calibration.
+::::
+
+::: {.column width="45%"}
+```{python}
+#| echo: false
+#| fig-width: 5.5
+#| fig-height: 4.5
+
+np.random.seed(42)
+chr_sizes = {1:249,2:243,3:198,4:191,5:181,6:171,7:159,8:146,
+             9:141,10:136,11:135,12:134,13:115,14:107,15:102,
+             16:90,17:81,18:78,19:59,20:63,21:47,22:51}
+
+rows, offset = [], 0
+chr_offsets  = {}
+for chrom, size in chr_sizes.items():
+    chr_offsets[chrom] = offset
+    n = max(20, int(size * 0.4))
+    pvals = np.random.exponential(0.3, n).clip(1e-20, 1)
+    if chrom in [3, 7, 15]:
+        pvals[np.random.choice(n, 3)] *= 1e-7
+    rows.extend([{'chr': chrom, 'pos': offset + np.random.randint(0, size*1e6),
+                  'neg_log_p': -np.log10(p)} for p in pvals])
+    offset += size + 10
+
+gwas = pd.DataFrame(rows)
+pal = [BRAND, BRAND_LIGHT]
+colors = [pal[i % 2] for i in range(len(chr_sizes))]
+
+fig, ax = plt.subplots(figsize=(5.5, 4.5))
+for i, (chrom, grp) in enumerate(gwas.groupby('chr')):
+    ax.scatter(grp['pos'], grp['neg_log_p'],
+               color=colors[i], s=4, alpha=0.7, linewidths=0)
+ax.axhline(7.3, color=RED, linewidth=1, linestyle='--', alpha=0.8)
+ax.axhline(5.0, color=ACCENT_YLW, linewidth=1, linestyle='--', alpha=0.6)
+chr_centers = [chr_offsets[c] + chr_sizes[c]*0.5e6 for c in chr_sizes]
+ax.set_xticks(chr_centers[::4])
+ax.set_xticklabels([str(c) for c in list(chr_sizes.keys())[::4]], fontsize=7)
+ax.set_xlabel('Chromosome'); ax.set_ylabel('−log₁₀(p)')
+ax.set_title('Manhattan Plot', fontsize=10, fontweight='bold')
+ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+:::
+::::::
+
+```{=html}
+<!-- slide 20 -->
+```
+
+## Manhattan Plots: Code Walkthrough
+
+```{python}
+#| echo: true
+#| eval: false
+#| code-line-numbers: "1-14|16-28|30-48"
+
+# Step 1: Simulate GWAS summary statistics
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+np.random.seed(42)
+chrom_mb = {1:249,2:243,3:198,4:191,5:181,6:171,7:159,8:146,
+            9:141,10:136,11:135,12:134,13:115,14:107,15:102,
+            16:90,17:81,18:78,19:59,20:63,21:47,22:51}
+
+rows, offset = [], 0
+chr_offsets  = {}
+for chrom, mb in chrom_mb.items():
+    chr_offsets[chrom] = offset
+    n_snps = max(30, int(mb * 0.5))
+    pv = np.random.exponential(0.3, n_snps).clip(1e-20, 1)
+    if chrom in [3, 7, 12]:              # spike in hits
+        pv[np.random.choice(n_snps, 5)] *= 1e-8
+    for p in pv:
+        rows.append({'chr': chrom,
+                     'pos_plot': offset + np.random.randint(0, mb * 1e6),
+                     'pval': p, 'neg_log_p': -np.log10(p)})
+    offset += mb + 10
+gwas = pd.DataFrame(rows)
+
+# Step 2: Build alternating chromosome colors
+palette = ['#28A87D', '#79DFBD']
+colors  = [palette[c % 2] for c in gwas['chr']]
+
+# Step 3: Plot
+fig, ax = plt.subplots(figsize=(14, 5))
+ax.scatter(gwas['pos_plot'], gwas['neg_log_p'],
+           c=colors, s=8, alpha=0.75, linewidths=0)
+ax.axhline(7.3, color='#E74C3C', linewidth=1.2, linestyle='--', label='p=5×10⁻⁸')
+ax.axhline(5.0, color='#F39C12', linewidth=1.0, linestyle='--', label='p=1×10⁻⁵')
+
+# Chromosome labels
+chr_centers = [chr_offsets[c] + chrom_mb[c]*0.5e6 for c in chrom_mb]
+ax.set_xticks(chr_centers); ax.set_xticklabels(list(chrom_mb.keys()), fontsize=8)
+ax.set_xlabel('Chromosome', fontsize=12)
+ax.set_ylabel('−log₁₀(p-value)', fontsize=12)
+ax.set_title('Genome-Wide Association Study', fontsize=14, fontweight='bold')
+ax.legend(frameon=False, fontsize=9)
+ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+
+```{=html}
+<!-- slide 21 -->
+```
+
+## Manhattan Plot + Q-Q Plot
+
+```{python}
+#| echo: false
+#| fig-width: 13
+#| fig-height: 5.5
+
+np.random.seed(42)
+chrom_mb = {1:249,2:243,3:198,4:191,5:181,6:171,7:159,8:146,
+            9:141,10:136,11:135,12:134,13:115,14:107,15:102,
+            16:90,17:81,18:78,19:59,20:63,21:47,22:51}
+
+rows, offset = [], 0
+chr_offsets  = {}
+for chrom, mb in chrom_mb.items():
+    chr_offsets[chrom] = offset
+    n = max(30, int(mb*0.4))
+    pv = np.random.exponential(0.3, n).clip(1e-20, 1)
+    if chrom in [3, 7, 12]:
+        pv[np.random.choice(n, 5)] *= 1e-8
+    for p in pv:
+        rows.append({'chr': chrom, 'pos': offset + np.random.randint(0, mb*1e6),
+                     'pval': p, 'neg_log_p': -np.log10(p)})
+    offset += mb + 10
+gwas = pd.DataFrame(rows)
+pal = [BRAND, BRAND_LIGHT]
+colors = [pal[c % 2] for c in gwas['chr']]
+
+fig = plt.figure(figsize=(13, 5.5))
+gs  = fig.add_gridspec(1, 4)
+ax_m = fig.add_subplot(gs[:3])
+ax_q = fig.add_subplot(gs[3])
+
+ax_m.scatter(gwas['pos'], gwas['neg_log_p'], c=colors, s=7, alpha=0.7, linewidths=0)
+ax_m.axhline(7.3, color=RED, lw=1.2, ls='--', label='p = 5×10⁻⁸')
+ax_m.axhline(5.0, color=ACCENT_YLW, lw=1.0, ls='--', label='p = 1×10⁻⁵')
+chr_centers = [chr_offsets[c] + chrom_mb[c]*0.5e6 for c in chrom_mb]
+ax_m.set_xticks(chr_centers)
+ax_m.set_xticklabels(list(chrom_mb.keys()), fontsize=7.5)
+ax_m.set_xlabel('Chromosome'); ax_m.set_ylabel('−log₁₀(p)')
+ax_m.set_title('Manhattan Plot', fontweight='bold')
+ax_m.legend(frameon=False, fontsize=8.5)
+ax_m.spines[['top','right']].set_visible(False)
+
+# Q-Q plot
+obs = np.sort(gwas['neg_log_p'].values)[::-1]
+n   = len(obs)
+exp = -np.log10(np.arange(1, n+1) / (n+1))
+ax_q.scatter(exp, obs, s=8, alpha=0.6, color=BRAND, linewidths=0)
+ax_q.plot([0, exp.max()], [0, exp.max()], color='black', lw=1.2, linestyle='--')
+ax_q.set_xlabel('Expected −log₁₀(p)'); ax_q.set_ylabel('Observed −log₁₀(p)')
+ax_q.set_title('Q-Q Plot', fontweight='bold')
+ax_q.spines[['top','right']].set_visible(False)
+
+fig.suptitle('GWAS Results', fontsize=13, fontweight='bold')
+plt.tight_layout(); plt.show()
+```
+
+```{=html}
+<!-- slide 22 -->
+```
+
+## Exercise: Manhattan Plot
+
+::: {.question}
+**Coding Exercise**
+```{python}
+#| echo: true
+#| eval: false
+
+np.random.seed(2026)
+# Simulate a GWAS for Type 2 Diabetes with known risk loci
+chrom_mb = {1:249,2:243,3:198,4:191,5:181,6:171,7:159,
+            8:146,9:141,10:136,11:135,12:134,13:115,14:107,
+            15:102,16:90,17:81,18:78,19:59,20:63,21:47,22:51}
+known_loci = {3: 'TCF7L2', 9: 'CDKN2A/B', 11: 'KCNJ11'}  # chr: gene
+
+rows, offset = [], 0
+chr_offsets  = {}
+for chrom, mb in chrom_mb.items():
+    chr_offsets[chrom] = offset
+    n = max(50, int(mb * 0.8))
+    pv = np.random.exponential(0.2, n).clip(1e-25, 1)
+    if chrom in known_loci:
+        pv[np.random.choice(n, 8)] *= 1e-9   # strong association signal
+    for p in pv:
+        rows.append({'chr': chrom, 'pos': np.random.randint(0, mb * 10**6),
+                     'pval': p})
+    offset += mb + 10
+gwas_df = pd.DataFrame(rows)
+gwas_df['pos_plot']  = gwas_df.apply(lambda r: chr_offsets[r['chr']] + r['pos'], axis=1)
+gwas_df['neg_log_p'] = -np.log10(gwas_df['pval'])
+
+# Your tasks:
+# 1. Plot the Manhattan plot with alternating chromosome colors
+# 2. Draw genome-wide (p<5e-8) and suggestive (p<1e-5) thresholds
+# 3. Label the top SNP on each significant chromosome with its gene name
+# 4. Zoom in on chromosome 3 (TCF7L2 locus) in an inset axes
+# 5. Add the companion Q-Q plot in the same figure
+
+# Bonus: Create an interactive version using plotly.express.scatter()
+```
+:::
+
+```{=html}
+<!-- slide 23 -->
+```
+
+# Genome Statistics Plots {background-color="#28A87D"}
+
+```{=html}
+<!-- slide 24 -->
+```
+
+## Genome Statistics: Theory
+
+:::::: columns
+:::: {.column width="55%"}
+**Purpose:** Summarise genome-wide properties in fixed-size windows — reveal structural features, sequencing quality, and functional patterns.
+
+**Common statistics:**
+
+| Statistic | What it shows |
+|-----------|---------------|
+| **Coverage depth** | Sequencing uniformity, CNVs |
+| **GC content** | Compositional bias, AT-rich regions |
+| **Gene density** | Coding vs non-coding regions |
+| **Repeat density** | Transposable elements, centromeres |
+| **SNP density** | Recombination hotspots, diversity |
+
+**Workflow:**
+
+1. Divide genome into windows (e.g. 10 kb, 100 kb)
+2. Compute statistic per window
+3. Plot as line, bar, or heatmap along chromosomes
+
+**Libraries:** `pybedtools`, `pysam`, `pyGenomeTracks`, `matplotlib`
+::::
+
+::: {.column width="45%"}
+```{python}
+#| echo: false
+#| fig-width: 5.5
+#| fig-height: 5.5
+
+np.random.seed(42)
+n_windows = 200
+positions = np.arange(n_windows) * 50000
+
+coverage  = 30 + 10 * np.sin(np.linspace(0, 4*np.pi, n_windows)) + np.random.normal(0, 3, n_windows)
+coverage[40:60] *= 2    # CNV region
+coverage[130:150] = 5   # deletion
+
+gc_content = 0.42 + 0.08 * np.sin(np.linspace(0, 6*np.pi, n_windows)) + np.random.normal(0, 0.02, n_windows)
+gene_density = np.random.poisson(2, n_windows).astype(float)
+
+fig, axes = plt.subplots(3, 1, figsize=(5.5, 5.5), sharex=True, constrained_layout=True)
+axes[0].fill_between(positions/1e6, coverage, color=BRAND, alpha=0.8)
+axes[0].axhline(30, color='black', lw=0.8, ls='--')
+axes[0].set_ylabel('Coverage', fontsize=8)
+
+axes[1].fill_between(positions/1e6, gc_content * 100, color=ACCENT_PURP, alpha=0.8)
+axes[1].axhline(42, color='black', lw=0.8, ls='--')
+axes[1].set_ylabel('GC content (%)', fontsize=8)
+
+axes[2].bar(positions/1e6, gene_density, width=0.04, color=ACCENT_YLW, alpha=0.9)
+axes[2].set_ylabel('Gene density', fontsize=8)
+axes[2].set_xlabel('Position (Mb)', fontsize=9)
+
+for ax in axes:
+    ax.spines[['top','right']].set_visible(False)
+    ax.tick_params(labelsize=7)
+fig.suptitle('Genome Statistics', fontsize=10, fontweight='bold')
+plt.show()
+```
+:::
+::::::
+
+```{=html}
+<!-- slide 25 -->
+```
+
+## Genome Statistics: Code Walkthrough
+
+```{python}
+#| echo: true
+#| eval: false
+#| code-line-numbers: "1-15|17-26|28-48"
+
+# Step 1: Simulate windowed statistics
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+np.random.seed(42)
+window_size = 100_000            # 100 kb windows
+chrom_length = 50_000_000        # 50 Mb chromosome
+
+n_windows = chrom_length // window_size
+positions = np.arange(n_windows) * window_size
+
+genome_stats = pd.DataFrame({
+    'pos_mb'       : positions / 1e6,
+    'coverage'     : 30 + 10*np.sin(np.linspace(0, 4*np.pi, n_windows))
+                       + np.random.normal(0, 3, n_windows),
+    'gc_content'   : (42 + 8*np.sin(np.linspace(0, 6*np.pi, n_windows))
+                       + np.random.normal(0, 2, n_windows)).clip(20, 70),
+    'gene_density' : np.random.poisson(3, n_windows).astype(float),
+    'snp_density'  : np.random.poisson(5, n_windows).astype(float),
+})
+# Introduce a copy-number variant
+genome_stats.loc[80:110, 'coverage'] *= 2
+
+# Step 2: Rolling smoothing
+genome_stats['cov_smooth'] = genome_stats['coverage'].rolling(5, center=True).mean()
+
+# Step 3: Build multi-panel figure
+tracks = [
+    ('coverage', 'cov_smooth', 'Coverage depth (×)', '#28A87D', True),
+    ('gc_content', None,       'GC content (%)',     '#7754BF', False),
+    ('gene_density', None,     'Gene density',       '#E8A838', False),
+    ('snp_density',  None,     'SNP density',        '#E74C3C', False),
+]
+fig, axes = plt.subplots(len(tracks), 1, figsize=(13, 8),
+                         sharex=True, constrained_layout=True)
+
+for ax, (col, smooth, ylabel, color, show_cnv) in zip(axes, tracks):
+    y = genome_stats[col]
+    ax.fill_between(genome_stats['pos_mb'], y, color=color, alpha=0.7)
+    if smooth:
+        ax.plot(genome_stats['pos_mb'], genome_stats[smooth],
+                color='black', linewidth=0.8)
+    if show_cnv:
+        ax.axvspan(8, 11, alpha=0.15, color='red', label='CNV region')
+        ax.legend(fontsize=8, frameon=False)
+    ax.set_ylabel(ylabel, fontsize=9); ax.spines[['top','right']].set_visible(False)
+
+axes[-1].set_xlabel('Position (Mb)', fontsize=11)
+fig.suptitle('Chromosome 1 — Genome Statistics (100 kb windows)',
+             fontsize=13, fontweight='bold')
+plt.show()
+```
+
+```{=html}
+<!-- slide 26 -->
+```
+
+## Exercise: Genome Statistics
+
+::: {.question}
+**Coding Exercise**
+```{python}
+#| echo: true
+#| eval: false
+
+np.random.seed(2026)
+window_kb = 50    # 50 kb windows
+chrom_mb  = 100   # simulate 100 Mb chromosome
+n_win     = (chrom_mb * 1000) // window_kb
+
+# Simulate statistics with biological features
+positions_mb = np.arange(n_win) * window_kb / 1000
+
+coverage = 25 + 8 * np.sin(np.linspace(0, 5*np.pi, n_win)) + np.random.normal(0, 4, n_win)
+coverage[200:260] *= 3      # amplification
+coverage[500:540] = 2        # deletion / low-mappability
+
+gc = (40 + 10*np.sin(np.linspace(0, 8*np.pi, n_win)) + np.random.normal(0, 3, n_win)).clip(20, 75)
+repeat = np.random.beta(2, 5, n_win) * 60
+gene_dens = np.random.poisson(4, n_win).astype(float)
+gene_dens[300:400] = 0      # gene desert
+
+# Your tasks:
+# 1. Plot all four tracks (coverage, GC%, repeat density, gene density)
+#    in a shared-x multi-panel figure
+# 2. Apply a 10-window rolling mean to coverage
+# 3. Color coverage bars red where > 2× median (amplification) or < 0.5× median (deletion)
+# 4. Add a shaded rectangle for the gene desert region
+# 5. Label each track panel on the y-axis
+
+# Bonus: Add a 5th panel showing correlation between GC content and coverage
+```
+:::
+
+```{=html}
+<!-- slide 27 -->
+```
+
+# Day 2 Recap {background-color="#28A87D"}
+
+```{=html}
+<!-- slide 28 -->
+```
+
+## What We Covered Today
+
+::: {.recap}
+**Plot types and libraries:**
+
+| Plot | Library | Key parameter |
+|------|---------|---------------|
+| Stacked bar (absolute + 100%) | `matplotlib` | `bottom=` for stacking |
+| Time series + CI ribbon | `matplotlib`, `scipy.stats` | `fill_between` |
+| MSA visualization | `pyMSAviz`, `matplotlib` | `color_scheme=` |
+| Manhattan plot | `matplotlib` | alternating chromosome colors |
+| Q-Q plot | `matplotlib` | `np.arange` vs observed |
+| Genome statistics | `matplotlib` | `sharex=True`, `rolling()` |
+:::
+
+::: fragment
+::: {.recap}
+**Key Python patterns used today:**
+
+```python
+# Stacking bars
+bottom = np.zeros(n_samples)
+for category in categories:
+    ax.bar(x, values[category], bottom=bottom, ...)
+    bottom += values[category]
+
+# Rolling statistics
+df['coverage_smooth'] = df['coverage'].rolling(10, center=True).mean()
+
+# Chromosome offset for Manhattan plot
+for chrom in chromosomes:
+    gwas[gwas.chr == chrom]['pos'] + chr_offsets[chrom]
+```
+:::
+:::
+
+```{=html}
+<!-- slide 29 -->
+```
+
+## Looking Ahead — Day 3
+
+**Tomorrow (Wednesday 13:00 – 18:00):**
+
+- **Phylogenetic trees** — `Toytree`, `Bio.Phylo`
+- **Circos plots** — `pyCirclize`
+- **Venn diagrams & UpSet plots** — `matplotlib-venn`, `UpSetPlot`
+- **Synteny plots** — custom matplotlib + `JCVI / MCscan` overview
+- **Ideograms** — chromosome ideogram with cytoband annotations
+
+::: fragment
+**Download today's notebooks:**
+
+```bash
+notebooks/day2_python_genomics_viz.ipynb
+```
+
+Questions? → loukesio@gmail.com
+:::
+
+::: {.footer style="font-size: 0.7em; color: #606060;"}
+All code and data are available in the course GitHub repository
+:::
