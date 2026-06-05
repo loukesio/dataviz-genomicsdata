@@ -1,127 +1,145 @@
-# 🧬 Data Visualization for Genomics & Biological Sciences
+# 🧬 Genomics Data Visualization with Python — 2026
 
-A comprehensive 3-day workshop on creating publication-quality visualizations for genomics and biological data using R and ggplot2.
+A hands-on 3-day workshop on creating publication-quality visualizations for genomics and biological data using Python.
 
-## 📚 Course Materials
+## 📚 Course Overview
 
-### Day 1: Foundations
-- **Introduction to Data Visualization**
-  - Why visualization matters (Anscombe's Quartet, Datasaurus Dozen)
-  - Big data challenges in biology
-  - Typography and color theory
-  - Color palettes for genomics
-- **ggplot2 Fundamentals**
-  - Grammar of Graphics philosophy
-  - Building plots layer by layer
-  - Custom themes and styling
-- **Essential Plot Types**
-  - Scatter plots (PCA, correlations)
-  - Bar charts (expression comparisons)
-  - Box plots & violin plots (distributions)
-  - Stacked plots (microbiome composition)
+This course teaches researchers and bioinformaticians how to build compelling, reproducible figures using Python's scientific visualization ecosystem. Each day builds on the previous, moving from core plotting fundamentals to specialized genomics visualizations.
 
-### Day 2: Advanced Genomics Visualizations
-- **Dimensionality Reduction**
-  - PCA, UMAP, t-SNE theory and implementation
-  - Choosing the right method
-  - Practical examples with gene expression data
-- **Volcano Plots**
-  - Step-by-step construction
-  - Methods: base ggplot2, EnhancedVolcano, ggvolc
-  - Multi-level classifications
-- **Peak Visualization**
-  - ChIP-seq and ATAC-seq data
-  - Track plots with karyoploteR
-  - Detailed locus views with Gviz
+| Day | Theme | Key Topics |
+|-----|-------|-----------|
+| 1 | Foundations | matplotlib anatomy, seaborn, volcano plots, PCA/t-SNE/UMAP, heatmaps |
+| 2 | Genomics Plots | stacked bars, time series, MSA visualization, Manhattan plots, genome statistics |
+| 3 | Specialized | phylogenetic trees, Circos plots, Venn/UpSet, synteny, ideograms |
 
-### Day 3: Specialized Visualizations
-- **Set Comparisons**
-  - Venn diagrams (ggvenn, ggVennDiagram)
-  - UpSet plots for complex overlaps
-  - When to use each method
-- **Phylogenetic Trees**
-  - Multiple layouts (rectangular, circular, radial)
-  - Highlighting clades and adding metadata
-  - Advanced annotations with ggtreeExtra
-- **Circular Genome Plots**
-  - circlize package fundamentals
-  - Multi-track visualizations
-  - Links for structural variants
-- **Gene Arrangements & Synteny**
-  - gggenes for gene-level detail
-  - Comparative genomics
-  - Prophage insertion visualization
+---
 
-## 🎨 Key Features
+## 🚀 Quick Start
 
-- **Publication-ready outputs** using custom themes
-- **Cross color palette** throughout for consistency
-- **Real biological examples** from genomics research
-- **Hands-on exercises** for each major topic
-- **Best practices** for scientific visualization
-- **Colorblind-friendly** design principles
+### 1 — Install the course package
 
-## 📦 Required Packages
-
-### Core Visualization
-```r
-library(tidyverse)      # Data manipulation & ggplot2
-library(patchwork)      # Combine plots
-library(MetBrewer)      # Color palettes
-library(RColorBrewer)   
-library(pheatmap)       # Heatmaps
+```bash
+pip install genomicsviz
 ```
 
-### Specialized Genomics
-```r
-library(ggtree)         # Phylogenetic trees
-library(circlize)       # Circular plots
-library(karyoploteR)    # Karyotype visualization
-library(Gviz)           # Genomic tracks
-library(gggenes)        # Gene arrangements
-library(UpSetR)         # Set comparisons
-library(ggvenn)         # Venn diagrams
+This installs every library used across all three days in a single command.
+
+### 2 — Verify your setup
+
+```python
+import genomicsviz as gv
+
+gv.apply_course_theme()   # set publication-ready matplotlib defaults
+print(gv.COURSE_PAL)      # 10-colour palette used throughout the slides
 ```
 
-### Dimensionality Reduction
-```r
-library(umap)
-library(Rtsne)
+### 3 — Recommended: use a dedicated environment
+
+```bash
+# conda
+conda create -n genomicsviz python=3.11
+conda activate genomicsviz
+pip install genomicsviz
+
+# or venv
+python -m venv genomicsviz_env
+source genomicsviz_env/bin/activate   # Windows: genomicsviz_env\Scripts\activate
+pip install genomicsviz
 ```
 
-## 🚀 Getting Started
+---
 
-1. Clone this repository
-2. Install required packages
-3. Open the `.Rproj` file in RStudio
-4. Navigate to `slides/` for presentation materials
-5. Follow along with the embedded code examples
+## 📦 What Gets Installed
 
-## 📖 Resources
+`genomicsviz` is a thin meta-package: installing it pulls in the full dependency stack so students never have to track individual packages manually.
 
-- **Custom theme function** included for consistent styling
-- **Example datasets** provided for all exercises
-- **Color palette guide** (Cross palette from MetBrewer)
-- **Links to awesome-genome-visualization** collection
+| Category | Packages |
+|----------|----------|
+| Core numerics & data | `numpy`, `pandas`, `scipy`, `scikit-learn` |
+| Plotting foundations | `matplotlib`, `seaborn`, `plotly` |
+| Genomics-specific | `biopython`, `scanpy`, `toytree`, `pycirclize`, `pymsaviz`, `gget` |
+| Enrichment & annotation | `gget`, `PyComplexHeatmap` |
+| Specialized charts | `matplotlib-venn`, `upsetplot`, `pywaffle`, `adjustText` |
+| Dimensionality reduction | `umap-learn` |
+
+---
+
+## 🗓 Curriculum
+
+### Day 1 — Visualization Foundations
+
+- Why visualization matters: Anscombe's Quartet & the Datasaurus Dozen
+- Python's genomics visualization ecosystem
+- Anatomy of a matplotlib figure — canvas, axes, artists
+- Building plots step by step: scatter → color → polish → publication style
+- Common plot types: scatter, bar, box, violin
+- **Volcano plots** — theory, data preparation, gene labeling with `adjustText`
+- **Dimensionality reduction** — PCA scree plots, t-SNE, UMAP
+- **Heatmaps** — `seaborn` clustermap, `PyComplexHeatmap` rich annotations
+
+### Day 2 — Genomics-Relevant Plots
+
+- **Stacked bar charts** — microbiome composition, 100% normalized
+- **Time series** — replicated gene-expression time courses, mean ± SEM ribbons
+- **MSA visualization** — multiple sequence alignments with `pyMSAviz`
+- **Manhattan plots** — GWAS results, chromosome alternation, Q-Q plots
+- **Genome statistics** — GC content, read depth, coverage windows
+
+### Day 3 — Specialized Visualizations
+
+- **Phylogenetic trees** — `toytree`, `Bio.Phylo`, custom matplotlib rendering
+- **Circos / chord diagrams** — `pycirclize`, structural variant links
+- **Venn & UpSet plots** — `matplotlib-venn`, `upsetplot` for complex overlaps
+- **Synteny plots** — ribbon diagrams, dot plots for comparative genomics
+- **Ideograms** — chromosome-level overview with simulated cytobands
+
+---
 
 ## 🎓 Learning Outcomes
 
-By the end of this workshop, you will be able to:
+By the end of the workshop you will be able to:
 
-- ✅ Create publication-quality figures for genomics research
-- ✅ Choose appropriate visualizations for different data types
-- ✅ Customize plots extensively using ggplot2
-- ✅ Visualize complex genomic relationships
-- ✅ Apply best practices in scientific data visualization
-- ✅ Integrate multiple data types in comprehensive figures
+- Build publication-ready figures entirely in Python
+- Choose the right visualization for each data type
+- Customize every element of a matplotlib figure
+- Visualize single-cell, GWAS, phylogenetic, and comparative-genomics data
+- Apply colorblind-friendly, consistent color schemes across a project
+- Reproduce and adapt all course examples on your own data
+
+---
+
+## 🗂 Repository Structure
+
+```
+dataviz-genomicsdata/
+├── slides/
+│   ├── day1_python_gendataviz26.qmd   # Quarto source — Day 1
+│   ├── day2_python_gendataviz26.qmd   # Quarto source — Day 2
+│   └── day3_python_gendataviz26.qmd   # Quarto source — Day 3
+├── genomicsviz/                        # pip-installable course package
+│   ├── __init__.py
+│   └── themes.py
+└── pyproject.toml
+```
+
+---
+
+## 🔗 Related Branches
+
+| Branch | Language | Year |
+|--------|----------|------|
+| `R_2024` | R / ggplot2 | 2024 |
+| `R_2025` | R / ggplot2 | 2025 |
+| `Python_2026` | Python / matplotlib | **2026 ← you are here** |
+
+---
 
 ## 👨‍🏫 Instructor
 
-**Dr. Loukas Theodosiou**  
-Senior Data Scientist | Population Genomics & AI/ML  
+**Dr. Loukas Theodosiou**
+Senior Data Scientist · Population Genomics & AI/ML
 [GitHub](https://github.com/loukesio)
 
 ---
 
-**Course Materials**: December 2024  
-**License**: Materials are provided for educational purposes
+**License**: Materials provided for educational purposes.
