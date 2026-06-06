@@ -56,6 +56,15 @@ COURSE_PAL = [
     "#E07B54", "#4A90D9", "#B8860B", "#3D7A3D", "#9B72CF",
 ]
 
+# ── Aliases for legacy slide-body references ─────────────────────────────────
+BRAND       = COLORS["primary"]
+BRAND_LIGHT = "#79DFBD"
+BRAND_BG    = "#E8F5F1"
+ACCENT_YLW  = COLORS["tertiary"]
+ACCENT_PURP = COLORS["quinary"]
+GRAY_DARK   = COLORS["text_mid"]
+RED         = COLORS["primary"]
+
 # ── Global matplotlib style ───────────────────────────────────────────────────
 plt.rcParams.update({
     "font.family"          : "sans-serif",
