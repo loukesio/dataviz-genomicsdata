@@ -6,7 +6,7 @@ title-slide-attributes:
     data-background-color: "#E8F5F1"
 format:
   revealjs:
-    theme: slides.scss
+    theme: [default, slides.scss]
     footer: '**L.Theodosiou** // Genomics Data Visualization with Python'
     transition: fade
     progress: true
@@ -38,6 +38,8 @@ import matplotlib as mpl
 import seaborn as sns
 import warnings
 warnings.filterwarnings('ignore')
+import matplotlib.font_manager as fm
+fm._load_fontmanager()
 
 # ── Style-guide colors (Economist meets Nature Reviews Genetics) ──────────────
 COLORS = {
@@ -47,7 +49,7 @@ COLORS = {
     "quaternary"  : "#5A8F29", "quinary"    : "#7B5EA7",
     "text_dark"   : "#1A1A1A", "text_mid"   : "#555555", "text_light": "#888888",
     "grid"        : "#E8E8E8", "highlight_bg": "#FFF5F5",
-    "zero_line"   : "#CCCCCC", "canvas"     : "#FAF9F7",
+    "zero_line"   : "#CCCCCC", "canvas"     : "#FFFFFF",
 }
 
 COURSE_PAL = [
@@ -72,7 +74,7 @@ plt.rcParams.update({
     "font.size"            : 11, "axes.titlesize" : 13, "axes.titleweight": "bold",
     "axes.labelsize"       : 11, "xtick.labelsize": 10, "ytick.labelsize" : 10,
     "legend.fontsize"      : 10, "figure.titlesize": 15, "figure.titleweight": "bold",
-    "figure.facecolor"     : COLORS["canvas"], "axes.facecolor": COLORS["canvas"],
+    "figure.facecolor"     : "white", "axes.facecolor": "white",
     "axes.edgecolor"       : "#DDDDDD", "axes.linewidth": 0.6,
     "axes.grid"            : False, "axes.spines.top": False, "axes.spines.right": False,
     "xtick.major.width"    : 0.6, "ytick.major.width": 0.6,
@@ -160,14 +162,14 @@ order = ["dino", "away", "h_lines", "v_lines", "x_shape",
 
 fig, axes = plt.subplots(3, 5, figsize=(13, 6.2),
                          constrained_layout=True,
-                         facecolor=COLORS["canvas"])
+                         facecolor="white")
 for ax, name in zip(axes.flat, order):
     grp = dd[dd["dataset"] == name]
     ax.scatter(grp["x"], grp["y"],
                color=COLORS["primary"], s=10, alpha=0.75, linewidths=0)
     ax.set_title(name, fontsize=9, fontweight="bold",
                  color=COLORS["text_dark"])
-    ax.set_facecolor(COLORS["canvas"])
+    ax.set_facecolor("white")
     ax.set_xticks([]); ax.set_yticks([])
     for spine in ax.spines.values():
         spine.set_visible(False)
@@ -242,7 +244,7 @@ For years we struggled to collect biological data, but now our biggest bottlenec
 <!-- slide 7 -->
 ```
 
-## Why Python for Genomics Visualization?
+## Why Python for Genomics Visualization? {.smaller}
 
 :::::: columns
 ::: {.column width="55%"}
@@ -573,33 +575,22 @@ A complete `environment.yml` file is included in your course materials
 
 ## The Anatomy of a Matplotlib Figure
 
-:::::: columns
-::: {.column width="50%"}
 **Every figure has a clear hierarchy:**
 
 ::: fragment
-**Figure**
-
-- The outermost container
-- `fig = plt.figure()` or `fig, ax = plt.subplots()`
+**Figure** — The outermost container; `fig = plt.figure()` or `fig, ax = plt.subplots()`
 :::
 
 ::: fragment
-**Axes**
-
-- The actual plot area (one figure can have many axes)
-- Where you place artists: lines, scatter, bars…
+**Axes** — The actual plot area (one figure can have many axes); where you place artists: lines, scatter, bars…
 :::
 
 ::: fragment
-**Artists**
-
-- Everything visible: lines, text, patches, images
-- Controlled with `ax.set_*()` methods
-:::
+**Artists** — Everything visible: lines, text, patches, images; controlled with `ax.set_*()` methods
 :::
 
-::: {.column width="50%"}
+## The Anatomy of a Matplotlib Figure — Result {.plot-slide}
+
 ```{python}
 #| echo: false
 #| fig-width: 5
@@ -630,8 +621,6 @@ ax.annotate('Artist\n(scatter)', xy=(1, 0.9), xytext=(2.2, 1.15),
 plt.tight_layout()
 plt.show()
 ```
-:::
-::::::
 
 ```{=html}
 <!-- slide 14 -->
@@ -786,6 +775,39 @@ plt.tight_layout()
 plt.show()
 ```
 
+## Building a Plot: Step 4 — Result {.plot-slide}
+
+```{python}
+#| echo: false
+#| eval: true
+#| fig-width: 8
+#| fig-height: 4.5
+
+from scipy.stats import linregress
+
+np.random.seed(42)
+df = pd.DataFrame({
+    'x': np.random.normal(0, 1, 100),
+    'y': np.random.normal(0, 1, 100),
+    'group': np.random.choice(['Control', 'Treatment'], 100)
+})
+
+slope, intercept, *_ = linregress(df['x'], df['y'])
+xs = np.linspace(df['x'].min(), df['x'].max(), 100)
+
+fig, ax = plt.subplots(figsize=(8, 4.5))
+for group, color in zip(['Control', 'Treatment'], [BRAND, ACCENT_YLW]):
+    sub = df[df['group'] == group]
+    ax.scatter(sub['x'], sub['y'], label=group, color=color, s=60, alpha=0.7)
+ax.plot(xs, slope * xs + intercept, color='black', linewidth=1.5, ls='--')
+ax.set_xlabel('Log2 Fold Change', labelpad=8)
+ax.set_ylabel('Expression Level', labelpad=8)
+ax.set_title('Gene Expression: Control vs Treatment')
+ax.legend(title='Group', loc='upper left')
+plt.tight_layout()
+plt.show()
+```
+
 ```{=html}
 <!-- slide 18 -->
 ```
@@ -825,11 +847,42 @@ plt.rcParams.update({
 ```
 :::
 
+## Building a Plot: Step 5 — Result {.plot-slide}
+
+```{python}
+#| echo: false
+#| eval: true
+#| fig-width: 8
+#| fig-height: 4.5
+
+def course_style(ax, title='', xlabel='', ylabel=''):
+    ax.set_title(title, fontsize=13, fontweight='bold', pad=10)
+    ax.set_xlabel(xlabel, fontsize=11, labelpad=8)
+    ax.set_ylabel(ylabel, fontsize=11, labelpad=8)
+    ax.spines[['top','right']].set_visible(False)
+    ax.grid(axis='y', linestyle='--', linewidth=0.5, color='#e0e0e0')
+    ax.tick_params(axis='both', labelsize=10)
+    return ax
+
+np.random.seed(42)
+x = np.random.normal(0, 1, 100)
+y = 0.8 * x + np.random.normal(0, 0.5, 100)
+
+fig, ax = plt.subplots(figsize=(8, 4.5))
+ax.scatter(x, y, color=BRAND, s=55, alpha=0.7)
+course_style(ax,
+             title='Publication-Ready Style',
+             xlabel='Log2 Fold Change',
+             ylabel='Expression Level')
+plt.tight_layout()
+plt.show()
+```
+
 ```{=html}
 <!-- slide 19 -->
 ```
 
-## Common Plot Types in Matplotlib & Seaborn
+## Common Plot Types in Matplotlib & Seaborn {.plot-slide}
 
 ```{python}
 #| echo: false
@@ -953,8 +1006,6 @@ plt.show()
 
 ## What is a Volcano Plot?
 
-:::::: columns
-:::: {.column width="48%"}
 **Purpose:** Visualize differential expression results — identify statistically significant and biologically meaningful changes at a glance.
 
 **Axes:**
@@ -962,19 +1013,12 @@ plt.show()
 - **X-axis:** log₂(Fold Change) — magnitude of change
 - **Y-axis:** −log₁₀(p-value) — statistical significance
 
-**Quadrants:**
+**Quadrants:** Top-right → up-regulated, significant ; Top-left → down-regulated, significant ; Bottom → not significant
 
-- Top-right → up-regulated, significant
-- Top-left → down-regulated, significant
-- Bottom → not significant
+**Thresholds (typical):** |log₂FC| > 1 (2-fold change) ; p-value < 0.05 → −log₁₀(p) > 1.3
 
-**Thresholds (typical):**
+## What is a Volcano Plot? — Result {.plot-slide}
 
-- |log₂FC| > 1 (2-fold change)
-- p-value < 0.05 → −log₁₀(p) > 1.3
-::::
-
-::: {.column width="52%"}
 ```{python}
 #| echo: false
 #| fig-width: 6
@@ -1009,11 +1053,35 @@ ax.text(-6, neg_log_p.max()*0.92, f'↓ {down}', color=RED,   fontsize=10, fontw
 ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
-:::
-::::::
 
 ```{=html}
 <!-- slide 24 -->
+```
+
+## Volcano Plot — Pipeline
+
+```{mermaid}
+%%| fig-width: 9
+
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#d9f6ec"
+    primaryBorderColor: "#28A87D"
+    primaryTextColor: "#1A1A1A"
+    lineColor: "#888888"
+    fontFamily: "Asap, sans-serif"
+    fontSize: "15px"
+---
+
+flowchart LR
+  A(DESeq2 results) --> B[Compute −log₁₀ p]
+  B --> C{Classify NS / FC / p / both}
+  C --> D[Scatter coloured by class]
+  D --> E[Label top-N genes]
+  E --> F[Threshold lines]
+  style F fill:#28A87D,color:#fff,stroke:#28A87D
 ```
 
 ## Volcano Plot: Data Preparation
@@ -1165,28 +1233,17 @@ Build a publication-quality volcano plot from a 3 000-gene RNA-seq dataset: clas
 #| echo: true
 #| eval: false
 
-np.random.seed(2026)
-n = 3000
+from genomics_course.data import load_deseq2
 
-de_data = pd.DataFrame({
-    'gene'    : [f'GENE_{i:05d}' for i in range(n)],
-    'log2FC'  : np.concatenate([
-        np.random.normal(-2.5, 0.8, 100),   # down-regulated
-        np.random.normal( 2.5, 0.8, 100),   # up-regulated
-        np.random.normal( 0.0, 0.8, 2800),  # not significant
-    ]),
-    'pvalue'  : np.concatenate([
-        np.random.uniform(1e-20, 1e-4, 200),
-        np.random.uniform(1e-3,  1.0,  2800),
-    ]),
-    'baseMean': np.random.exponential(100, n),
-})
+# Real DESeq2 output: columns = gene, baseMean, log2FoldChange, pvalue, padj
+de_data = load_deseq2(contrast='drought')
 
 # Your tasks:
-# 1. Compute neg_log10_p and classify regulation (up / down / ns)
+# 1. Compute neg_log10_p from `pvalue` and classify regulation (up / down / ns)
+#    using log2FoldChange and padj
 # 2. Create a volcano plot, colored by regulation status
 # 3. Size points by baseMean (log-scaled)
-# 4. Add threshold lines at |log2FC| = 1.5 and p = 0.01
+# 4. Add threshold lines at |log2FoldChange| = 1.5 and padj = 0.01
 # 5. Label the top 10 most significant genes
 
 # Bonus: Create an interactive version with plotly.express.scatter()
@@ -1203,33 +1260,25 @@ de_data = pd.DataFrame({
 import numpy as np, pandas as pd
 import matplotlib.pyplot as plt
 from adjustText import adjust_text
+from genomics_course.data import load_deseq2
 
-np.random.seed(2026)
-n = 3000
-de_data = pd.DataFrame({
-    'gene'    : [f'GENE_{i:05d}' for i in range(n)],
-    'log2FC'  : np.concatenate([np.random.normal(-2.5, 0.8, 100),
-                                np.random.normal( 2.5, 0.8, 100),
-                                np.random.normal( 0.0, 0.8, 2800)]),
-    'pvalue'  : np.concatenate([np.random.uniform(1e-20, 1e-4, 200),
-                                np.random.uniform(1e-3,  1.0,  2800)]),
-    'baseMean': np.random.exponential(100, n),
-})
-
-de_data['neg_log10_p'] = -np.log10(de_data['pvalue'])
+de_data = load_deseq2(contrast='drought').copy()
+# unify a working pvalue column (some rows can have NA padj)
+de_data['pvalue']     = de_data['pvalue'].fillna(1.0)
+de_data['neg_log10_p'] = -np.log10(de_data['pvalue'].clip(lower=1e-300))
 de_data['regulation']  = 'ns'
-de_data.loc[(de_data.log2FC >  1.5) & (de_data.pvalue < 0.01), 'regulation'] = 'up'
-de_data.loc[(de_data.log2FC < -1.5) & (de_data.pvalue < 0.01), 'regulation'] = 'down'
+de_data.loc[(de_data.log2FoldChange >  1.5) & (de_data.pvalue < 0.01), 'regulation'] = 'up'
+de_data.loc[(de_data.log2FoldChange < -1.5) & (de_data.pvalue < 0.01), 'regulation'] = 'down'
 
 PAL = {'up': COLORS['primary'], 'down': COLORS['secondary'], 'ns': COLORS['text_light']}
 SIZE = np.log1p(de_data['baseMean']) * 2
 
 fig, ax = plt.subplots(figsize=(8, 6),
-                       facecolor=COLORS['canvas'])
-ax.set_facecolor(COLORS['canvas'])
+                       facecolor="white")
+ax.set_facecolor("white")
 
 for reg, grp in de_data.groupby('regulation'):
-    ax.scatter(grp.log2FC, grp.neg_log10_p,
+    ax.scatter(grp.log2FoldChange, grp.neg_log10_p,
                c=PAL[reg], s=SIZE[grp.index],
                alpha=0.5, linewidths=0, label=reg)
 
@@ -1238,7 +1287,7 @@ ax.axvline(-1.5, ls='--', color=COLORS['zero_line'], lw=1)
 ax.axvline( 1.5, ls='--', color=COLORS['zero_line'], lw=1)
 
 top10 = de_data[de_data.regulation != 'ns'].nsmallest(10, 'pvalue')
-texts = [ax.text(r.log2FC, r.neg_log10_p, r.gene,
+texts = [ax.text(r.log2FoldChange, r.neg_log10_p, r.gene,
                  fontsize=8, color=COLORS['text_dark']) for _, r in top10.iterrows()]
 adjust_text(texts, ax=ax, arrowprops=dict(arrowstyle='-', color=COLORS['text_light'], lw=0.6))
 
@@ -1328,6 +1377,33 @@ plt.tight_layout(); plt.show()
 <!-- slide 30 -->
 ```
 
+## PCA / UMAP — Pipeline
+
+```{mermaid}
+%%| fig-width: 9
+
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#d9f6ec"
+    primaryBorderColor: "#28A87D"
+    primaryTextColor: "#1A1A1A"
+    lineColor: "#888888"
+    fontFamily: "Asap, sans-serif"
+    fontSize: "15px"
+---
+
+flowchart LR
+  A(Cells × Genes) --> B[Normalise + log]
+  B --> C[Highly variable\ngenes]
+  C --> D[Scale + PCA\nto 50D]
+  D --> E[k-NN graph]
+  E --> F[UMAP / t-SNE]
+  F --> G[Colour by\ncell type]
+  style G fill:#28A87D,color:#fff,stroke:#28A87D
+```
+
 ## PCA: Step-by-Step Code {.smaller}
 
 ```{python}
@@ -1370,6 +1446,39 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
+## PCA: Step-by-Step — Result {.plot-slide}
+
+```{python}
+#| echo: false
+#| eval: true
+#| fig-width: 8
+#| fig-height: 5
+
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+np.random.seed(42)
+X = np.random.normal(8, 2, (200, 5000))
+groups = np.repeat(['Control', 'Treatment'], 100)
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+pca = PCA(n_components=10, random_state=42)
+coords = pca.fit_transform(X_scaled)
+var_explained = pca.explained_variance_ratio_ * 100
+
+fig, ax = plt.subplots(figsize=(8, 5))
+for grp, color in zip(['Control', 'Treatment'], [COLORS['primary'], '#E8A838']):
+    m = groups == grp
+    ax.scatter(coords[m, 0], coords[m, 1], color=color,
+               s=50, alpha=0.75, label=grp, linewidths=0)
+ax.set_xlabel(f'PC1 ({var_explained[0]:.1f}%)', fontsize=12)
+ax.set_ylabel(f'PC2 ({var_explained[1]:.1f}%)', fontsize=12)
+ax.set_title('PCA of RNA-seq Data', fontsize=14, fontweight='bold')
+ax.legend(title='Group', frameon=False)
+ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+
 ```{=html}
 <!-- slide 31 -->
 ```
@@ -1378,8 +1487,7 @@ plt.tight_layout(); plt.show()
 
 ```{python}
 #| echo: true
-#| fig-width: 10
-#| fig-height: 5
+#| eval: false
 
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -1408,6 +1516,39 @@ ax2.set_xlabel('Number of PCs'); ax2.set_ylabel('Cumulative Variance (%)')
 ax2.set_title('Cumulative Variance', fontweight='bold')
 ax2.legend(frameon=False); ax2.spines[['top','right']].set_visible(False)
 
+plt.tight_layout(); plt.show()
+```
+
+## PCA: Scree Plot — Result {.plot-slide}
+
+```{python}
+#| echo: false
+#| eval: true
+#| fig-width: 10
+#| fig-height: 5
+
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+np.random.seed(42)
+X = np.random.normal(8, 2, (200, 5000))
+X_scaled = StandardScaler().fit_transform(X)
+pca = PCA(n_components=20, random_state=42).fit(X_scaled)
+var = pca.explained_variance_ratio_ * 100
+cum = np.cumsum(var)
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+ax1.bar(range(1, 21), var, color=BRAND, alpha=0.8, edgecolor='white')
+ax1.set_xlabel('Principal Component'); ax1.set_ylabel('Variance Explained (%)')
+ax1.set_title('Scree Plot', fontweight='bold')
+ax1.spines[['top','right']].set_visible(False)
+ax2.plot(range(1, 21), cum, marker='o', color=BRAND,
+         markersize=6, linewidth=2)
+ax2.axhline(80, color=RED, linewidth=1, linestyle='--', alpha=0.7, label='80% threshold')
+ax2.fill_between(range(1, 21), cum, alpha=0.15, color=BRAND)
+ax2.set_xlabel('Number of PCs'); ax2.set_ylabel('Cumulative Variance (%)')
+ax2.set_title('Cumulative Variance', fontweight='bold')
+ax2.legend(frameon=False); ax2.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
@@ -1694,9 +1835,9 @@ X_tsne = tsne.fit_transform(X_pca)
 reducer = umap.UMAP(n_components=2, random_state=42)
 X_umap = reducer.fit_transform(X_pca)
 
-fig, axes = plt.subplots(1, 3, figsize=(15, 5), facecolor=COLORS['canvas'])
+fig, axes = plt.subplots(1, 3, figsize=(15, 5), facecolor="white")
 for ax in axes:
-    ax.set_facecolor(COLORS['canvas'])
+    ax.set_facecolor("white")
 
 for ct in means:
     mask = labels == ct
@@ -1736,7 +1877,7 @@ plt.show()
 <!-- slide: Admixture theory -->
 ```
 
-## Admixture Plots: Theory
+## Admixture Plots: Theory {.smaller}
 
 :::::: columns
 ::: {.column width="48%"}
@@ -1789,13 +1930,71 @@ df = pd.DataFrame({
 
 ```{python}
 #| echo: true
+#| eval: false
+
+from genomics_course.data import load_admixture
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Step 1: Load admixture Q-matrix (K=5)
+adm = load_admixture(K=5)
+pops    = ["CEU", "YRI", "CHB", "MXL", "ASW"]
+anc_pal = [COLORS["primary"], COLORS["secondary"], COLORS["tertiary"],
+           COLORS["quaternary"], COLORS["quinary"]]
+
+# Step 2: Sort within each population by dominant ancestry
+sorted_parts, n_each = [], []
+for pop in pops:
+    block = adm[adm["population"] == pop].copy()
+    dom   = block[["K1","K2","K3","K4","K5"]].mean().idxmax()
+    sorted_parts.append(block.sort_values(dom, ascending=False))
+    n_each.append(len(block))
+adm = pd.concat(sorted_parts, ignore_index=True)
+
+# Step 3: Build stacked bar plot
+fig, ax = plt.subplots(figsize=(13, 4.5), facecolor="white")
+ax.set_facecolor("white")
+
+x = np.arange(len(adm))
+bottom = np.zeros(len(adm))
+for k, col in enumerate(["K1","K2","K3","K4","K5"]):
+    ax.bar(x, adm[col], bottom=bottom,
+           color=anc_pal[k], width=1.0, linewidth=0,
+           label=f"K{k+1}")
+    bottom += adm[col].values
+
+# Step 4: White separators between populations
+boundaries = np.cumsum(n_each)[:-1]
+for b in boundaries:
+    ax.axvline(b - 0.5, color="white", linewidth=2.5)
+
+# Step 5: Population labels below
+centers = np.cumsum([0] + n_each)[:-1] + np.array(n_each) / 2
+ax.set_xticks(centers)
+ax.set_xticklabels(pops, fontsize=11, fontweight="bold")
+ax.set_xlim(-0.5, len(adm) - 0.5)
+ax.set_ylim(0, 1)
+ax.set_ylabel("Ancestry proportion")
+ax.set_yticks([0, 0.5, 1.0])
+ax.set_title("ADMIXTURE — K=5 ANCESTRY COMPONENTS",
+             fontweight="bold", fontsize=13, loc="left")
+ax.legend(title="K", bbox_to_anchor=(1.01, 1), loc="upper left",
+          frameon=False, fontsize=9)
+plt.tight_layout()
+plt.show()
+```
+
+## Admixture: Code Walkthrough — Result {.plot-slide}
+
+```{python}
+#| echo: false
+#| eval: true
 #| fig-width: 13
 #| fig-height: 5
 
 import numpy as np, pandas as pd
 import matplotlib.pyplot as plt
 
-# Step 1: Simulate ADMIXTURE-like output (K=5, 5 populations)
 np.random.seed(42)
 K = 5
 pops    = ["CEU", "YRI", "CHB", "MXL", "ASW"]
@@ -1814,7 +2013,6 @@ for pop_idx, (pop, n) in enumerate(zip(pops, n_each)):
 adm = pd.DataFrame(records, columns=["individual", "population",
                                      "K1","K2","K3","K4","K5"])
 
-# Step 2: Sort within each population by dominant ancestry
 sorted_parts = []
 for pop in pops:
     block = adm[adm["population"] == pop].copy()
@@ -1822,9 +2020,8 @@ for pop in pops:
     sorted_parts.append(block.sort_values(dom, ascending=False))
 adm = pd.concat(sorted_parts, ignore_index=True)
 
-# Step 3: Build stacked bar plot
-fig, ax = plt.subplots(figsize=(13, 4.5), facecolor=COLORS["canvas"])
-ax.set_facecolor(COLORS["canvas"])
+fig, ax = plt.subplots(figsize=(13, 4.5), facecolor="white")
+ax.set_facecolor("white")
 
 x = np.arange(len(adm))
 bottom = np.zeros(len(adm))
@@ -1834,12 +2031,10 @@ for k, col in enumerate(["K1","K2","K3","K4","K5"]):
            label=f"K{k+1}")
     bottom += adm[col].values
 
-# Step 4: White separators between populations
 boundaries = np.cumsum(n_each)[:-1]
 for b in boundaries:
     ax.axvline(b - 0.5, color="white", linewidth=2.5)
 
-# Step 5: Population labels below
 centers = np.cumsum([0] + n_each)[:-1] + np.array(n_each) / 2
 ax.set_xticks(centers)
 ax.set_xticklabels(pops, fontsize=11, fontweight="bold")
@@ -1878,22 +2073,10 @@ Build a publication-quality admixture plot for 3 populations at **K=4**, with wi
 #| echo: true
 #| eval: false
 
-# Simulated ADMIXTURE-like dataset
-np.random.seed(2026)
-K          = 4
-pops       = ["AFR", "EUR", "EAS"]
-n_each     = [60, 50, 45]
+from genomics_course.data import load_admixture
 
-records = []
-for pop_idx, (pop, n) in enumerate(zip(pops, n_each)):
-    base = np.full(K, 0.05)
-    base[pop_idx % K] = 0.7
-    for ind in range(n):
-        props = np.random.dirichlet(base * 15)
-        records.append([f"{pop}_{ind:03d}", pop, *props])
-
-adm = pd.DataFrame(records, columns=["individual","population",
-                                     "K1","K2","K3","K4"])
+# Real Q-matrix at K=4: columns = individual, population, K1, K2, K3, K4
+adm = load_admixture(K=4)
 
 # Your tasks:
 # 1. Sort individuals within each population by their dominant K column
@@ -1916,36 +2099,24 @@ adm = pd.DataFrame(records, columns=["individual","population",
 
 import numpy as np, pandas as pd
 import matplotlib.pyplot as plt
+from genomics_course.data import load_admixture
 
-np.random.seed(2026)
-K       = 4
-pops    = ["AFR", "EUR", "EAS"]
-n_each  = [60, 50, 45]
+adm     = load_admixture(K=4).copy()
+pops    = list(adm["population"].drop_duplicates())
+K_cols  = ["K1","K2","K3","K4"]
 anc_pal = [COLORS["primary"], COLORS["secondary"],
            COLORS["tertiary"], COLORS["quaternary"]]
 
-records = []
-for pop_idx, (pop, n) in enumerate(zip(pops, n_each)):
-    base = np.full(K, 0.05)
-    base[pop_idx % K] = 0.7
-    for ind in range(n):
-        props = np.random.dirichlet(base * 15)
-        records.append([f"{pop}_{ind:03d}", pop, *props])
-
-adm = pd.DataFrame(records, columns=["individual","population",
-                                     "K1","K2","K3","K4"])
-
-K_cols = ["K1","K2","K3","K4"]
-
-sorted_parts = []
+sorted_parts, n_each = [], []
 for pop in pops:
     block = adm[adm["population"] == pop].copy()
     dom   = block[K_cols].mean().idxmax()
     sorted_parts.append(block.sort_values(dom, ascending=False))
+    n_each.append(len(block))
 adm = pd.concat(sorted_parts, ignore_index=True)
 
-fig, ax = plt.subplots(figsize=(13, 4.5), facecolor=COLORS["canvas"])
-ax.set_facecolor(COLORS["canvas"])
+fig, ax = plt.subplots(figsize=(13, 4.5), facecolor="white")
+ax.set_facecolor("white")
 
 x = np.arange(len(adm))
 bottom = np.zeros(len(adm))
@@ -1965,7 +2136,7 @@ ax.set_xlim(-0.5, len(adm) - 0.5)
 ax.set_ylim(0, 1)
 ax.set_yticks([0, 0.5, 1.0])
 ax.set_ylabel("Ancestry proportion")
-ax.set_title("ADMIXTURE — K=4 ANCESTRY COMPONENTS (AFR · EUR · EAS)",
+ax.set_title("ADMIXTURE — K=4 ANCESTRY COMPONENTS",
              fontweight="bold", fontsize=13, loc="left")
 ax.legend(title="K", bbox_to_anchor=(1.01, 1), loc="upper left",
           frameon=False, fontsize=9)
@@ -1999,14 +2170,7 @@ plt.show()
 
 ## Heatmap Fundamentals
 
-:::::: columns
-:::: {.column width="48%"}
-**What heatmaps show:**
-
-- Gene × sample expression matrices
-- Correlation matrices
-- Presence/absence patterns
-- Epigenomic signals (ChIP-seq, ATAC-seq)
+**What heatmaps show:** gene × sample expression matrices, correlation matrices, presence/absence patterns, epigenomic signals (ChIP-seq, ATAC-seq).
 
 **Key features:**
 
@@ -2015,13 +2179,10 @@ plt.show()
 - Dendrograms reveal sample relationships
 - Annotations add metadata (condition, batch, etc.)
 
-**Libraries:**
+**Libraries:** `seaborn.clustermap` (quick, good defaults) ; `PyComplexHeatmap` (publication-quality with rich annotations).
 
-- `seaborn.clustermap` — quick, good defaults
-- `PyComplexHeatmap` — publication-quality with rich annotations
-::::
+## Heatmap Fundamentals — Result {.plot-slide}
 
-::: {.column width="52%"}
 ```{python}
 #| echo: false
 #| fig-width: 6
@@ -2050,11 +2211,35 @@ cg = sns.clustermap(
 cg.ax_heatmap.set_xlabel('Samples'); cg.ax_heatmap.set_ylabel('Genes')
 plt.show()
 ```
-:::
-::::::
 
 ```{=html}
 <!-- slide 37 -->
+```
+
+## Heatmap / Clustermap — Pipeline
+
+```{mermaid}
+%%| fig-width: 9
+
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#d9f6ec"
+    primaryBorderColor: "#28A87D"
+    primaryTextColor: "#1A1A1A"
+    lineColor: "#888888"
+    fontFamily: "Asap, sans-serif"
+    fontSize: "15px"
+---
+
+flowchart LR
+  A(Expression\nmatrix) --> B[Filter low\ncounts]
+  B --> C[Z-score\nper gene]
+  C --> D[Hierarchical\nclustering]
+  D --> E[Diverging\ncolourmap]
+  E --> F[Side annotation\ntracks]
+  style F fill:#28A87D,color:#fff,stroke:#28A87D
 ```
 
 ## Seaborn Clustermap: Code {.smaller}
@@ -2101,6 +2286,45 @@ cg = sns.clustermap(
 )
 cg.fig.suptitle('Gene Expression Heatmap', y=1.02,
                 fontsize=14, fontweight='bold')
+plt.show()
+```
+
+## Seaborn Clustermap — Result {.plot-slide}
+
+```{python}
+#| echo: false
+#| eval: true
+#| fig-width: 8
+#| fig-height: 6
+
+np.random.seed(42)
+expr_matrix = pd.DataFrame(
+    np.random.normal(8, 2, (50, 24)),
+    index   = [f'Gene_{i:03d}' for i in range(50)],
+    columns = [f'S{i:02d}'     for i in range(24)],
+)
+# inject group structure
+expr_matrix.iloc[:25, :12] += 1.5
+expr_matrix.iloc[25:, 12:] += 1.5
+# z-score per gene (row) without going through apply
+row_means = expr_matrix.mean(axis=1)
+row_sds   = expr_matrix.std(axis=1).replace(0, 1)
+expr_z    = (expr_matrix.subtract(row_means, axis=0)
+                        .div(row_sds, axis=0))
+
+groups = ['Control'] * 12 + ['Treatment'] * 12
+col_colors = [COLORS['primary'] if g == 'Control' else '#E8A838' for g in groups]
+
+cg = sns.clustermap(
+    expr_z, cmap='RdBu_r', center=0,
+    col_colors=col_colors,
+    row_cluster=True, col_cluster=True,
+    figsize=(8, 6), linewidths=0,
+    cbar_kws={'label': 'z-score', 'shrink': 0.5},
+    yticklabels=False,
+)
+cg.fig.suptitle('Gene Expression Heatmap', y=1.02,
+                fontsize=13, fontweight='bold')
 plt.show()
 ```
 
@@ -2241,7 +2465,7 @@ g = sns.clustermap(
     dendrogram_ratio=(0.1, 0.15),
     tree_kws={'linewidths': 0.5, 'colors': COLORS['text_light']},
 )
-g.fig.set_facecolor(COLORS['canvas'])
+g.fig.set_facecolor("white")
 g.ax_heatmap.set_xlabel('')
 g.ax_heatmap.set_ylabel('')
 g.ax_heatmap.tick_params(left=False, bottom=False)
@@ -2271,8 +2495,6 @@ plt.show()
 
 ## Waffle Charts: Proportions at a Glance
 
-:::::: columns
-:::: {.column width="48%"}
 **Purpose:** Show part-to-whole relationships as a grid of squares — more intuitive than pie charts for proportions.
 
 **When to use:**
@@ -2282,13 +2504,10 @@ plt.show()
 - Variant classification counts
 - Any whole-number percentage summary
 
-**Library:** `PyWaffle`
-```bash
-pip install pywaffle
-```
-::::
+**Library:** `PyWaffle` — `pip install pywaffle`
 
-::: {.column width="52%"}
+## Waffle Charts — Result {.plot-slide}
+
 ```{python}
 #| echo: false
 #| fig-width: 6
@@ -2319,8 +2538,6 @@ fig = plt.figure(
 plt.tight_layout()
 plt.show()
 ```
-:::
-::::::
 
 ```{=html}
 <!-- slide 42 -->
@@ -2373,8 +2590,6 @@ plt.show()
 
 ## Waterfall Plots: Mutation Landscapes
 
-:::::: columns
-:::: {.column width="48%"}
 **Purpose:** Display somatic mutation burden across a patient cohort — a staple of cancer genomics papers.
 
 **What the plot shows:**
@@ -2383,12 +2598,12 @@ plt.show()
 - Bars sorted by TMB (descending)
 - Color can encode cancer subtype, treatment response, or driver mutation
 - Often paired with an **OncoPrint** (mutation matrix below)
-::::
 
-::: {.column width="52%"}
+## Waterfall Plot — Result {.plot-slide}
+
 ```{python}
 #| echo: false
-#| fig-width: 6
+#| fig-width: 7
 #| fig-height: 5
 
 np.random.seed(42)
@@ -2399,7 +2614,7 @@ color_map_st = {'Luminal A': BRAND, 'Luminal B': ACCENT_YLW,
                 'HER2+': ACCENT_PURP, 'TNBC': RED}
 colors = [color_map_st[s] for s in subtypes]
 
-fig, ax = plt.subplots(figsize=(6, 5))
+fig, ax = plt.subplots(figsize=(7, 5))
 ax.bar(range(n_patients), tmb, color=colors, width=1.0, edgecolor='none')
 ax.set_xlabel('Patient (sorted by TMB)', fontsize=11)
 ax.set_ylabel('Tumor Mutation Burden\n(mutations / Mb)', fontsize=10)
@@ -2414,8 +2629,6 @@ ax.legend(handles=legend_elements, fontsize=8, frameon=False,
           loc='upper right')
 plt.tight_layout(); plt.show()
 ```
-:::
-::::::
 
 ```{=html}
 <!-- slide 44 -->
@@ -2555,7 +2768,7 @@ fig_waffle = plt.figure(
     legend={'loc': 'lower left', 'bbox_to_anchor': (0, -0.4),
             'ncol': 3, 'frameon': False, 'fontsize': 9},
     figsize=(8, 5),
-    facecolor=COLORS['canvas'],
+    facecolor="white",
 )
 fig_waffle.suptitle('COHORT CELL-TYPE COMPOSITION', fontweight='bold')
 plt.show()
@@ -2564,8 +2777,8 @@ plt.show()
 msi_boundary = mut_data['SNV_count'].quantile(0.85)
 df_sorted = mut_data.sort_values('SNV_count', ascending=False).reset_index(drop=True)
 
-fig2, ax = plt.subplots(figsize=(14, 5), facecolor=COLORS['canvas'])
-ax.set_facecolor(COLORS['canvas'])
+fig2, ax = plt.subplots(figsize=(14, 5), facecolor="white")
+ax.set_facecolor("white")
 
 bars = ax.bar(range(n_patients),
               df_sorted['SNV_count'],
@@ -2606,7 +2819,7 @@ plt.show()
 <!-- slide 47 -->
 ```
 
-## What Are Genomic Peaks?
+## What Are Genomic Peaks? {.smaller}
 
 :::::: columns
 :::: {.column width="50%"}
@@ -2749,6 +2962,54 @@ pyGenomeTracks is particularly powerful when overlaying multiple epigenomic data
 
 ```{python}
 #| echo: true
+#| eval: false
+
+np.random.seed(42)
+x = np.linspace(0, 10000, 500)
+
+def make_track(centers, noise=0.08):
+    s = noise * np.abs(np.random.randn(len(x)))
+    for c in centers:
+        s += np.exp(-((x - c)**2) / (2 * 300**2)) * np.random.uniform(0.9, 1.1)
+    return np.clip(s, 0, None)
+
+tracks = {
+    'H3K27ac (active enhancer)' : (make_track([2500, 5100, 7800]), BRAND),
+    'H3K4me3 (active promoter)' : (make_track([2500, 7800]),        ACCENT_PURP),
+    'ATAC-seq (open chromatin)' : (make_track([2500, 5100, 7800]), ACCENT_YLW),
+}
+
+fig, axes = plt.subplots(
+    len(tracks) + 1, 1, figsize=(10, 5.5), sharex=True,
+    gridspec_kw={'height_ratios': [3, 3, 3, 1.2]},
+)
+
+for ax, (label, (signal, color)) in zip(axes, tracks.items()):
+    ax.fill_between(x, signal, color=color, alpha=0.85)
+    ax.set_ylabel(label, fontsize=8, labelpad=4)
+    ax.set_ylim(bottom=0); ax.spines[['top','right','bottom']].set_visible(False)
+    ax.tick_params(labelsize=7)
+
+# Gene annotation track
+gene_ax = axes[-1]
+for start, length, name in [(1200,2200,'GeneA'),(5800,2800,'GeneB')]:
+    gene_ax.add_patch(plt.Rectangle((start, 0.25), length, 0.5,
+                                     color=GRAY_DARK, alpha=0.8, clip_on=False))
+    gene_ax.text(start + length/2, 0.5, name, ha='center', va='center',
+                 fontsize=7, color='white', fontweight='bold')
+gene_ax.set_ylim(0, 1); gene_ax.set_ylabel('Genes', fontsize=8)
+gene_ax.set_xlabel('Genomic position (bp)', fontsize=10, labelpad=8)
+gene_ax.spines[['top','right']].set_visible(False)
+
+fig.suptitle('Epigenomic Signal Tracks — chr1:0-10 kb', fontsize=11, fontweight='bold')
+plt.tight_layout(); plt.show()
+```
+
+## Custom Peak Plot — Result {.plot-slide}
+
+```{python}
+#| echo: false
+#| eval: true
 #| fig-width: 10
 #| fig-height: 5.5
 
@@ -2778,7 +3039,6 @@ for ax, (label, (signal, color)) in zip(axes, tracks.items()):
     ax.set_ylim(bottom=0); ax.spines[['top','right','bottom']].set_visible(False)
     ax.tick_params(labelsize=7)
 
-# Gene annotation track
 gene_ax = axes[-1]
 for start, length, name in [(1200,2200,'GeneA'),(5800,2800,'GeneB')]:
     gene_ax.add_patch(plt.Rectangle((start, 0.25), length, 0.5,
@@ -2897,10 +3157,10 @@ fig, axes = plt.subplots(
     figsize=(12, 8),
     sharex=True,
     gridspec_kw={'height_ratios': height_ratios, 'hspace': 0.05},
-    facecolor=COLORS['canvas'],
+    facecolor="white",
 )
 for ax in axes:
-    ax.set_facecolor(COLORS['canvas'])
+    ax.set_facecolor("white")
 
 # Signal tracks
 for ax, (label, (signal, color)) in zip(axes, track_data.items()):
@@ -2962,7 +3222,7 @@ plt.show()
 <!-- slide 51 -->
 ```
 
-## Gene Ontology & Pathway Enrichment
+## Gene Ontology & Pathway Enrichment {.smaller}
 
 :::::: columns
 :::: {.column width="50%"}
@@ -3025,6 +3285,32 @@ plt.tight_layout(); plt.show()
 <!-- slide 52 -->
 ```
 
+## Pathway Enrichment — Pipeline
+
+```{mermaid}
+%%| fig-width: 9
+
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#d9f6ec"
+    primaryBorderColor: "#28A87D"
+    primaryTextColor: "#1A1A1A"
+    lineColor: "#888888"
+    fontFamily: "Asap, sans-serif"
+    fontSize: "15px"
+---
+
+flowchart LR
+  A(Significant\ngene list) --> B[Enrichment\nvs background]
+  B --> C[Adjusted\np-values]
+  C --> D[Top-N\npathways]
+  D --> E[Horizontal bars\nor bubble]
+  E --> F[padj = 0.05\nthreshold]
+  style F fill:#28A87D,color:#fff,stroke:#28A87D
+```
+
 ## gget: Enrichment in One Line {.smaller}
 
 ```{python}
@@ -3077,6 +3363,54 @@ plt.tight_layout(); plt.show()
 
 ```{python}
 #| echo: true
+#| eval: false
+
+np.random.seed(2026)
+
+pathways_data = pd.DataFrame({
+    'pathway'    : [
+        'Cell division', 'DNA replication', 'DNA repair',
+        'Apoptosis', 'p53 signaling', 'Notch signaling',
+        'Wnt signaling', 'mTOR pathway', 'MAPK cascade', 'Cell migration',
+    ],
+    'neg_log10_p': np.random.uniform(2, 12, 10),
+    'gene_count' : np.random.randint(10, 120, 10),
+    'gene_ratio' : np.random.uniform(0.1, 0.6, 10),
+    'category'   : np.random.choice(
+        ['Cell cycle','DNA processes','Signaling','Cell motility'], 10),
+})
+pathways_data = pathways_data.sort_values('neg_log10_p', ascending=True)
+
+cat_colors = {'Cell cycle': BRAND, 'DNA processes': ACCENT_PURP,
+              'Signaling': ACCENT_YLW, 'Cell motility': RED}
+
+fig, ax = plt.subplots(figsize=(10, 5.5))
+for _, row in pathways_data.iterrows():
+    ax.scatter(row['gene_ratio'], row['pathway'],
+               s=row['gene_count'] * 3,
+               c=cat_colors[row['category']],
+               alpha=0.8, zorder=3)
+    ax.text(row['gene_ratio'] + 0.01, row['pathway'],
+            f"  p={10**(-row['neg_log10_p']):.1e}",
+            va='center', fontsize=7.5, color=GRAY_DARK)
+
+from matplotlib.lines import Line2D
+legend_elements = [Line2D([0],[0], marker='o', color='w', markersize=8,
+                           markerfacecolor=c, label=l, alpha=0.85)
+                   for l, c in cat_colors.items()]
+ax.legend(handles=legend_elements, title='Category', fontsize=8,
+          frameon=False, loc='lower right')
+ax.set_xlabel('Gene Ratio (genes hit / pathway size)', fontsize=11, labelpad=8)
+ax.set_title('Pathway Enrichment Bubble Plot', fontsize=13, fontweight='bold')
+ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+
+## Bubble Plot — Result {.plot-slide}
+
+```{python}
+#| echo: false
+#| eval: true
 #| fig-width: 10
 #| fig-height: 5.5
 
@@ -3206,9 +3540,9 @@ top_up   = (enrichment_results[enrichment_results.direction == 'up']
 top_down = (enrichment_results[enrichment_results.direction == 'down']
             .nsmallest(10, 'p_adj').sort_values('neg_log10_p'))
 
-fig, axes = plt.subplots(1, 2, figsize=(14, 6), facecolor=COLORS['canvas'])
+fig, axes = plt.subplots(1, 2, figsize=(14, 6), facecolor="white")
 for ax in axes:
-    ax.set_facecolor(COLORS['canvas'])
+    ax.set_facecolor("white")
 
 for ax, df_sub, direction in [(axes[0], top_up, 'up'), (axes[1], top_down, 'down')]:
     color = dir_pal[direction]
@@ -3232,8 +3566,8 @@ plt.show()
 # ── Panel B: bubble plot ───────────────────────────────────────────────────────
 all_top = pd.concat([top_up, top_down]).sort_values('neg_log10_p', ascending=True)
 
-fig2, ax2 = plt.subplots(figsize=(10, 7), facecolor=COLORS['canvas'])
-ax2.set_facecolor(COLORS['canvas'])
+fig2, ax2 = plt.subplots(figsize=(10, 7), facecolor="white")
+ax2.set_facecolor("white")
 
 for _, row in all_top.iterrows():
     ax2.scatter(row['gene_ratio'], row['pathway'],
@@ -3308,7 +3642,7 @@ plt.show()
 <!-- slide 57 -->
 ```
 
-## Looking Ahead
+## Looking Ahead {.smaller}
 
 **Day 2 (Tuesday 13:00 – 18:00):**
 
@@ -3345,7 +3679,7 @@ Questions? → loukesio@gmail.com &ensp;|&ensp; Course materials: GitHub/loukesi
 <!-- slide 58 -->
 ```
 
-## Resources
+## Resources {.smaller}
 
 :::::: columns
 ::: {.column width="50%"}
