@@ -1,0 +1,362 @@
+---
+title: "Genomics Data Visualization"
+subtitle: "<span style='font-size:1.25em;'>with Python</span>"
+author: "<div style='width: 100%; text-align: center;'><a href='https://github.com/loukesio' style='color:#28a87d;font-weight:600;'>Dr. Loukas Theodosiou</a>&ensp;//&ensp;Day 1 &ensp;//&ensp; June 2026</div>"
+title-slide-attributes:
+    data-background-color: "#E8F5F1"
+format:
+  revealjs:
+    theme: [default, slides.scss]
+    footer: '**L.Theodosiou** // Genomics Data Visualization with Python'
+    transition: fade
+    progress: true
+    preview-links: true
+    highlight-style: printing
+    pause: true
+    embed-resources: false
+editor: source
+jupyter: python3
+execute:
+  freeze: auto
+  cache: true
+  echo: true
+  fig-width: 10
+  fig-height: 6
+---
+
+```{python}
+#| label: setup
+#| include: false
+
+from genomics_course.data  import load_admixture, load_gwas, load_deseq2, load_variants
+from genomics_course.plots import plot_admixture, plot_volcano, plot_manhattan, plot_lld, save
+```
+
+
+# Why Visualize? {background-color="#28A87D"}
+
+## Statistics Hide What Pictures Reveal
+
+- **Anscombe's Quartet** — four datasets, identical mean / sd / correlation, four completely different shapes
+- **Datasaurus Dozen** — thirteen datasets with the same summary stats; one is a dinosaur
+- Big data in biology (single-cell, GWAS, metagenomics) is too large to inspect numerically
+- A good figure exposes structure, outliers, batch effects in seconds
+- Publication-quality visualization is part of the scientific argument, not an afterthought
+
+
+## From ggplot2 to Python — Mental Map {.smaller}
+
+| ggplot2 (R) | Python equivalent |
+|-------------|-------------------|
+| `aes(color = group)` | color kwarg / palette dict |
+| `geom_point()` | `ax.scatter()` |
+| `geom_line()` | `ax.plot()` |
+| `facet_wrap(~group)` | `fig, axes = plt.subplots()` |
+| `theme()` | `rcParams` + `ax.set_*()` |
+| `scale_color_manual()` | palette dict |
+| `labs(title=..., x=..., y=...)` | `ax.set_title / xlabel / ylabel` |
+| `ggsave()` | `fig.savefig(..., dpi=300)` |
+
+> The grammar is the same — only the syntax changes.
+> In this course every plot is a one-line call into `genomics_course.plots`.
+
+
+# Volcano Plots {background-color="#28A87D"}
+
+## Volcano Plot — What & Why
+
+- A scatter plot of **effect size vs statistical significance** for differential expression
+- **x-axis**: log₂ fold change — direction and magnitude of regulation
+- **y-axis**: −log₁₀(p-value) — significance
+- Genes in the **upper corners** are both strongly regulated and highly significant
+- Standard summary figure for RNA-seq, scRNA-seq pseudo-bulk, and proteomics
+
+
+## Volcano Plot — Pipeline
+
+```{mermaid}
+flowchart LR
+    A[DESeq2 results table] --> B[Compute −log₁₀ p]
+    B --> C[Classify NS / FC / p / both]
+    C --> D[Scatter, colour by class]
+    D --> E[Label top-N genes]
+    E --> F[Add FC and p threshold lines]
+```
+
+
+## Volcano Plot — Result {.plot-slide}
+
+```{python}
+fig = plot_volcano(load_deseq2())
+save(fig, "figures/volcano.png")
+```
+
+
+## Volcano Plot — Exercise
+
+::: {.exercise}
+**Coding Exercise — Volcano**
+
+Load the DESeq2 results, plot a volcano with tighter thresholds, and save the figure.
+
+::: {.sandbox}
+```{python}
+#| echo: true
+#| eval: false
+from genomics_course.data  import load_deseq2
+from genomics_course.plots import plot_volcano, save
+
+df = load_deseq2()
+# Your task:
+# 1. Inspect df (columns, head)
+# 2. Call plot_volcano with custom fc_threshold and p_threshold
+# 3. Save the figure to figures/volcano_strict.png at 300 dpi
+```
+:::
+
+<details>
+<summary>Show solution</summary>
+
+```{python}
+#| echo: true
+#| eval: true
+df  = load_deseq2()
+fig = plot_volcano(df, fc_threshold=1.5, p_threshold=0.01)
+save(fig, "figures/volcano_strict.png")
+```
+
+</details>
+:::
+
+
+# Manhattan Plots {background-color="#28A87D"}
+
+## Manhattan Plot — What & Why
+
+- The canonical summary figure for **GWAS** (genome-wide association studies)
+- **x-axis**: genomic position, chromosomes laid end to end
+- **y-axis**: −log₁₀(p-value) of association with the phenotype
+- **Peaks above the dashed line** mark loci that pass genome-wide significance (5 × 10⁻⁸)
+- Alternating chromosome colours let the eye follow position at a glance
+
+
+## Manhattan Plot — Pipeline
+
+```{mermaid}
+flowchart LR
+    A[GWAS summary stats] --> B[Sort by chrom and bp]
+    B --> C[Compute cumulative x position]
+    C --> D[Compute −log₁₀ p]
+    D --> E[Alternate colours by chromosome]
+    E --> F[Add genome-wide significance line]
+```
+
+
+## Manhattan Plot — Result {.plot-slide}
+
+```{python}
+fig = plot_manhattan(load_gwas())
+save(fig, "figures/manhattan.png")
+```
+
+
+## Manhattan Plot — Exercise
+
+::: {.exercise}
+**Coding Exercise — Manhattan**
+
+Load a GWAS summary, produce a Manhattan plot, and adjust the significance threshold.
+
+::: {.sandbox}
+```{python}
+#| echo: true
+#| eval: false
+from genomics_course.data  import load_gwas
+from genomics_course.plots import plot_manhattan, save
+
+df = load_gwas()
+# Your task:
+# 1. Inspect df (chrom, bp, p columns)
+# 2. Call plot_manhattan with a custom suggestive threshold (1e-5)
+# 3. Save the figure to figures/manhattan_suggestive.png
+```
+:::
+
+<details>
+<summary>Show solution</summary>
+
+```{python}
+#| echo: true
+#| eval: true
+df  = load_gwas()
+fig = plot_manhattan(df, suggestive=1e-5, genome_wide=5e-8)
+save(fig, "figures/manhattan_suggestive.png")
+```
+
+</details>
+:::
+
+
+# Admixture Plots {background-color="#28A87D"}
+
+## Admixture Plot — What & Why
+
+- Visualises **ancestry proportions** estimated by ADMIXTURE / STRUCTURE / fastSTRUCTURE
+- Each vertical bar = one individual, segments = inferred ancestry across **K** components
+- Populations are separated by thin white lines; individuals are sorted within each population
+- Used in human population genetics, conservation, crops, hybrid-zone analysis
+- The dominant ancestry per population is read from the bar colour pattern
+
+
+## Admixture Plot — Pipeline
+
+```{mermaid}
+flowchart LR
+    A[Genotype matrix] --> B[ADMIXTURE / STRUCTURE]
+    B --> C[Ancestry proportions Q-matrix]
+    C --> D[Sort individuals within population]
+    D --> E[Stacked bars width=1]
+    E --> F[White separators between populations]
+```
+
+
+## Admixture Plot — Result {.plot-slide}
+
+```{python}
+fig = plot_admixture(load_admixture(K=5))
+save(fig, "figures/admixture_K5.png")
+```
+
+
+## Admixture Plot — Exercise
+
+::: {.exercise}
+**Coding Exercise — Admixture**
+
+Compare K = 3 vs K = 5 ancestry models and save both figures.
+
+::: {.sandbox}
+```{python}
+#| echo: true
+#| eval: false
+from genomics_course.data  import load_admixture
+from genomics_course.plots import plot_admixture, save
+
+# Your task:
+# 1. Load admixture for K=3 and for K=5
+# 2. Produce a plot for each K
+# 3. Save them to figures/admixture_K3.png and figures/admixture_K5.png
+```
+:::
+
+<details>
+<summary>Show solution</summary>
+
+```{python}
+#| echo: true
+#| eval: true
+fig3 = plot_admixture(load_admixture(K=3))
+save(fig3, "figures/admixture_K3.png")
+
+fig5 = plot_admixture(load_admixture(K=5))
+save(fig5, "figures/admixture_K5.png")
+```
+
+</details>
+:::
+
+
+# Variant Effect / LLD {background-color="#28A87D"}
+
+## LLD Plot — What & Why
+
+- **L**og-**L**ikelihood **D**ifference (or any diverging variant-level score)
+- Horizontal bar chart sorted by magnitude, colour by semantic class
+- Standard layout: pathogenic on one side of the zero line, benign on the other
+- Reads cleanly because gene labels fit on the y-axis
+- Classification sub-labels (e.g. *risk*, *uncertain*) sit below each gene name
+
+
+## LLD Plot — Pipeline
+
+```{mermaid}
+flowchart LR
+    A[Variant table] --> B[Sort by LLD]
+    B --> C[Assign semantic colour]
+    C --> D[Horizontal bars]
+    D --> E[Values at bar ends]
+    E --> F[Zero reference line]
+```
+
+
+## LLD Plot — Result {.plot-slide}
+
+```{python}
+fig = plot_lld(load_variants())
+save(fig, "figures/lld.png")
+```
+
+
+## LLD Plot — Exercise
+
+::: {.exercise}
+**Coding Exercise — LLD**
+
+Plot the top 20 most-divergent variants and save the figure.
+
+::: {.sandbox}
+```{python}
+#| echo: true
+#| eval: false
+from genomics_course.data  import load_variants
+from genomics_course.plots import plot_lld, save
+
+df = load_variants()
+# Your task:
+# 1. Inspect df
+# 2. Call plot_lld with top_n=20
+# 3. Save to figures/lld_top20.png
+```
+:::
+
+<details>
+<summary>Show solution</summary>
+
+```{python}
+#| echo: true
+#| eval: true
+df  = load_variants()
+fig = plot_lld(df, top_n=20)
+save(fig, "figures/lld_top20.png")
+```
+
+</details>
+:::
+
+
+# Day 1 Recap {background-color="#28A87D"}
+
+## What We Covered
+
+- **Why visualize** — statistics hide what pictures reveal
+- **ggplot2 → Python** — same grammar, different syntax
+- **Volcano** — effect size vs significance for differential expression
+- **Manhattan** — GWAS hits across the genome
+- **Admixture** — ancestry proportions at a chosen K
+- **LLD** — diverging variant-level scores as horizontal bars
+
+
+## How We Worked
+
+- Every plot was **one function call** into `genomics_course.plots`
+- Every dataset loaded with **one function call** from `genomics_course.data`
+- No simulation code, no improvised matplotlib — the style is enforced by the package
+- Each method followed: **theory → flowchart → result → exercise**
+- Figures saved at **300 dpi PNG** for publication
+
+
+## Next
+
+- **Day 2** — heatmaps, dimensionality reduction, MA plots
+- **Day 3** — phylogenetic trees, Circos, synteny, ideograms
+- Everything stays in the `genomics_course` API — no new ad-hoc plotting code
