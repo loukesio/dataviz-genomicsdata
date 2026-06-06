@@ -152,9 +152,8 @@ All 13 datasets have nearly identical summary statistics but vastly different sh
 
 # Load the real Datasaurus Dozen — carefully constructed datasets that
 # share identical summary statistics but look completely different.
-url = ("https://raw.githubusercontent.com/lockedata/datasauRus/"
-       "master/inst/extdata/DatasaurusDozen.tsv")
-dd = pd.read_csv(url, sep="\t")
+url = "https://www.openintro.org/data/csv/datasaurus.csv"
+dd = pd.read_csv(url)
 
 order = ["dino", "away", "h_lines", "v_lines", "x_shape",
          "star", "high_lines", "dots", "circle", "bullseye",
