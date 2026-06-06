@@ -244,7 +244,7 @@ For years we struggled to collect biological data, but now our biggest bottlenec
 <!-- slide 7 -->
 ```
 
-## Why Python for Genomics Visualization? {.smaller}
+## Why Python for Genomics Visualization? {.smaller .scrollable}
 
 :::::: columns
 ::: {.column width="55%"}
@@ -341,7 +341,7 @@ Built on the Grammar of Graphics — the same ideas power Python's ecosystem.
 <!-- slide 7c -->
 ```
 
-## ggplot2 vs Python — Side by Side {.smaller}
+## ggplot2 vs Python — Side by Side {.smaller .scrollable}
 
 :::::: columns
 ::: {.column width="48%"}
@@ -513,7 +513,7 @@ plt.show()
 <!-- slide 11 -->
 ```
 
-## Setting Up Your Environment
+## Setting Up Your Environment {.scrollable}
 
 **Recommended: conda/mamba for reproducibility**
 
@@ -626,7 +626,7 @@ plt.show()
 <!-- slide 14 -->
 ```
 
-## Building a Plot: Step 1 — Create the Canvas
+## Building a Plot: Step 1 — Create the Canvas {.scrollable}
 
 **Start with a Figure and Axes:**
 ```{python}
@@ -661,7 +661,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 15 -->
 ```
 
-## Building a Plot: Step 2 — Add Data
+## Building a Plot: Step 2 — Add Data {.scrollable}
 
 **Plot points with `ax.scatter()`:**
 ```{python}
@@ -702,7 +702,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 16 -->
 ```
 
-## Building a Plot: Step 3 — Add Color
+## Building a Plot: Step 3 — Add Color {.scrollable}
 
 **Color by group using a loop or seaborn:**
 ```{python}
@@ -750,7 +750,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 17 -->
 ```
 
-## Building a Plot: Step 4 — Polish & Labels
+## Building a Plot: Step 4 — Polish & Labels {.scrollable}
 
 **Add titles, labels, and trend line:**
 ```{python}
@@ -812,7 +812,7 @@ plt.show()
 <!-- slide 18 -->
 ```
 
-## Building a Plot: Step 5 — Publication Style
+## Building a Plot: Step 5 — Publication Style {.scrollable}
 
 **Set a clean, consistent style for the whole course:**
 ```{python}
@@ -1076,15 +1076,15 @@ config:
 ---
 
 flowchart LR
-  A(DESeq2 results) --> B[Compute −log₁₀ p]
-  B --> C{Classify NS / FC / p / both}
+  A(DESeq2 results) --> B[Compute neg log10 p]
+  B --> C{Classify by FC and p}
   C --> D[Scatter coloured by class]
   D --> E[Label top-N genes]
   E --> F[Threshold lines]
   style F fill:#28A87D,color:#fff,stroke:#28A87D
 ```
 
-## Volcano Plot: Data Preparation
+## Volcano Plot: Data Preparation {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -1124,7 +1124,7 @@ print(de_results['regulation'].value_counts())
 <!-- slide 25 -->
 ```
 
-## Volcano Plot: Building the Figure {.smaller}
+## Volcano Plot: Building the Figure {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -1395,16 +1395,16 @@ config:
 ---
 
 flowchart LR
-  A(Cells × Genes) --> B[Normalise + log]
+  A(Cells x Genes) --> B[Normalise + log]
   B --> C[Highly variable\ngenes]
   C --> D[Scale + PCA\nto 50D]
   D --> E[k-NN graph]
-  E --> F[UMAP / t-SNE]
+  E --> F[UMAP or t-SNE]
   F --> G[Colour by\ncell type]
   style G fill:#28A87D,color:#fff,stroke:#28A87D
 ```
 
-## PCA: Step-by-Step Code {.smaller}
+## PCA: Step-by-Step Code {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -1483,7 +1483,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 31 -->
 ```
 
-## PCA: Scree Plot & Variance Explained {.smaller}
+## PCA: Scree Plot & Variance Explained {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -1556,7 +1556,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 32 -->
 ```
 
-## t-SNE: Theory
+## t-SNE: Theory {.smaller .scrollable}
 
 :::::: columns
 :::: {.column width="55%"}
@@ -1608,7 +1608,7 @@ tsne.fit_transform(X_raw)   # ❌
 <!-- slide 31b -->
 ```
 
-## t-SNE: Code Walkthrough {.smaller}
+## t-SNE: Code Walkthrough {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -1654,7 +1654,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 33 -->
 ```
 
-## UMAP: Theory
+## UMAP: Theory {.smaller .scrollable}
 
 :::::: columns
 :::: {.column width="55%"}
@@ -1714,7 +1714,7 @@ sc.pl.umap(adata, color='cell_type')
 <!-- slide 32b -->
 ```
 
-## UMAP: Code Walkthrough {.smaller}
+## UMAP: Code Walkthrough {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -1877,7 +1877,7 @@ plt.show()
 <!-- slide: Admixture theory -->
 ```
 
-## Admixture Plots: Theory {.smaller}
+## Admixture Plots: Theory {.smaller .scrollable}
 
 :::::: columns
 ::: {.column width="48%"}
@@ -1921,6 +1921,36 @@ df = pd.DataFrame({
 :::
 :::
 ::::::
+
+```{=html}
+<!-- slide: Admixture pipeline -->
+```
+
+## Admixture — Pipeline
+
+```{mermaid}
+%%| fig-width: 9
+
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#d9f6ec"
+    primaryBorderColor: "#28A87D"
+    primaryTextColor: "#1A1A1A"
+    lineColor: "#888888"
+    fontFamily: "Asap, sans-serif"
+    fontSize: "15px"
+---
+
+flowchart LR
+  A[Genotype\nmatrix] --> B[Run ADMIXTURE\nfor each K]
+  B --> C[Q-matrix\nancestries]
+  C --> D[Sort within\npopulation]
+  D --> E[Stacked bars]
+  E --> F[White\nseparators]
+  style F fill:#28A87D,color:#fff,stroke:#28A87D
+```
 
 ```{=html}
 <!-- slide: Admixture code -->
@@ -2242,7 +2272,7 @@ flowchart LR
   style F fill:#28A87D,color:#fff,stroke:#28A87D
 ```
 
-## Seaborn Clustermap: Code {.smaller}
+## Seaborn Clustermap: Code {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -2332,7 +2362,7 @@ plt.show()
 <!-- slide 38 -->
 ```
 
-## PyComplexHeatmap: Rich Annotations {.smaller}
+## PyComplexHeatmap: Rich Annotations {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -2540,10 +2570,39 @@ plt.show()
 ```
 
 ```{=html}
+<!-- slide: Waffle pipeline -->
+```
+
+## Waffle Chart — Pipeline
+
+```{mermaid}
+%%| fig-width: 9
+
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#d9f6ec"
+    primaryBorderColor: "#28A87D"
+    primaryTextColor: "#1A1A1A"
+    lineColor: "#888888"
+    fontFamily: "Asap, sans-serif"
+    fontSize: "15px"
+---
+
+flowchart LR
+  A[Category\ncounts] --> B[Compute\nproportions]
+  B --> C[10x10 grid]
+  C --> D[Icons by\ncategory]
+  D --> E[Final waffle]
+  style E fill:#28A87D,color:#fff,stroke:#28A87D
+```
+
+```{=html}
 <!-- slide 42 -->
 ```
 
-## Waffle Chart: Code Walkthrough {.smaller}
+## Waffle Chart: Code Walkthrough {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -2631,10 +2690,39 @@ plt.tight_layout(); plt.show()
 ```
 
 ```{=html}
+<!-- slide: Waterfall pipeline -->
+```
+
+## Waterfall Plot — Pipeline
+
+```{mermaid}
+%%| fig-width: 9
+
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#d9f6ec"
+    primaryBorderColor: "#28A87D"
+    primaryTextColor: "#1A1A1A"
+    lineColor: "#888888"
+    fontFamily: "Asap, sans-serif"
+    fontSize: "15px"
+---
+
+flowchart LR
+  A[Patient table] --> B[Sort by\nTMB]
+  B --> C[Colour by\ncancer type]
+  C --> D[Bar plot]
+  D --> E[Star markers\nMSI-H]
+  style E fill:#28A87D,color:#fff,stroke:#28A87D
+```
+
+```{=html}
 <!-- slide 44 -->
 ```
 
-## Waterfall Plot: Code {.smaller}
+## Waterfall Plot: Code {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -2819,7 +2907,7 @@ plt.show()
 <!-- slide 47 -->
 ```
 
-## What Are Genomic Peaks? {.smaller}
+## What Are Genomic Peaks? {.smaller .scrollable}
 
 :::::: columns
 :::: {.column width="50%"}
@@ -2900,7 +2988,7 @@ plt.show()
 <!-- slide 48 -->
 ```
 
-## pyGenomeTracks: Configuration {.smaller}
+## pyGenomeTracks: Configuration {.smaller .scrollable}
 
 **pyGenomeTracks uses INI-style config files:**
 
@@ -2955,10 +3043,39 @@ pyGenomeTracks is particularly powerful when overlaying multiple epigenomic data
 :::
 
 ```{=html}
+<!-- slide: Peak pipeline -->
+```
+
+## Peak Visualization — Pipeline
+
+```{mermaid}
+%%| fig-width: 9
+
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#d9f6ec"
+    primaryBorderColor: "#28A87D"
+    primaryTextColor: "#1A1A1A"
+    lineColor: "#888888"
+    fontFamily: "Asap, sans-serif"
+    fontSize: "15px"
+---
+
+flowchart LR
+  A[BigWig or BED] --> B[Slice region]
+  B --> C[Per-track fill]
+  C --> D[Gene annotation]
+  D --> E[Shared peak\nhighlight]
+  style E fill:#28A87D,color:#fff,stroke:#28A87D
+```
+
+```{=html}
 <!-- slide 49 -->
 ```
 
-## Custom Peak Plot with Matplotlib {.smaller}
+## Custom Peak Plot with Matplotlib {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -3311,7 +3428,7 @@ flowchart LR
   style F fill:#28A87D,color:#fff,stroke:#28A87D
 ```
 
-## gget: Enrichment in One Line {.smaller}
+## gget: Enrichment in One Line {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -3359,7 +3476,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 53 -->
 ```
 
-## Bubble Plot: Enrichment with Gene Counts {.smaller}
+## Bubble Plot: Enrichment with Gene Counts {.smaller .scrollable}
 
 ```{python}
 #| echo: true
