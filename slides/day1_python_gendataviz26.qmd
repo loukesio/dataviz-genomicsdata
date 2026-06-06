@@ -647,7 +647,7 @@ fig, ax = plt.subplots(figsize=(8, 4))
 ax.set_title('Step 1: Empty canvas — figure + axes created', fontsize=12)
 ax.set_xlabel('X axis'); ax.set_ylabel('Y axis')
 ax.text(0.5, 0.5, 'No data yet', transform=ax.transAxes,
-        ha='center', va='center', fontsize=14, color='lightgray')
+        ha='center', va='center', fontsize=14, color=COLORS['text_light'])
 plt.tight_layout(); plt.show()
 ```
 
@@ -977,7 +977,7 @@ pvals[sig_idx] *= 1e-6
 
 neg_log_p = -np.log10(pvals)
 colors = np.where((log2fc >  1) & (neg_log_p > 1.3), BRAND,
-         np.where((log2fc < -1) & (neg_log_p > 1.3), RED, 'lightgray'))
+         np.where((log2fc < -1) & (neg_log_p > 1.3), RED, COLORS['text_light']))
 
 fig, ax = plt.subplots(figsize=(6, 5.5))
 ax.scatter(log2fc, neg_log_p, c=colors, s=12, alpha=0.7, linewidths=0)
@@ -1041,7 +1041,7 @@ print(de_results['regulation'].value_counts())
 <!-- slide 25 -->
 ```
 
-## Volcano Plot: Building the Figure
+## Volcano Plot: Building the Figure {.smaller}
 
 ```{python}
 #| echo: true
@@ -1049,7 +1049,7 @@ print(de_results['regulation'].value_counts())
 #| code-line-numbers: "1-5|7-17|19-30"
 
 # Color map for regulation status
-color_map = {'up': '#28A87D', 'down': '#E74C3C', 'ns': 'lightgray'}
+color_map = {'up': COLORS['primary'], 'down': COLORS['primary'], 'ns': COLORS['text_light']}
 size_map  = {'up': 30,        'down': 30,        'ns': 12}
 alpha_map = {'up': 0.85,      'down': 0.85,      'ns': 0.4}
 
@@ -1082,7 +1082,7 @@ plt.show()
 <!-- slide 26 -->
 ```
 
-## Volcano Plot: Labelling Top Genes
+## Volcano Plot: Labelling Top Genes {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -1108,7 +1108,7 @@ df['neg_log10_p'] = -np.log10(df['pvalue'])
 df['reg'] = np.where((df['log2FC']> 1)&(df['neg_log10_p']>1.3),'up',
             np.where((df['log2FC']<-1)&(df['neg_log10_p']>1.3),'down','ns'))
 
-cm = {'up':BRAND,'down':RED,'ns':'lightgray'}
+cm = {'up':BRAND,'down':RED,'ns':COLORS['text_light']}
 sm = {'up':35,'down':35,'ns':10}
 
 fig, ax = plt.subplots(figsize=(10, 5.5))
@@ -1124,7 +1124,7 @@ top = df.nlargest(8,'neg_log10_p')
 texts = [ax.text(r['log2FC'], r['neg_log10_p'], r['gene'],
                  fontsize=7, fontweight='bold') for _, r in top.iterrows()]
 try:
-    adjust_text(texts, ax=ax, arrowprops=dict(arrowstyle='->', color='gray', lw=0.7))
+    adjust_text(texts, ax=ax, arrowprops=dict(arrowstyle='->', color=COLORS['text_light'], lw=0.7))
 except Exception:
     pass
 
@@ -1138,7 +1138,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 27 -->
 ```
 
-## Exercise: Volcano Plot
+## Exercise: Volcano Plot {.scrollable}
 
 ::: {.exercise}
 **Coding Exercise — Volcano Plot**
@@ -1313,7 +1313,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 30 -->
 ```
 
-## PCA: Step-by-Step Code
+## PCA: Step-by-Step Code {.smaller}
 
 ```{python}
 #| echo: true
@@ -1343,7 +1343,7 @@ var_explained = pca.explained_variance_ratio_ * 100
 import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots(figsize=(8, 6))
-for grp, color in zip(['Control', 'Treatment'], ['#28A87D', '#E8A838']):
+for grp, color in zip(['Control', 'Treatment'], [COLORS['primary'], '#E8A838']):
     m = groups == grp
     ax.scatter(coords[m, 0], coords[m, 1], color=color,
                s=50, alpha=0.75, label=grp, linewidths=0)
@@ -1359,7 +1359,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 31 -->
 ```
 
-## PCA: Scree Plot & Variance Explained
+## PCA: Scree Plot & Variance Explained {.smaller}
 
 ```{python}
 #| echo: true
@@ -1452,7 +1452,7 @@ tsne.fit_transform(X_raw)   # ❌
 <!-- slide 31b -->
 ```
 
-## t-SNE: Code Walkthrough
+## t-SNE: Code Walkthrough {.smaller}
 
 ```{python}
 #| echo: true
@@ -1558,7 +1558,7 @@ sc.pl.umap(adata, color='cell_type')
 <!-- slide 32b -->
 ```
 
-## UMAP: Code Walkthrough
+## UMAP: Code Walkthrough {.smaller}
 
 ```{python}
 #| echo: true
@@ -1600,7 +1600,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 34 -->
 ```
 
-## Exercise: Dimensionality Reduction
+## Exercise: Dimensionality Reduction {.scrollable}
 
 ::: {.exercise}
 **Coding Exercise — Dimensionality Reduction**
@@ -1712,6 +1712,267 @@ plt.show()
 :::
 
 ```{=html}
+<!-- slide: Admixture intro -->
+```
+
+# Admixture Plots {background-color="#28A87D"}
+
+```{=html}
+<!-- slide: Admixture theory -->
+```
+
+## Admixture Plots: Theory
+
+:::::: columns
+::: {.column width="48%"}
+**What they show**
+
+- Each individual = one vertical bar
+- Bar segments = inferred ancestry proportions across **K** populations
+- Width-1 stacked bars with **no gaps** within a population
+- Populations separated by thin white lines
+
+::: fragment
+**Used in**
+
+- ADMIXTURE / STRUCTURE / fastSTRUCTURE output
+- Human population genetics (1000 Genomes, HGDP)
+- Conservation genetics, crop diversity
+- Hybrid-zone analysis
+:::
+:::
+
+::: {.column width="52%"}
+::: fragment
+**Style-guide rules**
+
+- `width=1.0`, `linewidth=0` for stacked bars
+- White separators between populations
+- Categorical palette (primary → secondary → tertiary → quaternary → quinary)
+- Population labels below, K legend on the right
+- Sort individuals **within each population** by dominant ancestry for clarity
+:::
+
+::: fragment
+```python
+# Conceptual data layout
+df = pd.DataFrame({
+    "individual" : [...],   # N rows
+    "population" : [...],   # e.g. CEU, YRI, CHB, JPT, MXL
+    "K1": [...], "K2": [...], "K3": [...], "K4": [...], "K5": [...],
+})  # K1..K5 sum to 1.0 per row
+```
+:::
+:::
+::::::
+
+```{=html}
+<!-- slide: Admixture code -->
+```
+
+## Admixture: Code Walkthrough {.smaller}
+
+```{python}
+#| echo: true
+#| fig-width: 13
+#| fig-height: 5
+
+import numpy as np, pandas as pd
+import matplotlib.pyplot as plt
+
+# Step 1: Simulate ADMIXTURE-like output (K=5, 5 populations)
+np.random.seed(42)
+K = 5
+pops    = ["CEU", "YRI", "CHB", "MXL", "ASW"]
+n_each  = [40, 50, 35, 30, 25]
+anc_pal = [COLORS["primary"], COLORS["secondary"], COLORS["tertiary"],
+           COLORS["quaternary"], COLORS["quinary"]]
+
+records = []
+for pop_idx, (pop, n) in enumerate(zip(pops, n_each)):
+    base = np.full(K, 0.05)
+    base[pop_idx] = 0.75
+    for ind in range(n):
+        props = np.random.dirichlet(base * 20)
+        records.append([f"{pop}_{ind:03d}", pop, *props])
+
+adm = pd.DataFrame(records, columns=["individual", "population",
+                                     "K1","K2","K3","K4","K5"])
+
+# Step 2: Sort within each population by dominant ancestry
+adm = (adm.groupby("population", group_keys=False)
+          .apply(lambda d: d.sort_values(
+              d[["K1","K2","K3","K4","K5"]].idxmax(axis=1).iloc[0],
+              ascending=False))
+          .reset_index(drop=True))
+
+# Step 3: Build stacked bar plot
+fig, ax = plt.subplots(figsize=(13, 4.5), facecolor=COLORS["canvas"])
+ax.set_facecolor(COLORS["canvas"])
+
+x = np.arange(len(adm))
+bottom = np.zeros(len(adm))
+for k, col in enumerate(["K1","K2","K3","K4","K5"]):
+    ax.bar(x, adm[col], bottom=bottom,
+           color=anc_pal[k], width=1.0, linewidth=0,
+           label=f"K{k+1}")
+    bottom += adm[col].values
+
+# Step 4: White separators between populations
+boundaries = np.cumsum(n_each)[:-1]
+for b in boundaries:
+    ax.axvline(b - 0.5, color="white", linewidth=2.5)
+
+# Step 5: Population labels below
+centers = np.cumsum([0] + n_each)[:-1] + np.array(n_each) / 2
+ax.set_xticks(centers)
+ax.set_xticklabels(pops, fontsize=11, fontweight="bold")
+ax.set_xlim(-0.5, len(adm) - 0.5)
+ax.set_ylim(0, 1)
+ax.set_ylabel("Ancestry proportion")
+ax.set_yticks([0, 0.5, 1.0])
+ax.set_title("ADMIXTURE — K=5 ANCESTRY COMPONENTS",
+             fontweight="bold", fontsize=13, loc="left")
+ax.legend(title="K", bbox_to_anchor=(1.01, 1), loc="upper left",
+          frameon=False, fontsize=9)
+
+ax.text(0.0, -0.18,
+        "Each bar = one individual. Populations separated by white lines, "
+        "sorted by dominant ancestry within each group.",
+        transform=ax.transAxes, fontsize=8.5,
+        style="italic", color=COLORS["text_light"])
+
+plt.tight_layout()
+plt.show()
+```
+
+```{=html}
+<!-- slide: Admixture exercise -->
+```
+
+## Exercise: Admixture Plot {.scrollable}
+
+::: {.exercise}
+**Coding Exercise — Admixture**
+
+Build a publication-quality admixture plot for 3 populations at **K=4**, with within-population sorting, white separators, and a clean ancestry legend.
+
+::: {.sandbox}
+```{python}
+#| echo: true
+#| eval: false
+
+# Simulated ADMIXTURE-like dataset
+np.random.seed(2026)
+K          = 4
+pops       = ["AFR", "EUR", "EAS"]
+n_each     = [60, 50, 45]
+
+records = []
+for pop_idx, (pop, n) in enumerate(zip(pops, n_each)):
+    base = np.full(K, 0.05)
+    base[pop_idx % K] = 0.7
+    for ind in range(n):
+        props = np.random.dirichlet(base * 15)
+        records.append([f"{pop}_{ind:03d}", pop, *props])
+
+adm = pd.DataFrame(records, columns=["individual","population",
+                                     "K1","K2","K3","K4"])
+
+# Your tasks:
+# 1. Sort individuals within each population by their dominant K column
+# 2. Build a stacked bar plot with width=1.0 and linewidth=0
+# 3. Use the COURSE_PAL / COLORS dict for the K colors
+# 4. Add white separator lines between populations
+# 5. Label populations below the x-axis, add a K legend to the right
+# 6. Title: ALL CAPS, italic footnote describing the plot
+
+# Bonus: Compute and annotate the average ancestry composition per population
+```
+:::
+
+<details>
+<summary>Show solution</summary>
+
+```{python}
+#| echo: true
+#| eval: false
+
+import numpy as np, pandas as pd
+import matplotlib.pyplot as plt
+
+np.random.seed(2026)
+K       = 4
+pops    = ["AFR", "EUR", "EAS"]
+n_each  = [60, 50, 45]
+anc_pal = [COLORS["primary"], COLORS["secondary"],
+           COLORS["tertiary"], COLORS["quaternary"]]
+
+records = []
+for pop_idx, (pop, n) in enumerate(zip(pops, n_each)):
+    base = np.full(K, 0.05)
+    base[pop_idx % K] = 0.7
+    for ind in range(n):
+        props = np.random.dirichlet(base * 15)
+        records.append([f"{pop}_{ind:03d}", pop, *props])
+
+adm = pd.DataFrame(records, columns=["individual","population",
+                                     "K1","K2","K3","K4"])
+
+K_cols = ["K1","K2","K3","K4"]
+
+def sort_block(d):
+    dom = d[K_cols].mean().idxmax()
+    return d.sort_values(dom, ascending=False)
+
+adm = (adm.groupby("population", group_keys=False)
+          .apply(sort_block)
+          .reset_index(drop=True))
+
+fig, ax = plt.subplots(figsize=(13, 4.5), facecolor=COLORS["canvas"])
+ax.set_facecolor(COLORS["canvas"])
+
+x = np.arange(len(adm))
+bottom = np.zeros(len(adm))
+for k, col in enumerate(K_cols):
+    ax.bar(x, adm[col], bottom=bottom,
+           color=anc_pal[k], width=1.0, linewidth=0, label=col)
+    bottom += adm[col].values
+
+boundaries = np.cumsum(n_each)[:-1]
+for b in boundaries:
+    ax.axvline(b - 0.5, color="white", linewidth=2.5)
+
+centers = np.cumsum([0] + n_each)[:-1] + np.array(n_each) / 2
+ax.set_xticks(centers)
+ax.set_xticklabels(pops, fontsize=11, fontweight="bold")
+ax.set_xlim(-0.5, len(adm) - 0.5)
+ax.set_ylim(0, 1)
+ax.set_yticks([0, 0.5, 1.0])
+ax.set_ylabel("Ancestry proportion")
+ax.set_title("ADMIXTURE — K=4 ANCESTRY COMPONENTS (AFR · EUR · EAS)",
+             fontweight="bold", fontsize=13, loc="left")
+ax.legend(title="K", bbox_to_anchor=(1.01, 1), loc="upper left",
+          frameon=False, fontsize=9)
+
+# Bonus: per-population average ancestry
+means = adm.groupby("population")[K_cols].mean().round(2)
+print(means)
+
+ax.text(0.0, -0.18,
+        "Each bar = one individual. White separators delimit populations; "
+        "individuals sorted by dominant ancestry within each population.",
+        transform=ax.transAxes, fontsize=8.5,
+        style="italic", color=COLORS["text_light"])
+
+plt.tight_layout()
+plt.show()
+```
+
+</details>
+:::
+
+```{=html}
 <!-- slide 35 -->
 ```
 
@@ -1781,7 +2042,7 @@ plt.show()
 <!-- slide 37 -->
 ```
 
-## Seaborn Clustermap: Code
+## Seaborn Clustermap: Code {.smaller}
 
 ```{python}
 #| echo: true
@@ -1809,7 +2070,7 @@ groups = pd.Series(
     ['Control'] * 12 + ['Treatment'] * 12,
     index=expr_matrix.columns
 )
-col_colors = groups.map({'Control': '#28A87D', 'Treatment': '#E8A838'})
+col_colors = groups.map({'Control': COLORS['primary'], 'Treatment': '#E8A838'})
 
 # Step 3: Build the clustermap
 cg = sns.clustermap(
@@ -1832,7 +2093,7 @@ plt.show()
 <!-- slide 38 -->
 ```
 
-## PyComplexHeatmap: Rich Annotations
+## PyComplexHeatmap: Rich Annotations {.smaller}
 
 ```{python}
 #| echo: true
@@ -1858,10 +2119,10 @@ gene_anno = pd.DataFrame({
 # Step 2: Plot with full annotation suite
 col_ha = HeatmapAnnotation(
     Condition = anno_simple(sample_anno['Condition'],
-                            colors={'Control':'#28A87D','Treated':'#E8A838'}),
+                            colors={'Control':COLORS['primary'],'Treated':'#E8A838'}),
     Batch     = anno_simple(sample_anno['Batch']),
     QC        = anno_barplot(sample_anno['QC_score'], height=15,
-                             colors='#28A87D'),
+                             colors=COLORS['primary']),
 )
 
 cm = ClusterMapPlotter(
@@ -1883,7 +2144,7 @@ PyComplexHeatmap is a Python port of R's ComplexHeatmap — nearly identical API
 <!-- slide 39 -->
 ```
 
-## Exercise: Expression Heatmap
+## Exercise: Expression Heatmap {.scrollable}
 
 ::: {.exercise}
 **Coding Exercise — Expression Heatmap**
@@ -2050,7 +2311,7 @@ plt.show()
 <!-- slide 42 -->
 ```
 
-## Waffle Chart: Code Walkthrough
+## Waffle Chart: Code Walkthrough {.smaller}
 
 ```{python}
 #| echo: true
@@ -2074,7 +2335,7 @@ fig = plt.figure(
     FigureClass = Waffle,
     rows        = 10,           # number of rows in the grid
     values      = cell_composition,
-    colors      = ['#28A87D', '#E8A838', '#7754BF', '#E74C3C', '#606060'],
+    colors      = [COLORS['primary'], '#E8A838', COLORS['quinary'], COLORS['primary'], '#606060'],
     icons       = 'circle',     # or 'person', 'square' (Font Awesome icons)
     icon_size   = 12,
     title       = {'label' : 'PBMC Cell-Type Composition',
@@ -2145,7 +2406,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 44 -->
 ```
 
-## Waterfall Plot: Code
+## Waterfall Plot: Code {.smaller}
 
 ```{python}
 #| echo: true
@@ -2170,8 +2431,8 @@ patients = pd.DataFrame({
 
 # Step 2: Sort and assign colors
 patients = patients.sort_values('TMB', ascending=False).reset_index(drop=True)
-color_map = {'Luminal A':'#28A87D','Luminal B':'#E8A838',
-             'HER2+':'#7754BF','TNBC':'#E74C3C'}
+color_map = {'Luminal A':COLORS['primary'],'Luminal B':'#E8A838',
+             'HER2+':COLORS['quinary'],'TNBC':COLORS['primary']}
 colors = patients['subtype'].map(color_map)
 
 # Step 3: Plot
@@ -2192,7 +2453,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 45 -->
 ```
 
-## Exercise: Waffle & Waterfall
+## Exercise: Waffle & Waterfall {.scrollable}
 
 ::: {.exercise}
 **Coding Exercise — Waffle & Waterfall**
@@ -2411,7 +2672,7 @@ plt.show()
 <!-- slide 48 -->
 ```
 
-## pyGenomeTracks: Configuration
+## pyGenomeTracks: Configuration {.smaller}
 
 **pyGenomeTracks uses INI-style config files:**
 
@@ -2469,7 +2730,7 @@ pyGenomeTracks is particularly powerful when overlaying multiple epigenomic data
 <!-- slide 49 -->
 ```
 
-## Custom Peak Plot with Matplotlib
+## Custom Peak Plot with Matplotlib {.smaller}
 
 ```{python}
 #| echo: true
@@ -2521,7 +2782,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 49b -->
 ```
 
-## Exercise: Peak Visualization
+## Exercise: Peak Visualization {.scrollable}
 
 ::: {.exercise}
 **Coding Exercise — Peak Visualization**
@@ -2749,7 +3010,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 52 -->
 ```
 
-## gget: Enrichment in One Line
+## gget: Enrichment in One Line {.smaller}
 
 ```{python}
 #| echo: true
@@ -2797,7 +3058,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 53 -->
 ```
 
-## Bubble Plot: Enrichment with Gene Counts
+## Bubble Plot: Enrichment with Gene Counts {.smaller}
 
 ```{python}
 #| echo: true
@@ -2849,7 +3110,7 @@ plt.tight_layout(); plt.show()
 <!-- slide 54 -->
 ```
 
-## Exercise: Pathway Visualization
+## Exercise: Pathway Visualization {.scrollable}
 
 ::: {.exercise}
 **Coding Exercise — Pathway Visualization**

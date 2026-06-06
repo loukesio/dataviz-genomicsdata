@@ -78,9 +78,42 @@ $link-color-hover: $color-brand-primary;
 $presentation-title-slide-text-align: "center";
 $presentation-block-margin: .0375rem;    // Tight spacing for content blocks
 
+/* Slide-level font size — controls all em-based sizing */
+$presentation-font-size-root: 36px;
+
 
 /*-- scss:rules --*/
 /* Everything below are actual CSS rules (selectors) */
+
+/*═══════════════════════════════════════════════════════════════════════════
+  3b. OVERFLOW & CONTENT-FIT FIXES
+═══════════════════════════════════════════════════════════════════════════*/
+
+/* Prevent ANY content from escaping slide bounds */
+.reveal .slides section {
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 0.6em 0.8em;
+}
+
+/* Scrollable slides — use {.scrollable} attribute on heavy-content slides */
+.reveal .slides section.scrollable {
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+/* Auto-shrink: let Reveal.js scale down content that's too tall */
+.reveal .slides {
+  text-align: left;
+}
+
+/* Smaller-text utility: apply {.smaller} to a slide for dense content */
+.reveal section.smaller {
+  font-size: 0.8em;
+}
+.reveal section.smallest {
+  font-size: 0.65em;
+}
 
 /*═══════════════════════════════════════════════════════════════════════════
   4. TITLE SLIDE STYLING
@@ -241,12 +274,14 @@ h2 > code {
 /* 6.4 Lists */
 
 .reveal li {
-  font-size: 2.1rem;
+  font-size: 1.85rem;
+  line-height: 1.4;
+  margin-bottom: 0.15em;
 }
 
 .reveal li li,
 li li li {
-  font-size: 1.75rem;                    // Nested lists are smaller
+  font-size: 1.55rem;                    // Nested lists are smaller
 }
 
 /* Code inside list items */
@@ -278,16 +313,71 @@ a:hover {
   font-weight: bold;
 }
 
-/* 7.3 Details/Summary Disclosure Widgets */
+/* 7.3 Details/Summary — Solution reveal button */
 
 details {
-  margin-bottom: 5px;
+  margin: 0.6em 0 0.4em 0;
 }
 
 details > summary {
-  font-family: $font-family-mono;
-  font-size: 1.25rem;
-  color: $color-gray-light;
+  /* Reset native marker */
+  list-style: none;
+  cursor: pointer;
+
+  /* Button look */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+
+  font-family: $font-family-sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #FFFFFF;
+  background: $color-brand-primary;
+  border: none;
+  border-radius: 6px;
+  padding: 0.45em 1.1em;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+details > summary::before {
+  content: "▶";
+  font-size: 0.7em;
+  transition: transform 0.2s ease;
+}
+
+details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details > summary:hover {
+  background: $color-brand-light;
+  color: $color-brand-primary;
+  transform: translateY(-1px);
+}
+
+details[open] > summary {
+  background: $color-brand-light;
+  color: $color-brand-primary;
+  margin-bottom: 0.5em;
+}
+
+/* The code block inside the solution */
+details[open] > div,
+details[open] > pre,
+details[open] > .cell {
+  border-left: 3px solid $color-brand-primary;
+  background: #FFFFFF;
+  padding: 0.6em 0.8em;
+  border-radius: 0 4px 4px 0;
+  margin-top: 0.4em;
 }
 
 
@@ -348,10 +438,49 @@ code > span {
   font-size: .4em;
   color: $color-gray-medium;
   text-align: center;
-  margin-top: 1;
+  margin-top: 0.3em;
 }
 
-/* 10.2 Slide Logo */
+/* 10.2 Plot/Figure Container — ensures plots are visible and centered */
+
+.reveal .slide figure,
+.reveal .slide .cell-output-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.reveal .slide figure img,
+.reveal .slide .cell-output-display img {
+  max-height: 65vh;
+  max-width: 95%;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* Plot-only slides — use {.plot-slide} for maximum plot visibility */
+.reveal section.plot-slide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3em 0.5em;
+}
+
+.reveal section.plot-slide h2 {
+  font-size: 1.1em;
+  margin-bottom: 0.3em;
+}
+
+.reveal section.plot-slide figure img,
+.reveal section.plot-slide .cell-output-display img {
+  max-height: 78vh;
+  max-width: 98%;
+}
+
+/* 10.3 Slide Logo */
 
 .reveal .slide-logo {
   max-height: 2.8rem !important;
@@ -408,6 +537,47 @@ code > span {
   border-left: 3px solid $color-accent-purple;
   padding: 0.5rem;
   background: $color-accent-purple-light;
+}
+
+/* Sandbox / live-coding box — use {.sandbox} div */
+.reveal .slide .sandbox {
+  border-left: 3px solid #E67E22;
+  padding: 0.5rem 0.7rem;
+  background: #FDF2E9;
+  border-radius: 0 4px 4px 0;
+  font-size: 0.85em;
+}
+
+.reveal .slide .sandbox::before {
+  content: "🧪 Try it";
+  display: block;
+  font-family: $font-family-sans-serif;
+  font-size: 0.75em;
+  font-weight: 700;
+  color: #E67E22;
+  margin-bottom: 0.3em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Exercise box */
+.reveal .slide .exercise {
+  border-left: 3px solid #2980B9;
+  padding: 0.5rem 0.7rem;
+  background: #EBF5FB;
+  border-radius: 0 4px 4px 0;
+}
+
+.reveal .slide .exercise::before {
+  content: "✏️ Exercise";
+  display: block;
+  font-family: $font-family-sans-serif;
+  font-size: 0.75em;
+  font-weight: 700;
+  color: #2980B9;
+  margin-bottom: 0.3em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 
