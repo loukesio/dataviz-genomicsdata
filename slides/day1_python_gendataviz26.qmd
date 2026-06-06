@@ -1183,7 +1183,7 @@ de_data = pd.DataFrame({
 
 ```{python}
 #| echo: true
-#| eval: false
+#| eval: true
 
 import numpy as np, pandas as pd
 import matplotlib.pyplot as plt
@@ -1644,7 +1644,7 @@ X_sc = np.vstack([
 
 ```{python}
 #| echo: true
-#| eval: false
+#| eval: true
 
 import numpy as np, pandas as pd
 import matplotlib.pyplot as plt
@@ -1770,7 +1770,7 @@ df = pd.DataFrame({
 <!-- slide: Admixture code -->
 ```
 
-## Admixture: Code Walkthrough {.smaller}
+## Admixture: Code Walkthrough {.smaller .scrollable}
 
 ```{python}
 #| echo: true
@@ -1896,7 +1896,7 @@ adm = pd.DataFrame(records, columns=["individual","population",
 
 ```{python}
 #| echo: true
-#| eval: false
+#| eval: true
 
 import numpy as np, pandas as pd
 import matplotlib.pyplot as plt
@@ -2192,7 +2192,7 @@ expression = pd.DataFrame(
 
 ```{python}
 #| echo: true
-#| eval: false
+#| eval: true
 
 import numpy as np, pandas as pd
 import matplotlib.pyplot as plt
@@ -2508,7 +2508,7 @@ mutations = pd.DataFrame({
 
 ```{python}
 #| echo: true
-#| eval: false
+#| eval: true
 
 import numpy as np, pandas as pd
 import matplotlib.pyplot as plt
@@ -2843,7 +2843,7 @@ genes = pd.DataFrame({
 
 ```{python}
 #| echo: true
-#| eval: false
+#| eval: true
 
 import numpy as np, pandas as pd
 import matplotlib.pyplot as plt
@@ -3158,7 +3158,7 @@ enrichment_results = pd.concat([pathways_up, pathways_down])
 
 ```{python}
 #| echo: true
-#| eval: false
+#| eval: true
 
 import numpy as np, pandas as pd
 import matplotlib.pyplot as plt
