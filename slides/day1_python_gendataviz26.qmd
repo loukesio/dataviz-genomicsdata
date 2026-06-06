@@ -1800,11 +1800,12 @@ adm = pd.DataFrame(records, columns=["individual", "population",
                                      "K1","K2","K3","K4","K5"])
 
 # Step 2: Sort within each population by dominant ancestry
-adm = (adm.groupby("population", group_keys=False)
-          .apply(lambda d: d.sort_values(
-              d[["K1","K2","K3","K4","K5"]].idxmax(axis=1).iloc[0],
-              ascending=False))
-          .reset_index(drop=True))
+sorted_parts = []
+for pop in pops:
+    block = adm[adm["population"] == pop].copy()
+    dom   = block[["K1","K2","K3","K4","K5"]].mean().idxmax()
+    sorted_parts.append(block.sort_values(dom, ascending=False))
+adm = pd.concat(sorted_parts, ignore_index=True)
 
 # Step 3: Build stacked bar plot
 fig, ax = plt.subplots(figsize=(13, 4.5), facecolor=COLORS["canvas"])
@@ -1921,13 +1922,12 @@ adm = pd.DataFrame(records, columns=["individual","population",
 
 K_cols = ["K1","K2","K3","K4"]
 
-def sort_block(d):
-    dom = d[K_cols].mean().idxmax()
-    return d.sort_values(dom, ascending=False)
-
-adm = (adm.groupby("population", group_keys=False)
-          .apply(sort_block)
-          .reset_index(drop=True))
+sorted_parts = []
+for pop in pops:
+    block = adm[adm["population"] == pop].copy()
+    dom   = block[K_cols].mean().idxmax()
+    sorted_parts.append(block.sort_values(dom, ascending=False))
+adm = pd.concat(sorted_parts, ignore_index=True)
 
 fig, ax = plt.subplots(figsize=(13, 4.5), facecolor=COLORS["canvas"])
 ax.set_facecolor(COLORS["canvas"])
