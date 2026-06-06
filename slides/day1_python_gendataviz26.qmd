@@ -82,6 +82,35 @@ plt.rcParams.update({
     "figure.dpi"           : 150, "savefig.dpi": 300,
     "savefig.bbox"         : "tight", "savefig.pad_inches": 0.3,
 })
+
+# ── Pipeline flowchart helper (replaces unreliable client-side Mermaid) ────────
+from matplotlib.patches import FancyBboxPatch
+
+def pipeline_flowchart(steps, figsize=None):
+    """Render a horizontal pipeline as a matplotlib figure."""
+    n = len(steps)
+    if figsize is None:
+        figsize = (max(11, n * 1.9), 2.0)
+    fig, ax = plt.subplots(figsize=figsize, facecolor="white")
+    ax.set_xlim(0, n); ax.set_ylim(0, 1); ax.axis("off")
+    teal, teal_bg = "#28A87D", "#d9f6ec"
+    for i, label in enumerate(steps):
+        last = (i == n - 1)
+        bg, fg = (teal, "white") if last else (teal_bg, "#1A1A1A")
+        ax.add_patch(FancyBboxPatch(
+            (i + 0.07, 0.22), 0.86, 0.56,
+            boxstyle="round,pad=0.02,rounding_size=0.08",
+            facecolor=bg, edgecolor=teal, linewidth=1.4,
+        ))
+        ax.text(i + 0.5, 0.5, label,
+                ha="center", va="center",
+                fontsize=10.5, fontweight="bold", color=fg, wrap=True)
+        if not last:
+            ax.annotate("", xy=(i + 1.07, 0.5), xytext=(i + 0.93, 0.5),
+                        arrowprops=dict(arrowstyle="-|>", color="#888888",
+                                        lw=1.4, mutation_scale=18))
+    plt.tight_layout()
+    return fig
 ```
 
 ```{=html}
@@ -1060,28 +1089,17 @@ plt.tight_layout(); plt.show()
 
 ## Volcano Plot — Pipeline
 
-```{mermaid}
-%%| fig-width: 9
-
----
-config:
-  theme: base
-  themeVariables:
-    primaryColor: "#d9f6ec"
-    primaryBorderColor: "#28A87D"
-    primaryTextColor: "#1A1A1A"
-    lineColor: "#888888"
-    fontFamily: "Asap, sans-serif"
-    fontSize: "15px"
----
-
-flowchart LR
-  A[DESeq2 results] --> B[Compute neg log10 p]
-  B --> C[Classify by FC and p]
-  C --> D[Scatter coloured by class]
-  D --> E[Label top-N genes]
-  E --> F[Threshold lines]
-  style F fill:#28A87D,color:#fff,stroke:#28A87D
+```{python}
+#| echo: false
+pipeline_flowchart([
+    "DESeq2 results",
+    "Compute neg log10 p",
+    "Classify by FC and p",
+    "Scatter coloured by class",
+    "Label top-N genes",
+    "Threshold lines",
+])
+plt.show()
 ```
 
 ## Volcano Plot: Data Preparation {.smaller .scrollable}
@@ -1379,29 +1397,18 @@ plt.tight_layout(); plt.show()
 
 ## PCA / UMAP — Pipeline
 
-```{mermaid}
-%%| fig-width: 9
-
----
-config:
-  theme: base
-  themeVariables:
-    primaryColor: "#d9f6ec"
-    primaryBorderColor: "#28A87D"
-    primaryTextColor: "#1A1A1A"
-    lineColor: "#888888"
-    fontFamily: "Asap, sans-serif"
-    fontSize: "15px"
----
-
-flowchart LR
-  A[Cells x Genes] --> B[Normalise and log]
-  B --> C[Highly variable genes]
-  C --> D[Scale and PCA to 50D]
-  D --> E[k-NN graph]
-  E --> F[UMAP or t-SNE]
-  F --> G[Colour by cell type]
-  style G fill:#28A87D,color:#fff,stroke:#28A87D
+```{python}
+#| echo: false
+pipeline_flowchart([
+    "Cells x Genes",
+    "Normalise and log",
+    "Highly variable genes",
+    "Scale and PCA to 50D",
+    "k-NN graph",
+    "UMAP or t-SNE",
+    "Colour by cell type",
+])
+plt.show()
 ```
 
 ## PCA: Step-by-Step Code {.smaller .scrollable}
@@ -1928,28 +1935,17 @@ df = pd.DataFrame({
 
 ## Admixture — Pipeline
 
-```{mermaid}
-%%| fig-width: 9
-
----
-config:
-  theme: base
-  themeVariables:
-    primaryColor: "#d9f6ec"
-    primaryBorderColor: "#28A87D"
-    primaryTextColor: "#1A1A1A"
-    lineColor: "#888888"
-    fontFamily: "Asap, sans-serif"
-    fontSize: "15px"
----
-
-flowchart LR
-  A[Genotype matrix] --> B[Run ADMIXTURE for each K]
-  B --> C[Q-matrix ancestries]
-  C --> D[Sort within population]
-  D --> E[Stacked bars]
-  E --> F[White separators]
-  style F fill:#28A87D,color:#fff,stroke:#28A87D
+```{python}
+#| echo: false
+pipeline_flowchart([
+    "Genotype matrix",
+    "Run ADMIXTURE for each K",
+    "Q-matrix ancestries",
+    "Sort within population",
+    "Stacked bars",
+    "White separators",
+])
+plt.show()
 ```
 
 ```{=html}
@@ -2248,28 +2244,17 @@ plt.show()
 
 ## Heatmap / Clustermap — Pipeline
 
-```{mermaid}
-%%| fig-width: 9
-
----
-config:
-  theme: base
-  themeVariables:
-    primaryColor: "#d9f6ec"
-    primaryBorderColor: "#28A87D"
-    primaryTextColor: "#1A1A1A"
-    lineColor: "#888888"
-    fontFamily: "Asap, sans-serif"
-    fontSize: "15px"
----
-
-flowchart LR
-  A[Expression matrix] --> B[Filter low counts]
-  B --> C[Z-score per gene]
-  C --> D[Hierarchical clustering]
-  D --> E[Diverging colourmap]
-  E --> F[Side annotation tracks]
-  style F fill:#28A87D,color:#fff,stroke:#28A87D
+```{python}
+#| echo: false
+pipeline_flowchart([
+    "Expression matrix",
+    "Filter low counts",
+    "Z-score per gene",
+    "Hierarchical clustering",
+    "Diverging colourmap",
+    "Side annotation tracks",
+])
+plt.show()
 ```
 
 ## Seaborn Clustermap: Code {.smaller .scrollable}
@@ -2575,27 +2560,16 @@ plt.show()
 
 ## Waffle Chart — Pipeline
 
-```{mermaid}
-%%| fig-width: 9
-
----
-config:
-  theme: base
-  themeVariables:
-    primaryColor: "#d9f6ec"
-    primaryBorderColor: "#28A87D"
-    primaryTextColor: "#1A1A1A"
-    lineColor: "#888888"
-    fontFamily: "Asap, sans-serif"
-    fontSize: "15px"
----
-
-flowchart LR
-  A[Category counts] --> B[Compute proportions]
-  B --> C[10x10 grid]
-  C --> D[Icons by category]
-  D --> E[Final waffle]
-  style E fill:#28A87D,color:#fff,stroke:#28A87D
+```{python}
+#| echo: false
+pipeline_flowchart([
+    "Category counts",
+    "Compute proportions",
+    "10x10 grid",
+    "Icons by category",
+    "Final waffle",
+])
+plt.show()
 ```
 
 ```{=html}
@@ -2695,27 +2669,16 @@ plt.tight_layout(); plt.show()
 
 ## Waterfall Plot — Pipeline
 
-```{mermaid}
-%%| fig-width: 9
-
----
-config:
-  theme: base
-  themeVariables:
-    primaryColor: "#d9f6ec"
-    primaryBorderColor: "#28A87D"
-    primaryTextColor: "#1A1A1A"
-    lineColor: "#888888"
-    fontFamily: "Asap, sans-serif"
-    fontSize: "15px"
----
-
-flowchart LR
-  A[Patient table] --> B[Sort by TMB]
-  B --> C[Colour by cancer type]
-  C --> D[Bar plot]
-  D --> E[Star markers MSI-H]
-  style E fill:#28A87D,color:#fff,stroke:#28A87D
+```{python}
+#| echo: false
+pipeline_flowchart([
+    "Patient table",
+    "Sort by TMB",
+    "Colour by cancer type",
+    "Bar plot",
+    "Star markers MSI-H",
+])
+plt.show()
 ```
 
 ```{=html}
@@ -3048,27 +3011,16 @@ pyGenomeTracks is particularly powerful when overlaying multiple epigenomic data
 
 ## Peak Visualization — Pipeline
 
-```{mermaid}
-%%| fig-width: 9
-
----
-config:
-  theme: base
-  themeVariables:
-    primaryColor: "#d9f6ec"
-    primaryBorderColor: "#28A87D"
-    primaryTextColor: "#1A1A1A"
-    lineColor: "#888888"
-    fontFamily: "Asap, sans-serif"
-    fontSize: "15px"
----
-
-flowchart LR
-  A[BigWig or BED] --> B[Slice region]
-  B --> C[Per-track fill]
-  C --> D[Gene annotation]
-  D --> E[Shared peak highlight]
-  style E fill:#28A87D,color:#fff,stroke:#28A87D
+```{python}
+#| echo: false
+pipeline_flowchart([
+    "BigWig or BED",
+    "Slice region",
+    "Per-track fill",
+    "Gene annotation",
+    "Shared peak highlight",
+])
+plt.show()
 ```
 
 ```{=html}
@@ -3404,28 +3356,17 @@ plt.tight_layout(); plt.show()
 
 ## Pathway Enrichment — Pipeline
 
-```{mermaid}
-%%| fig-width: 9
-
----
-config:
-  theme: base
-  themeVariables:
-    primaryColor: "#d9f6ec"
-    primaryBorderColor: "#28A87D"
-    primaryTextColor: "#1A1A1A"
-    lineColor: "#888888"
-    fontFamily: "Asap, sans-serif"
-    fontSize: "15px"
----
-
-flowchart LR
-  A[Significant gene list] --> B[Enrichment vs background]
-  B --> C[Adjusted p-values]
-  C --> D[Top-N pathways]
-  D --> E[Horizontal bars or bubble]
-  E --> F[padj 0.05 threshold]
-  style F fill:#28A87D,color:#fff,stroke:#28A87D
+```{python}
+#| echo: false
+pipeline_flowchart([
+    "Significant gene list",
+    "Enrichment vs background",
+    "Adjusted p-values",
+    "Top-N pathways",
+    "Horizontal bars or bubble",
+    "padj 0.05 threshold",
+])
+plt.show()
 ```
 
 ## gget: Enrichment in One Line {.smaller .scrollable}
