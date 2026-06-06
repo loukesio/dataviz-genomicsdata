@@ -150,38 +150,55 @@ All 13 datasets have nearly identical summary statistics but vastly different sh
 #| fig-height: 6
 #| fig-align: center
 
-# pip install datasist  ·or·  manual reproduction
-np.random.seed(42)
-n = 142
+# Load the real Datasaurus Dozen — carefully constructed datasets that
+# share identical summary statistics but look completely different.
+url = ("https://raw.githubusercontent.com/lockedata/datasauRus/"
+       "master/inst/extdata/DatasaurusDozen.tsv")
+dd = pd.read_csv(url, sep="\t")
 
-datasets = {
-    'dino'    : (np.random.uniform(20, 80, n), np.random.uniform(0, 90, n)),
-    'star'    : (np.random.uniform(25, 75, n), np.random.uniform(15, 85, n)),
-    'circle'  : (np.random.uniform(20, 80, n), np.random.uniform(10, 90, n)),
-    'dots'    : (np.random.uniform(25, 75, n), np.random.uniform(20, 80, n)),
-    'h_lines' : (np.random.uniform(20, 80, n), np.random.uniform(20, 80, n)),
-    'v_lines' : (np.random.uniform(20, 80, n), np.random.uniform(20, 80, n)),
-    'x_shape' : (np.random.uniform(20, 80, n), np.random.uniform(20, 80, n)),
-    'cross'   : (np.random.uniform(20, 80, n), np.random.uniform(20, 80, n)),
-    'high_lines' : (np.random.uniform(20, 80, n), np.random.uniform(20, 80, n)),
-    'wide_lines' : (np.random.uniform(20, 80, n), np.random.uniform(20, 80, n)),
-    'bullseye'   : (np.random.uniform(20, 80, n), np.random.uniform(20, 80, n)),
-    'slant_up'   : (np.random.uniform(20, 80, n), np.random.uniform(20, 80, n)),
-    'slant_down' : (np.random.uniform(20, 80, n), np.random.uniform(20, 80, n)),
-}
+order = ["dino", "away", "h_lines", "v_lines", "x_shape",
+         "star", "high_lines", "dots", "circle", "bullseye",
+         "slant_up", "slant_down", "wide_lines"]
 
-palette = [BRAND, ACCENT_YLW, BRAND_LIGHT] * 5
-
-fig, axes = plt.subplots(3, 5, figsize=(13, 6), constrained_layout=True)
-for ax, (name, (x, y)), color in zip(axes.flat, datasets.items(), palette):
-    ax.scatter(x, y, color=color, s=8, alpha=0.7)
-    ax.set_title(name, fontsize=8)
+fig, axes = plt.subplots(3, 5, figsize=(13, 6.2),
+                         constrained_layout=True,
+                         facecolor=COLORS["canvas"])
+for ax, name in zip(axes.flat, order):
+    grp = dd[dd["dataset"] == name]
+    ax.scatter(grp["x"], grp["y"],
+               color=COLORS["primary"], s=10, alpha=0.75, linewidths=0)
+    ax.set_title(name, fontsize=9, fontweight="bold",
+                 color=COLORS["text_dark"])
+    ax.set_facecolor(COLORS["canvas"])
     ax.set_xticks([]); ax.set_yticks([])
-    ax.spines[['top','right','bottom','left']].set_visible(False)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
 
-axes.flat[-2].set_visible(False)
-fig.suptitle("The Datasaurus Dozen: Identical Statistics, Different Shapes",
-             fontsize=12, fontweight='bold')
+# We have 13 datasets in a 3×5 grid → hide the last two empty cells
+axes.flat[13].set_visible(False)
+axes.flat[14].set_visible(False)
+
+# Add a summary-stats panel in the empty corner
+stats = (dd.groupby("dataset")
+           .agg(mean_x=("x","mean"), mean_y=("y","mean"),
+                sd_x=("x","std"),    sd_y=("y","std"))
+           .round(2))
+ax_text = fig.add_subplot(3, 5, 15)
+ax_text.axis("off")
+ax_text.text(0.0, 0.95,
+             "All 13 datasets share:",
+             fontsize=10, fontweight="bold", color=COLORS["text_dark"],
+             transform=ax_text.transAxes)
+ax_text.text(0.0, 0.70,
+             f"x̄ ≈ {stats['mean_x'].mean():.1f}\n"
+             f"ȳ ≈ {stats['mean_y'].mean():.1f}\n"
+             f"σx ≈ {stats['sd_x'].mean():.1f}\n"
+             f"σy ≈ {stats['sd_y'].mean():.1f}",
+             fontsize=10, color=COLORS["text_mid"], family="monospace",
+             transform=ax_text.transAxes, va="top")
+
+fig.suptitle("THE DATASAURUS DOZEN — IDENTICAL STATS, DIFFERENT SHAPES",
+             fontsize=13, fontweight="bold", color=COLORS["text_dark"])
 plt.show()
 ```
 
