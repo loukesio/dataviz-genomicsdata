@@ -1076,8 +1076,8 @@ config:
 ---
 
 flowchart LR
-  A(DESeq2 results) --> B[Compute neg log10 p]
-  B --> C{Classify by FC and p}
+  A[DESeq2 results] --> B[Compute neg log10 p]
+  B --> C[Classify by FC and p]
   C --> D[Scatter coloured by class]
   D --> E[Label top-N genes]
   E --> F[Threshold lines]
@@ -1395,12 +1395,12 @@ config:
 ---
 
 flowchart LR
-  A(Cells x Genes) --> B[Normalise + log]
-  B --> C[Highly variable\ngenes]
-  C --> D[Scale + PCA\nto 50D]
+  A[Cells x Genes] --> B[Normalise and log]
+  B --> C[Highly variable genes]
+  C --> D[Scale and PCA to 50D]
   D --> E[k-NN graph]
   E --> F[UMAP or t-SNE]
-  F --> G[Colour by\ncell type]
+  F --> G[Colour by cell type]
   style G fill:#28A87D,color:#fff,stroke:#28A87D
 ```
 
@@ -1944,11 +1944,11 @@ config:
 ---
 
 flowchart LR
-  A[Genotype\nmatrix] --> B[Run ADMIXTURE\nfor each K]
-  B --> C[Q-matrix\nancestries]
-  C --> D[Sort within\npopulation]
+  A[Genotype matrix] --> B[Run ADMIXTURE for each K]
+  B --> C[Q-matrix ancestries]
+  C --> D[Sort within population]
   D --> E[Stacked bars]
-  E --> F[White\nseparators]
+  E --> F[White separators]
   style F fill:#28A87D,color:#fff,stroke:#28A87D
 ```
 
@@ -2264,11 +2264,11 @@ config:
 ---
 
 flowchart LR
-  A(Expression\nmatrix) --> B[Filter low\ncounts]
-  B --> C[Z-score\nper gene]
-  C --> D[Hierarchical\nclustering]
-  D --> E[Diverging\ncolourmap]
-  E --> F[Side annotation\ntracks]
+  A[Expression matrix] --> B[Filter low counts]
+  B --> C[Z-score per gene]
+  C --> D[Hierarchical clustering]
+  D --> E[Diverging colourmap]
+  E --> F[Side annotation tracks]
   style F fill:#28A87D,color:#fff,stroke:#28A87D
 ```
 
@@ -2591,9 +2591,9 @@ config:
 ---
 
 flowchart LR
-  A[Category\ncounts] --> B[Compute\nproportions]
+  A[Category counts] --> B[Compute proportions]
   B --> C[10x10 grid]
-  C --> D[Icons by\ncategory]
+  C --> D[Icons by category]
   D --> E[Final waffle]
   style E fill:#28A87D,color:#fff,stroke:#28A87D
 ```
@@ -2711,10 +2711,10 @@ config:
 ---
 
 flowchart LR
-  A[Patient table] --> B[Sort by\nTMB]
-  B --> C[Colour by\ncancer type]
+  A[Patient table] --> B[Sort by TMB]
+  B --> C[Colour by cancer type]
   C --> D[Bar plot]
-  D --> E[Star markers\nMSI-H]
+  D --> E[Star markers MSI-H]
   style E fill:#28A87D,color:#fff,stroke:#28A87D
 ```
 
@@ -3067,7 +3067,7 @@ flowchart LR
   A[BigWig or BED] --> B[Slice region]
   B --> C[Per-track fill]
   C --> D[Gene annotation]
-  D --> E[Shared peak\nhighlight]
+  D --> E[Shared peak highlight]
   style E fill:#28A87D,color:#fff,stroke:#28A87D
 ```
 
@@ -3420,11 +3420,11 @@ config:
 ---
 
 flowchart LR
-  A(Significant\ngene list) --> B[Enrichment\nvs background]
-  B --> C[Adjusted\np-values]
-  C --> D[Top-N\npathways]
-  D --> E[Horizontal bars\nor bubble]
-  E --> F[padj = 0.05\nthreshold]
+  A[Significant gene list] --> B[Enrichment vs background]
+  B --> C[Adjusted p-values]
+  C --> D[Top-N pathways]
+  D --> E[Horizontal bars or bubble]
+  E --> F[padj 0.05 threshold]
   style F fill:#28A87D,color:#fff,stroke:#28A87D
 ```
 
