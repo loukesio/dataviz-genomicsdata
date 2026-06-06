@@ -152,8 +152,7 @@ All 13 datasets have nearly identical summary statistics but vastly different sh
 
 # Load the real Datasaurus Dozen — carefully constructed datasets that
 # share identical summary statistics but look completely different.
-url = "https://www.openintro.org/data/csv/datasaurus.csv"
-dd = pd.read_csv(url)
+dd = pd.read_csv("data/datasaurus.csv")
 
 order = ["dino", "away", "h_lines", "v_lines", "x_shape",
          "star", "high_lines", "dots", "circle", "bullseye",
