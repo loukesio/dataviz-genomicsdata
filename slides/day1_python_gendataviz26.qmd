@@ -300,7 +300,7 @@ import toytree                 # phylogenetics
 <!-- slide 7b -->
 ```
 
-## From ggplot2 to Python — The Mental Map
+## From ggplot2 to Python — The Mental Map {.smaller .scrollable}
 
 :::::: columns
 ::: {.column width="50%"}
