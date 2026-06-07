@@ -56,6 +56,12 @@ Needs Quarto ≥ 1.4 and a Python env with `numpy matplotlib seaborn`
    - Markers are the canonical way the user (and Claude) refer to a slide:
      "fix slide 14.2" is unambiguous; "fix the heatmap slide" is not.
    - The marker is a plain HTML comment — it does not render in the deck.
+   - **Inserting a new slide:** use a decimal between the neighbours, never
+     renumber. New slide between 7 and 8 → `7.5`. Between 7 and 7.5 → `7.3`.
+     Between 7.5 and 8 → `7.7`. Existing markers stay fixed so git diffs stay
+     small and "fix slide 33" never silently points at a different slide.
+   - **Only renumber on explicit request** ("clean up the markers"). Renumbering
+     is its own commit, separate from content edits.
 
 ## Primary task: restyle the user's EXISTING slides
 The user already has Day-1 slides written with real content. Your job is to apply
