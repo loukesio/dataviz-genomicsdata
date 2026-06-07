@@ -1,89 +1,62 @@
 ---
 title: "Genomics Data Visualization"
-subtitle: "<span style='font-size:1.25em;'>with Python</span>"
-author: "<div style='width: 100%; text-align: center; margin-left: auto; margin-right: auto;'><a href='https://github.com/loukesio' style='color:#28a87d;font-weight:600;'>Dr. Loukas Theodosiou</a>&ensp;//&ensp;Day 1 &ensp;//&ensp; May 2026</div>"
-title-slide-attributes:
-    data-background-color: "#E8F5F1"
+subtitle: "<span style='font-size:1.25em;'>with Python</span> — Day 1 · Foundations & differential expression"
+author: "<div style='width: 100%; text-align: center; margin-left: auto; margin-right: auto;'><a href='https://github.com/loukesio' style='color:#208462;font-weight:600;'>Dr. Loukas Theodosiou</a>&ensp;//&ensp;Day 1 &ensp;//&ensp; May 2026</div>"
+date: "2026-06-01"
 format:
   revealjs:
-    theme: [default, slides.scss]
-    footer: '**L.Theodosiou** // Genomics Data Visualization with Python'
-    transition: fade
+    theme: [default, style.scss]
+    width: 1280
+    height: 720
+    slide-number: c
     progress: true
-    multiplex: false
-    preview-links: true
-    scrollable: false
-    hide-inactive-cursor: true
-    highlight-style: printing
-    pause: true
-    embed-resources: false
-editor: source
-jupyter: python3
+    transition: fade
+    history: false
+    footer: "Genomics Viz with Python"
+    highlight-style: arrow
+    code-line-numbers: true
+    fig-align: center
 execute:
-  freeze: auto
-  cache: true
   echo: true
-  fig-width: 10
-  fig-height: 6
+  warning: false
+  freeze: auto
+jupyter: python3
 ---
 
 ```{python}
 #| label: setup
-#| include: false
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib as mpl
+#| echo: false
+# Course-wide matplotlib defaults — the "Carbon-cream" look.
+import numpy as np, pandas as pd, matplotlib as mpl, matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
 warnings.filterwarnings('ignore')
-import matplotlib.font_manager as fm
-fm._load_fontmanager()
 
-# ── Style-guide colors (Economist meets Nature Reviews Genetics) ──────────────
-COLORS = {
-    "pathogenic"  : "#C23B22", "risk"       : "#E6A817", "benign"    : "#5A8F29",
-    "uncertain"   : "#888888",
-    "primary"     : "#C23B22", "secondary"  : "#2B6CB0", "tertiary"  : "#E6A817",
-    "quaternary"  : "#5A8F29", "quinary"    : "#7B5EA7",
-    "text_dark"   : "#1A1A1A", "text_mid"   : "#555555", "text_light": "#888888",
-    "grid"        : "#E8E8E8", "highlight_bg": "#FFF5F5",
-    "zero_line"   : "#CCCCCC", "canvas"     : "#FFFFFF",
-}
-
-COURSE_PAL = [
-    COLORS["primary"], COLORS["secondary"], COLORS["tertiary"],
-    COLORS["quaternary"], COLORS["quinary"],
-    "#E07B54", "#4A90D9", "#B8860B", "#3D7A3D", "#9B72CF",
-]
-
-# ── Aliases for legacy slide-body references ─────────────────────────────────
-BRAND       = COLORS["primary"]
-BRAND_LIGHT = "#79DFBD"
-BRAND_BG    = "#E8F5F1"
-ACCENT_YLW  = COLORS["tertiary"]
-ACCENT_PURP = COLORS["quinary"]
-GRAY_DARK   = COLORS["text_mid"]
-RED         = COLORS["primary"]
-
-# ── Global matplotlib style ───────────────────────────────────────────────────
-plt.rcParams.update({
-    "font.family"          : "sans-serif",
-    "font.sans-serif"      : ["Geist", "IBM Plex Sans", "Helvetica Neue", "Arial"],
-    "font.size"            : 11, "axes.titlesize" : 13, "axes.titleweight": "bold",
-    "axes.labelsize"       : 11, "xtick.labelsize": 10, "ytick.labelsize" : 10,
-    "legend.fontsize"      : 10, "figure.titlesize": 15, "figure.titleweight": "bold",
-    "figure.facecolor"     : "white", "axes.facecolor": "white",
-    "axes.edgecolor"       : "#DDDDDD", "axes.linewidth": 0.6,
-    "axes.grid"            : False, "axes.spines.top": False, "axes.spines.right": False,
-    "xtick.major.width"    : 0.6, "ytick.major.width": 0.6,
-    "xtick.color"          : "#666666", "ytick.color": "#666666",
-    "figure.dpi"           : 150, "savefig.dpi": 300,
-    "savefig.bbox"         : "tight", "savefig.pad_inches": 0.3,
+GREEN, PURPLE, RED, BLUE, GREY = "#208462", "#7754bf", "#c0473a", "#2b6fb0", "#b9b4a7"
+CREAM, INK, LINE = "#f6f4ee", "#211f1a", "#cfc9ba"
+mpl.rcParams.update({
+    "figure.facecolor": CREAM, "axes.facecolor": "#fdfcf8",
+    "savefig.facecolor": CREAM, "font.family": "DejaVu Sans",
+    "axes.edgecolor": LINE, "axes.labelcolor": "#807b6d",
+    "xtick.color": "#807b6d", "ytick.color": "#807b6d",
+    "axes.spines.top": False, "axes.spines.right": False,
+    "font.size": 12,
 })
+rng = np.random.default_rng(7)
 
-# ── Pipeline flowchart helper (replaces unreliable client-side Mermaid) ────────
+# Backwards-compat aliases used by existing slide code
+COLORS = {
+    "pathogenic": RED, "risk": "#c98a1a", "benign": GREEN, "uncertain": GREY,
+    "primary": GREEN, "secondary": BLUE, "tertiary": "#c98a1a",
+    "quaternary": PURPLE, "quinary": "#7754bf",
+    "text_dark": INK, "text_mid": "#807b6d", "text_light": "#a8a395",
+    "grid": LINE, "zero_line": "#cfc9ba", "canvas": CREAM, "highlight_bg": "#eef5ee",
+}
+COURSE_PAL = [GREEN, RED, PURPLE, BLUE, "#c98a1a"]
+BRAND, BRAND_LIGHT, BRAND_BG = GREEN, "#d9f6ec", "#eef5ee"
+ACCENT_YLW, ACCENT_PURP, GRAY_DARK = "#c98a1a", PURPLE, "#807b6d"
+
+# ── Pipeline flowchart helper (matplotlib pipeline diagram) ──────────────────
 from matplotlib.patches import FancyBboxPatch
 
 def pipeline_flowchart(steps, figsize=None):
@@ -91,39 +64,37 @@ def pipeline_flowchart(steps, figsize=None):
     n = len(steps)
     if figsize is None:
         figsize = (max(11, n * 1.9), 2.0)
-    fig, ax = plt.subplots(figsize=figsize, facecolor="white")
+    fig, ax = plt.subplots(figsize=figsize, facecolor=CREAM)
     ax.set_xlim(0, n); ax.set_ylim(0, 1); ax.axis("off")
-    teal, teal_bg = "#28A87D", "#d9f6ec"
+    highlight, light_fill = GREEN, "#d9f6ec"
     for i, label in enumerate(steps):
         last = (i == n - 1)
-        bg, fg = (teal, "white") if last else (teal_bg, "#1A1A1A")
+        bg, fg = (highlight, "white") if last else (light_fill, INK)
         ax.add_patch(FancyBboxPatch(
             (i + 0.07, 0.22), 0.86, 0.56,
             boxstyle="round,pad=0.02,rounding_size=0.08",
-            facecolor=bg, edgecolor=teal, linewidth=1.4,
+            facecolor=bg, edgecolor=highlight, linewidth=1.4,
         ))
         ax.text(i + 0.5, 0.5, label,
                 ha="center", va="center",
                 fontsize=10.5, fontweight="bold", color=fg, wrap=True)
         if not last:
             ax.annotate("", xy=(i + 1.07, 0.5), xytext=(i + 0.93, 0.5),
-                        arrowprops=dict(arrowstyle="-|>", color="#888888",
+                        arrowprops=dict(arrowstyle="-|>", color=LINE,
                                         lw=1.4, mutation_scale=18))
     plt.tight_layout()
     return fig
 ```
 
-```{=html}
-<!-- slide 2 -->
-```
+# Why do we need data visualisations? {.divider}
 
-# Why do we need data visualisations? {background-color="#28A87D"}
+[Why we visualize · Day 01]{.eyebrow}
 
-```{=html}
-<!-- slide 3 -->
-```
+## Anscombe's Quartet {.smaller}
 
-## Anscombe's Quartet
+[Why we visualize]{.eyebrow}
+
+### Same statistics, different shapes
 
 :::::::::::::::::::::::::::::::::::::: columns
 :::: {.column width="45%"}
@@ -151,10 +122,10 @@ anscombe = sns.load_dataset('anscombe')
 
 fig, axes = plt.subplots(2, 2, figsize=(6, 5), constrained_layout=True)
 for ax, (dataset, group) in zip(axes.flat, anscombe.groupby('dataset')):
-    ax.scatter(group['x'], group['y'], color=BRAND, s=60, alpha=0.75, zorder=3)
+    ax.scatter(group['x'], group['y'], color=GREEN, s=60, alpha=0.75, zorder=3)
     m, b = np.polyfit(group['x'], group['y'], 1)
     xs = np.linspace(group['x'].min(), group['x'].max(), 100)
-    ax.plot(xs, m * xs + b, color='#1E8B68', linewidth=1.8, zorder=2)
+    ax.plot(xs, m * xs + b, color=PURPLE, linewidth=1.8, zorder=2)
     ax.set_title(f'Dataset {dataset}', fontsize=11)
     ax.set_xlabel('x'); ax.set_ylabel('y')
 fig.suptitle("Anscombe's Quartet", fontsize=13, fontweight='bold')
@@ -167,11 +138,11 @@ plt.show()
 Source: Anscombe, F. J. (1973). Graphs in Statistical Analysis. *The American Statistician*, 27(1), 17–21.
 :::
 
-```{=html}
-<!-- slide 4 -->
-```
+## The Datasaurus Dozen {.smaller}
 
-## The Datasaurus Dozen
+[Why we visualize]{.eyebrow}
+
+### Identical stats, different shapes
 
 All 13 datasets have nearly identical summary statistics but vastly different shapes!
 
@@ -235,31 +206,29 @@ plt.show()
 Source: Matejka & Fitzmaurice (2017). [Same Stats, Different Graphs](https://www.research.autodesk.com/publications/same-stats-different-graphs/). ACM CHI 2017.
 :::
 
-```{=html}
-<!-- slide 5 -->
-```
+# Big data in biology {.divider}
 
-# Big data in biology {background-color="#28A87D"}
+[Why we visualize · scale]{.eyebrow}
 
-```{=html}
-<!-- slide 6 -->
-```
+## The Genomics Data Explosion {.smaller}
 
-## The Genomics Data Explosion
+[Why we visualize]{.eyebrow}
+
+### Scale of the problem
 
 :::::: columns
 :::: {.column width="50%"}
 
-- <span style="color: #606060;">**1 to 2 exabytes** of data produced on YouTube per year</span>
+- <span style="color: #807b6d;">**1 to 2 exabytes** of data produced on YouTube per year</span>
 
-- <span style="color: #28A87D; font-weight: 700;">220 million genomes</span> sequenced <span style="color: #28A87D; font-weight: 700;">per year</span>
+- <span style="color: #208462; font-weight: 700;">220 million genomes</span> sequenced <span style="color: #208462; font-weight: 700;">per year</span>
 
-- Equivalent to <span style="color: #606060; font-weight: 700;">40 exabytes</span> per year
+- Equivalent to <span style="color: #807b6d; font-weight: 700;">40 exabytes</span> per year
 
-- That's more than <span style="color: #28A87D; font-weight: 700;">20 times</span> more than YouTube produces
+- That's more than <span style="color: #208462; font-weight: 700;">20 times</span> more than YouTube produces
 
 ::: fragment
-For years we struggled to collect biological data, but now our biggest bottleneck is <span class="simple-highlight-ylw" style="font-weight: 700;">analyzing and interpreting it</span>
+For years we struggled to collect biological data, but now our biggest bottleneck is [analyzing and interpreting it]{.alt}
 :::
 
 ::::
@@ -269,11 +238,11 @@ For years we struggled to collect biological data, but now our biggest bottlenec
 :::
 ::::::
 
-```{=html}
-<!-- slide 7 -->
-```
-
 ## Why Python for Genomics Visualization? {.smaller .scrollable}
+
+[The Python viz stack]{.eyebrow}
+
+### One language, full pipeline
 
 :::::: columns
 ::: {.column width="55%"}
@@ -325,11 +294,11 @@ import toytree                 # phylogenetics
 :::
 ::::::
 
-```{=html}
-<!-- slide 7b -->
-```
-
 ## From ggplot2 to Python — The Mental Map {.smaller .scrollable}
+
+[From ggplot2 to Python]{.eyebrow}
+
+### Same grammar, different syntax
 
 :::::: columns
 ::: {.column width="50%"}
@@ -366,11 +335,11 @@ Built on the Grammar of Graphics — the same ideas power Python's ecosystem.
 :::
 ::::::
 
-```{=html}
-<!-- slide 7c -->
-```
-
 ## ggplot2 vs Python — Side by Side {.smaller .scrollable}
+
+[From ggplot2 to Python]{.eyebrow}
+
+### A volcano plot in both languages
 
 :::::: columns
 ::: {.column width="48%"}
@@ -430,17 +399,15 @@ plt.tight_layout()
 :::
 ::::::
 
-```{=html}
-<!-- slide 8 -->
-```
+# The Python Visualization Ecosystem {.divider}
 
-# The Python Visualization Ecosystem {background-color="#28A87D"}
+[The Python viz stack · Day 01]{.eyebrow}
 
-```{=html}
-<!-- slide 9 -->
-```
+## General-Purpose Libraries {.smaller}
 
-## General-Purpose Libraries
+[The Python viz stack]{.eyebrow}
+
+### Matplotlib · Seaborn · Plotly
 
 ```{python}
 #| echo: false
@@ -489,11 +456,11 @@ plt.show()
 All three libraries are installed with: `pip install matplotlib seaborn plotly`
 :::
 
-```{=html}
-<!-- slide 10 -->
-```
+## Genomics-Specific Libraries {.smaller}
 
-## Genomics-Specific Libraries
+[The Python viz stack]{.eyebrow}
+
+### Two pillars of the genomics ecosystem
 
 ```{python}
 #| echo: false
@@ -538,11 +505,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-```{=html}
-<!-- slide 11 -->
-```
+## Setting Up Your Environment {.smaller .scrollable}
 
-## Setting Up Your Environment {.scrollable}
+[The Python viz stack]{.eyebrow}
+
+### Reproducible env in a few commands
 
 **Recommended: conda/mamba for reproducibility**
 
@@ -592,17 +559,15 @@ A complete `environment.yml` file is included in your course materials
 :::
 :::
 
-```{=html}
-<!-- slide 12 -->
-```
+# Introduction to Matplotlib & Seaborn {.divider}
 
-# Introduction to Matplotlib & Seaborn {background-color="#28A87D"}
+[The Python viz stack · Day 01]{.eyebrow}
 
-```{=html}
-<!-- slide 13 -->
-```
+## The Anatomy of a Matplotlib Figure {.smaller}
 
-## The Anatomy of a Matplotlib Figure
+[The Python viz stack]{.eyebrow}
+
+### Figure → Axes → Artists
 
 **Every figure has a clear hierarchy:**
 
@@ -618,7 +583,11 @@ A complete `environment.yml` file is included in your course materials
 **Artists** — Everything visible: lines, text, patches, images; controlled with `ax.set_*()` methods
 :::
 
-## The Anatomy of a Matplotlib Figure — Result {.plot-slide}
+## The Anatomy of a Matplotlib Figure — Result {.plot-slide background-color="#f6f4ee"}
+
+[The Python viz stack]{.eyebrow}
+
+### Anatomy diagram
 
 ```{python}
 #| echo: false
@@ -651,11 +620,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-```{=html}
-<!-- slide 14 -->
-```
+## Building a Plot: Step 1 — Create the Canvas {.smaller .scrollable}
 
-## Building a Plot: Step 1 — Create the Canvas {.scrollable}
+[The Python viz stack]{.eyebrow}
+
+### 1 · Canvas
 
 **Start with a Figure and Axes:**
 ```{python}
@@ -686,11 +655,11 @@ plt.tight_layout(); plt.show()
 
 **Result:** An empty canvas with labelled axes — we've told matplotlib *how big* but not *what* to draw.
 
-```{=html}
-<!-- slide 15 -->
-```
+## Building a Plot: Step 2 — Add Data {.smaller .scrollable}
 
-## Building a Plot: Step 2 — Add Data {.scrollable}
+[The Python viz stack]{.eyebrow}
+
+### 2 · Data
 
 **Plot points with `ax.scatter()`:**
 ```{python}
@@ -727,11 +696,11 @@ plt.tight_layout(); plt.show()
 
 **Result:** Points appear — default blue color, default size.
 
-```{=html}
-<!-- slide 16 -->
-```
+## Building a Plot: Step 3 — Add Color {.smaller .scrollable}
 
-## Building a Plot: Step 3 — Add Color {.scrollable}
+[The Python viz stack]{.eyebrow}
+
+### 3 · Colour
 
 **Color by group using a loop or seaborn:**
 ```{python}
@@ -775,11 +744,11 @@ ax.set_xlabel('X'); ax.set_ylabel('Y')
 plt.tight_layout(); plt.show()
 ```
 
-```{=html}
-<!-- slide 17 -->
-```
+## Building a Plot: Step 4 — Polish & Labels {.smaller .scrollable}
 
-## Building a Plot: Step 4 — Polish & Labels {.scrollable}
+[The Python viz stack]{.eyebrow}
+
+### 4 · Polish
 
 **Add titles, labels, and trend line:**
 ```{python}
@@ -804,7 +773,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-## Building a Plot: Step 4 — Result {.plot-slide}
+## Building a Plot: Step 4 — Result {.plot-slide background-color="#f6f4ee"}
+
+[The Python viz stack]{.eyebrow}
+
+### 4 · Result
 
 ```{python}
 #| echo: false
@@ -837,11 +810,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-```{=html}
-<!-- slide 18 -->
-```
+## Building a Plot: Step 5 — Publication Style {.smaller .scrollable}
 
-## Building a Plot: Step 5 — Publication Style {.scrollable}
+[The Python viz stack]{.eyebrow}
+
+### 5 · Publication style
 
 **Set a clean, consistent style for the whole course:**
 ```{python}
@@ -876,7 +849,11 @@ plt.rcParams.update({
 ```
 :::
 
-## Building a Plot: Step 5 — Result {.plot-slide}
+## Building a Plot: Step 5 — Result {.plot-slide background-color="#f6f4ee"}
+
+[The Python viz stack]{.eyebrow}
+
+### 5 · Result
 
 ```{python}
 #| echo: false
@@ -907,11 +884,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-```{=html}
-<!-- slide 19 -->
-```
+## Common Plot Types in Matplotlib & Seaborn {.plot-slide background-color="#f6f4ee"}
 
-## Common Plot Types in Matplotlib & Seaborn {.plot-slide}
+[The Python viz stack]{.eyebrow}
+
+### Eight common artists at a glance
 
 ```{python}
 #| echo: false
@@ -982,17 +959,15 @@ plt.suptitle('Common Plot Types', fontsize=12, fontweight='bold')
 plt.show()
 ```
 
-```{=html}
-<!-- slide 20 -->
-```
+# How are we going to work? {.divider}
 
-# How are we going to work? {background-color="#28A87D"}
+[Course logistics · Day 01]{.eyebrow}
 
-```{=html}
-<!-- slide 21 -->
-```
+## Course Structure {.smaller}
 
-## Course Structure
+[Course logistics]{.eyebrow}
+
+### Format and Day-1 timeline
 
 **1. Presentations** – I'll present the material; questions welcome throughout or at the end
 
@@ -1023,17 +998,15 @@ plt.show()
 | 17:00 – 18:00 | Pathway plots + peak visualization |
 :::
 
-```{=html}
-<!-- slide 22 -->
-```
+# Volcano Plots {.divider}
 
-# Volcano Plots {background-color="#28A87D"}
+[Differential expression · Day 01]{.eyebrow}
 
-```{=html}
-<!-- slide 23 -->
-```
+## What is a Volcano Plot? {.smaller}
 
-## What is a Volcano Plot?
+[Differential expression]{.eyebrow}
+
+### Effect size meets significance
 
 **Purpose:** Visualize differential expression results — identify statistically significant and biologically meaningful changes at a glance.
 
@@ -1046,7 +1019,11 @@ plt.show()
 
 **Thresholds (typical):** |log₂FC| > 1 (2-fold change) ; p-value < 0.05 → −log₁₀(p) > 1.3
 
-## What is a Volcano Plot? — Result {.plot-slide}
+## What is a Volcano Plot? — Result {.plot-slide background-color="#f6f4ee"}
+
+[Differential expression]{.eyebrow}
+
+### Volcano at a glance
 
 ```{python}
 #| echo: false
@@ -1064,30 +1041,30 @@ log2fc[sig_idx[40:]] -= 3
 pvals[sig_idx] *= 1e-6
 
 neg_log_p = -np.log10(pvals)
-colors = np.where((log2fc >  1) & (neg_log_p > 1.3), BRAND,
-         np.where((log2fc < -1) & (neg_log_p > 1.3), RED, COLORS['text_light']))
+colors = np.where((log2fc >  1) & (neg_log_p > 1.3), RED,
+         np.where((log2fc < -1) & (neg_log_p > 1.3), GREEN, GREY))
 
 fig, ax = plt.subplots(figsize=(6, 5.5))
 ax.scatter(log2fc, neg_log_p, c=colors, s=12, alpha=0.7, linewidths=0)
-ax.axhline(1.3, color='black', linewidth=0.8, linestyle='--')
-ax.axvline( 1,  color='black', linewidth=0.8, linestyle='--')
-ax.axvline(-1,  color='black', linewidth=0.8, linestyle='--')
+ax.axhline(1.3, color=INK, linewidth=0.8, linestyle='--')
+ax.axvline( 1,  color=INK, linewidth=0.8, linestyle='--')
+ax.axvline(-1,  color=INK, linewidth=0.8, linestyle='--')
 ax.set_xlabel('log₂(Fold Change)', fontsize=11)
 ax.set_ylabel('−log₁₀(p-value)',   fontsize=11)
 ax.set_title('Volcano Plot', fontsize=13, fontweight='bold')
 up   = ((log2fc >  1) & (neg_log_p > 1.3)).sum()
 down = ((log2fc < -1) & (neg_log_p > 1.3)).sum()
-ax.text( 4, neg_log_p.max()*0.92, f'↑ {up}',  color=BRAND, fontsize=10, fontweight='bold')
-ax.text(-6, neg_log_p.max()*0.92, f'↓ {down}', color=RED,   fontsize=10, fontweight='bold')
+ax.text( 4, neg_log_p.max()*0.92, f'↑ {up}',  color=RED,   fontsize=10, fontweight='bold')
+ax.text(-6, neg_log_p.max()*0.92, f'↓ {down}', color=GREEN, fontsize=10, fontweight='bold')
 ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-```{=html}
-<!-- slide 24 -->
-```
+## Volcano Plot — Pipeline {.smaller background-color="#f6f4ee"}
 
-## Volcano Plot — Pipeline
+[Differential expression]{.eyebrow}
+
+### Pipeline
 
 ```{python}
 #| echo: false
@@ -1103,6 +1080,10 @@ plt.show()
 ```
 
 ## Volcano Plot: Data Preparation {.smaller .scrollable}
+
+[Differential expression]{.eyebrow}
+
+### Build the DE table
 
 ```{python}
 #| echo: true
@@ -1138,11 +1119,11 @@ print(de_results['regulation'].value_counts())
 # ns     1921
 ```
 
-```{=html}
-<!-- slide 25 -->
-```
-
 ## Volcano Plot: Building the Figure {.smaller .scrollable}
+
+[Differential expression]{.eyebrow}
+
+### Volcano plot in matplotlib
 
 ```{python}
 #| echo: true
@@ -1179,11 +1160,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-```{=html}
-<!-- slide 26 -->
-```
-
 ## Volcano Plot: Labelling Top Genes {.smaller .scrollable}
+
+[Differential expression]{.eyebrow}
+
+### Annotate the most significant hits
 
 ```{python}
 #| echo: true
@@ -1209,7 +1190,7 @@ df['neg_log10_p'] = -np.log10(df['pvalue'])
 df['reg'] = np.where((df['log2FC']> 1)&(df['neg_log10_p']>1.3),'up',
             np.where((df['log2FC']<-1)&(df['neg_log10_p']>1.3),'down','ns'))
 
-cm = {'up':BRAND,'down':RED,'ns':COLORS['text_light']}
+cm = {'up':RED,'down':GREEN,'ns':GREY}
 sm = {'up':35,'down':35,'ns':10}
 
 fig, ax = plt.subplots(figsize=(10, 5.5))
@@ -1225,7 +1206,7 @@ top = df.nlargest(8,'neg_log10_p')
 texts = [ax.text(r['log2FC'], r['neg_log10_p'], r['gene'],
                  fontsize=7, fontweight='bold') for _, r in top.iterrows()]
 try:
-    adjust_text(texts, ax=ax, arrowprops=dict(arrowstyle='->', color=COLORS['text_light'], lw=0.7))
+    adjust_text(texts, ax=ax, arrowprops=dict(arrowstyle='->', color=GREY, lw=0.7))
 except Exception:
     pass
 
@@ -1235,11 +1216,16 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-```{=html}
-<!-- slide 27 -->
-```
+::: {.takeaway}
+[The bottom line]{.tl}
+Color encodes **direction** — red up, green down — and grey is everything that didn't clear the thresholds.
+:::
 
-## Exercise: Volcano Plot {.scrollable}
+## Exercise: Volcano Plot {.smaller .scrollable}
+
+[Differential expression]{.eyebrow}
+
+### Hands-on practice
 
 ::: {.exercise}
 **Coding Exercise — Volcano Plot**
@@ -1326,17 +1312,15 @@ plt.show()
 **Expected time:** 15 minutes
 :::
 
-```{=html}
-<!-- slide 28 -->
-```
+# Dimensionality Reduction {.divider}
 
-# Dimensionality Reduction {background-color="#28A87D"}
+[Dimensionality reduction · Day 01]{.eyebrow}
 
-```{=html}
-<!-- slide 29 -->
-```
+## PCA, t-SNE and UMAP at a Glance {.smaller}
 
-## PCA, t-SNE and UMAP at a Glance
+[Dimensionality reduction]{.eyebrow}
+
+### Three projections on one dataset
 
 ```{python}
 #| echo: false
@@ -1361,7 +1345,7 @@ try:
 except ImportError:
     has_umap = False
 
-palette = [BRAND, ACCENT_YLW, ACCENT_PURP, RED, '#3498DB']
+palette = [GREEN, ACCENT_YLW, PURPLE, RED, BLUE]
 labels  = ['Cluster A','Cluster B','Cluster C','Cluster D','Cluster E']
 
 fig, axes = plt.subplots(1, 3 if has_umap else 2, figsize=(11, 4.5))
@@ -1391,11 +1375,11 @@ plt.tight_layout(); plt.show()
 | **t-SNE** | Local clusters | Medium | Cluster visualization |
 | **UMAP** | Local + some global | Fast | Single-cell, large datasets |
 
-```{=html}
-<!-- slide 30 -->
-```
+## PCA / UMAP — Pipeline {.smaller background-color="#f6f4ee"}
 
-## PCA / UMAP — Pipeline
+[Dimensionality reduction]{.eyebrow}
+
+### Pipeline
 
 ```{python}
 #| echo: false
@@ -1412,6 +1396,10 @@ plt.show()
 ```
 
 ## PCA: Step-by-Step Code {.smaller .scrollable}
+
+[Dimensionality reduction]{.eyebrow}
+
+### PCA from scratch
 
 ```{python}
 #| echo: true
@@ -1453,7 +1441,11 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-## PCA: Step-by-Step — Result {.plot-slide}
+## PCA: Step-by-Step — Result {.plot-slide background-color="#f6f4ee"}
+
+[Dimensionality reduction]{.eyebrow}
+
+### PC1 vs PC2
 
 ```{python}
 #| echo: false
@@ -1486,11 +1478,11 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-```{=html}
-<!-- slide 31 -->
-```
-
 ## PCA: Scree Plot & Variance Explained {.smaller .scrollable}
+
+[Dimensionality reduction]{.eyebrow}
+
+### How many PCs do we keep?
 
 ```{python}
 #| echo: true
@@ -1526,7 +1518,11 @@ ax2.legend(frameon=False); ax2.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-## PCA: Scree Plot — Result {.plot-slide}
+## PCA: Scree Plot — Result {.plot-slide background-color="#f6f4ee"}
+
+[Dimensionality reduction]{.eyebrow}
+
+### Scree + cumulative variance
 
 ```{python}
 #| echo: false
@@ -1559,11 +1555,11 @@ ax2.legend(frameon=False); ax2.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-```{=html}
-<!-- slide 32 -->
-```
-
 ## t-SNE: Theory {.smaller .scrollable}
+
+[Dimensionality reduction]{.eyebrow}
+
+### Local neighbourhoods first
 
 :::::: columns
 :::: {.column width="55%"}
@@ -1611,11 +1607,11 @@ tsne.fit_transform(X_raw)   # ❌
 :::
 ::::::
 
-```{=html}
-<!-- slide 31b -->
-```
-
 ## t-SNE: Code Walkthrough {.smaller .scrollable}
+
+[Dimensionality reduction]{.eyebrow}
+
+### Run t-SNE on PCA-reduced data
 
 ```{python}
 #| echo: true
@@ -1657,11 +1653,11 @@ plt.tight_layout(); plt.show()
 **Tip:** Always run t-SNE on PCA-reduced data for reproducibility and speed on large datasets.
 :::
 
-```{=html}
-<!-- slide 33 -->
-```
-
 ## UMAP: Theory {.smaller .scrollable}
+
+[Dimensionality reduction]{.eyebrow}
+
+### Local and global, faster than t-SNE
 
 :::::: columns
 :::: {.column width="55%"}
@@ -1717,11 +1713,11 @@ sc.pl.umap(adata, color='cell_type')
 :::
 ::::::
 
-```{=html}
-<!-- slide 32b -->
-```
-
 ## UMAP: Code Walkthrough {.smaller .scrollable}
+
+[Dimensionality reduction]{.eyebrow}
+
+### UMAP for single-cell
 
 ```{python}
 #| echo: true
@@ -1759,11 +1755,11 @@ axes[1].set_title('UMAP — colored by sequencing depth', fontweight='bold')
 plt.tight_layout(); plt.show()
 ```
 
-```{=html}
-<!-- slide 34 -->
-```
+## Exercise: Dimensionality Reduction {.smaller .scrollable}
 
-## Exercise: Dimensionality Reduction {.scrollable}
+[Dimensionality reduction]{.eyebrow}
+
+### Hands-on practice
 
 ::: {.exercise}
 **Coding Exercise — Dimensionality Reduction**
@@ -1874,17 +1870,15 @@ plt.show()
 </details>
 :::
 
-```{=html}
-<!-- slide: Admixture intro -->
-```
+# Admixture Plots {.divider}
 
-# Admixture Plots {background-color="#28A87D"}
-
-```{=html}
-<!-- slide: Admixture theory -->
-```
+[Population structure · Day 01]{.eyebrow}
 
 ## Admixture Plots: Theory {.smaller .scrollable}
+
+[Population structure]{.eyebrow}
+
+### Stacked ancestries, individual by individual
 
 :::::: columns
 ::: {.column width="48%"}
@@ -1929,11 +1923,11 @@ df = pd.DataFrame({
 :::
 ::::::
 
-```{=html}
-<!-- slide: Admixture pipeline -->
-```
+## Admixture — Pipeline {.smaller background-color="#f6f4ee"}
 
-## Admixture — Pipeline
+[Population structure]{.eyebrow}
+
+### Pipeline
 
 ```{python}
 #| echo: false
@@ -1948,11 +1942,11 @@ pipeline_flowchart([
 plt.show()
 ```
 
-```{=html}
-<!-- slide: Admixture code -->
-```
-
 ## Admixture: Code Walkthrough {.smaller .scrollable}
+
+[Population structure]{.eyebrow}
+
+### Q-matrix to stacked bars
 
 ```{python}
 #| echo: true
@@ -2010,7 +2004,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-## Admixture: Code Walkthrough — Result {.plot-slide}
+## Admixture: Code Walkthrough — Result {.plot-slide background-color="#f6f4ee"}
+
+[Population structure]{.eyebrow}
+
+### K=5 ancestries across populations
 
 ```{python}
 #| echo: false
@@ -2083,11 +2081,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-```{=html}
-<!-- slide: Admixture exercise -->
-```
+## Exercise: Admixture Plot {.smaller .scrollable}
 
-## Exercise: Admixture Plot {.scrollable}
+[Population structure]{.eyebrow}
+
+### Hands-on practice
 
 ::: {.exercise}
 **Coding Exercise — Admixture**
@@ -2184,17 +2182,15 @@ plt.show()
 </details>
 :::
 
-```{=html}
-<!-- slide 35 -->
-```
+# Heatmaps {.divider}
 
-# Heatmaps {background-color="#28A87D"}
+[Expression heatmaps · Day 01]{.eyebrow}
 
-```{=html}
-<!-- slide 36 -->
-```
+## Heatmap Fundamentals {.smaller}
 
-## Heatmap Fundamentals
+[Expression heatmaps]{.eyebrow}
+
+### Colour, clustering, annotation
 
 **What heatmaps show:** gene × sample expression matrices, correlation matrices, presence/absence patterns, epigenomic signals (ChIP-seq, ATAC-seq).
 
@@ -2207,7 +2203,11 @@ plt.show()
 
 **Libraries:** `seaborn.clustermap` (quick, good defaults) ; `PyComplexHeatmap` (publication-quality with rich annotations).
 
-## Heatmap Fundamentals — Result {.plot-slide}
+## Heatmap Fundamentals — Result {.plot-slide background-color="#f6f4ee"}
+
+[Expression heatmaps]{.eyebrow}
+
+### Clustered heatmap
 
 ```{python}
 #| echo: false
@@ -2238,11 +2238,11 @@ cg.ax_heatmap.set_xlabel('Samples'); cg.ax_heatmap.set_ylabel('Genes')
 plt.show()
 ```
 
-```{=html}
-<!-- slide 37 -->
-```
+## Heatmap / Clustermap — Pipeline {.smaller background-color="#f6f4ee"}
 
-## Heatmap / Clustermap — Pipeline
+[Expression heatmaps]{.eyebrow}
+
+### Pipeline
 
 ```{python}
 #| echo: false
@@ -2258,6 +2258,10 @@ plt.show()
 ```
 
 ## Seaborn Clustermap: Code {.smaller .scrollable}
+
+[Expression heatmaps]{.eyebrow}
+
+### Build it in three moves
 
 ```{python}
 #| echo: true
@@ -2304,7 +2308,11 @@ cg.fig.suptitle('Gene Expression Heatmap', y=1.02,
 plt.show()
 ```
 
-## Seaborn Clustermap — Result {.plot-slide}
+## Seaborn Clustermap — Result {.plot-slide background-color="#f6f4ee"}
+
+[Expression heatmaps]{.eyebrow}
+
+### With group annotation
 
 ```{python}
 #| echo: false
@@ -2343,11 +2351,11 @@ cg.fig.suptitle('Gene Expression Heatmap', y=1.02,
 plt.show()
 ```
 
-```{=html}
-<!-- slide 38 -->
-```
-
 ## PyComplexHeatmap: Rich Annotations {.smaller .scrollable}
+
+[Expression heatmaps]{.eyebrow}
+
+### Annotated to publication-quality
 
 ```{python}
 #| echo: true
@@ -2394,11 +2402,11 @@ cm = ClusterMapPlotter(
 PyComplexHeatmap is a Python port of R's ComplexHeatmap — nearly identical API for R users.
 :::
 
-```{=html}
-<!-- slide 39 -->
-```
+## Exercise: Expression Heatmap {.smaller .scrollable}
 
-## Exercise: Expression Heatmap {.scrollable}
+[Expression heatmaps]{.eyebrow}
+
+### Hands-on practice
 
 ::: {.exercise}
 **Coding Exercise — Expression Heatmap**
@@ -2498,17 +2506,15 @@ plt.show()
 </details>
 :::
 
-```{=html}
-<!-- slide 40 -->
-```
+# Waffle & Waterfall Plots {.divider}
 
-# Waffle & Waterfall Plots {background-color="#28A87D"}
+[Cohort summaries · Day 01]{.eyebrow}
 
-```{=html}
-<!-- slide 41 -->
-```
+## Waffle Charts: Proportions at a Glance {.smaller}
 
-## Waffle Charts: Proportions at a Glance
+[Cohort summaries]{.eyebrow}
+
+### Part-to-whole as a grid
 
 **Purpose:** Show part-to-whole relationships as a grid of squares — more intuitive than pie charts for proportions.
 
@@ -2521,7 +2527,11 @@ plt.show()
 
 **Library:** `PyWaffle` — `pip install pywaffle`
 
-## Waffle Charts — Result {.plot-slide}
+## Waffle Charts — Result {.plot-slide background-color="#f6f4ee"}
+
+[Cohort summaries]{.eyebrow}
+
+### PBMC cell-type composition
 
 ```{python}
 #| echo: false
@@ -2554,11 +2564,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-```{=html}
-<!-- slide: Waffle pipeline -->
-```
+## Waffle Chart — Pipeline {.smaller background-color="#f6f4ee"}
 
-## Waffle Chart — Pipeline
+[Cohort summaries]{.eyebrow}
+
+### Pipeline
 
 ```{python}
 #| echo: false
@@ -2572,11 +2582,11 @@ pipeline_flowchart([
 plt.show()
 ```
 
-```{=html}
-<!-- slide 42 -->
-```
-
 ## Waffle Chart: Code Walkthrough {.smaller .scrollable}
+
+[Cohort summaries]{.eyebrow}
+
+### Waffle in PyWaffle
 
 ```{python}
 #| echo: true
@@ -2617,11 +2627,11 @@ plt.savefig('waffle_pbmc.pdf', bbox_inches='tight')
 plt.show()
 ```
 
-```{=html}
-<!-- slide 43 -->
-```
+## Waterfall Plots: Mutation Landscapes {.smaller}
 
-## Waterfall Plots: Mutation Landscapes
+[Cohort summaries]{.eyebrow}
+
+### Mutation burden as ranked bars
 
 **Purpose:** Display somatic mutation burden across a patient cohort — a staple of cancer genomics papers.
 
@@ -2632,7 +2642,11 @@ plt.show()
 - Color can encode cancer subtype, treatment response, or driver mutation
 - Often paired with an **OncoPrint** (mutation matrix below)
 
-## Waterfall Plot — Result {.plot-slide}
+## Waterfall Plot — Result {.plot-slide background-color="#f6f4ee"}
+
+[Cohort summaries]{.eyebrow}
+
+### TMB ranked, coloured by subtype
 
 ```{python}
 #| echo: false
@@ -2663,11 +2677,11 @@ ax.legend(handles=legend_elements, fontsize=8, frameon=False,
 plt.tight_layout(); plt.show()
 ```
 
-```{=html}
-<!-- slide: Waterfall pipeline -->
-```
+## Waterfall Plot — Pipeline {.smaller background-color="#f6f4ee"}
 
-## Waterfall Plot — Pipeline
+[Cohort summaries]{.eyebrow}
+
+### Pipeline
 
 ```{python}
 #| echo: false
@@ -2681,11 +2695,11 @@ pipeline_flowchart([
 plt.show()
 ```
 
-```{=html}
-<!-- slide 44 -->
-```
-
 ## Waterfall Plot: Code {.smaller .scrollable}
+
+[Cohort summaries]{.eyebrow}
+
+### From TMB table to ranked bars
 
 ```{python}
 #| echo: true
@@ -2728,11 +2742,11 @@ ax.legend(handles=legend_elements, frameon=False, loc='upper right')
 plt.tight_layout(); plt.show()
 ```
 
-```{=html}
-<!-- slide 45 -->
-```
+## Exercise: Waffle & Waterfall {.smaller .scrollable}
 
-## Exercise: Waffle & Waterfall {.scrollable}
+[Cohort summaries]{.eyebrow}
+
+### Hands-on practice
 
 ::: {.exercise}
 **Coding Exercise — Waffle & Waterfall**
@@ -2860,17 +2874,15 @@ plt.show()
 </details>
 :::
 
-```{=html}
-<!-- slide 46 -->
-```
+# Peak Visualization {.divider}
 
-# Peak Visualization {background-color="#28A87D"}
-
-```{=html}
-<!-- slide 47 -->
-```
+[ChIP / ATAC peaks · Day 01]{.eyebrow}
 
 ## What Are Genomic Peaks? {.smaller .scrollable}
+
+[ChIP / ATAC peaks]{.eyebrow}
+
+### Signal regions in epigenomics
 
 :::::: columns
 :::: {.column width="50%"}
@@ -2947,11 +2959,11 @@ plt.show()
 :::
 ::::::
 
-```{=html}
-<!-- slide 48 -->
-```
-
 ## pyGenomeTracks: Configuration {.smaller .scrollable}
+
+[ChIP / ATAC peaks]{.eyebrow}
+
+### INI-style multi-track configs
 
 **pyGenomeTracks uses INI-style config files:**
 
@@ -2964,7 +2976,7 @@ config = """
 [bigwig track]
 file = H3K27ac.bw
 height = 3
-color = #28A87D
+color = #208462
 title = H3K27ac
 
 [spacer]
@@ -2973,7 +2985,7 @@ height = 0.3
 [bigwig track 2]
 file = ATAC.bw
 height = 3
-color = #7754BF
+color = #7754bf
 title = ATAC-seq
 
 [genes]
@@ -3005,11 +3017,11 @@ subprocess.run([
 pyGenomeTracks is particularly powerful when overlaying multiple epigenomic datasets. See the [documentation](https://pygenometracks.readthedocs.io) for all track types.
 :::
 
-```{=html}
-<!-- slide: Peak pipeline -->
-```
+## Peak Visualization — Pipeline {.smaller background-color="#f6f4ee"}
 
-## Peak Visualization — Pipeline
+[ChIP / ATAC peaks]{.eyebrow}
+
+### Pipeline
 
 ```{python}
 #| echo: false
@@ -3023,11 +3035,11 @@ pipeline_flowchart([
 plt.show()
 ```
 
-```{=html}
-<!-- slide 49 -->
-```
-
 ## Custom Peak Plot with Matplotlib {.smaller .scrollable}
+
+[ChIP / ATAC peaks]{.eyebrow}
+
+### Stacked tracks from scratch
 
 ```{python}
 #| echo: true
@@ -3074,7 +3086,11 @@ fig.suptitle('Epigenomic Signal Tracks — chr1:0-10 kb', fontsize=11, fontweigh
 plt.tight_layout(); plt.show()
 ```
 
-## Custom Peak Plot — Result {.plot-slide}
+## Custom Peak Plot — Result {.plot-slide background-color="#f6f4ee"}
+
+[ChIP / ATAC peaks]{.eyebrow}
+
+### Multi-track browser view
 
 ```{python}
 #| echo: false
@@ -3122,11 +3138,11 @@ fig.suptitle('Epigenomic Signal Tracks — chr1:0-10 kb', fontsize=11, fontweigh
 plt.tight_layout(); plt.show()
 ```
 
-```{=html}
-<!-- slide 49b -->
-```
+## Exercise: Peak Visualization {.smaller .scrollable}
 
-## Exercise: Peak Visualization {.scrollable}
+[ChIP / ATAC peaks]{.eyebrow}
+
+### Hands-on practice
 
 ::: {.exercise}
 **Coding Exercise — Peak Visualization**
@@ -3281,17 +3297,15 @@ plt.show()
 **Expected time:** 20 minutes
 :::
 
-```{=html}
-<!-- slide 50 -->
-```
+# Pathway & Annotation Plots {.divider}
 
-# Pathway & Annotation Plots {background-color="#28A87D"}
-
-```{=html}
-<!-- slide 51 -->
-```
+[Functional enrichment · Day 01]{.eyebrow}
 
 ## Gene Ontology & Pathway Enrichment {.smaller}
+
+[Functional enrichment]{.eyebrow}
+
+### From gene list to biology
 
 :::::: columns
 :::: {.column width="50%"}
@@ -3350,11 +3364,11 @@ plt.tight_layout(); plt.show()
 :::
 ::::::
 
-```{=html}
-<!-- slide 52 -->
-```
+## Pathway Enrichment — Pipeline {.smaller background-color="#f6f4ee"}
 
-## Pathway Enrichment — Pipeline
+[Functional enrichment]{.eyebrow}
+
+### Pipeline
 
 ```{python}
 #| echo: false
@@ -3370,6 +3384,10 @@ plt.show()
 ```
 
 ## gget: Enrichment in One Line {.smaller .scrollable}
+
+[Functional enrichment]{.eyebrow}
+
+### From gene list to KEGG bars
 
 ```{python}
 #| echo: true
@@ -3413,11 +3431,11 @@ ax.legend(frameon=False); ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-```{=html}
-<!-- slide 53 -->
-```
-
 ## Bubble Plot: Enrichment with Gene Counts {.smaller .scrollable}
+
+[Functional enrichment]{.eyebrow}
+
+### Encode size and category, too
 
 ```{python}
 #| echo: true
@@ -3464,7 +3482,11 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-## Bubble Plot — Result {.plot-slide}
+## Bubble Plot — Result {.plot-slide background-color="#f6f4ee"}
+
+[Functional enrichment]{.eyebrow}
+
+### Pathways · gene ratio · counts
 
 ```{python}
 #| echo: false
@@ -3513,11 +3535,11 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-```{=html}
-<!-- slide 54 -->
-```
+## Exercise: Pathway Visualization {.smaller .scrollable}
 
-## Exercise: Pathway Visualization {.scrollable}
+[Functional enrichment]{.eyebrow}
+
+### Hands-on practice
 
 ::: {.exercise}
 **Coding Exercise — Pathway Visualization**
@@ -3659,17 +3681,15 @@ plt.show()
 </details>
 :::
 
-```{=html}
-<!-- slide 55 -->
-```
+# Day 1 Recap {.divider}
 
-# Day 1 Recap {background-color="#28A87D"}
+[Day 01 · wrap]{.eyebrow}
 
-```{=html}
-<!-- slide 56 -->
-```
+## What We Covered Today {.smaller}
 
-## What We Covered Today
+[Day 01 · wrap]{.eyebrow}
+
+### Today's tour, in two cards
 
 ::: {.recap}
 **Python visualization ecosystem**
@@ -3696,11 +3716,11 @@ plt.show()
 :::
 :::
 
-```{=html}
-<!-- slide 57 -->
-```
-
 ## Looking Ahead {.smaller}
+
+[Day 01 · wrap]{.eyebrow}
+
+### Days 2 and 3 preview
 
 **Day 2 (Tuesday 13:00 – 18:00):**
 
@@ -3733,11 +3753,11 @@ notebooks/day1_python_genomics_viz.ipynb
 Questions? → loukesio@gmail.com &ensp;|&ensp; Course materials: GitHub/loukesio
 :::
 
-```{=html}
-<!-- slide 58 -->
-```
+## Resources {.smaller .center}
 
-## Resources {.smaller}
+[Day 01 · wrap]{.eyebrow}
+
+### Where to go next
 
 :::::: columns
 ::: {.column width="50%"}
