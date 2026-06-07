@@ -86,10 +86,12 @@ def pipeline_flowchart(steps, figsize=None):
     return fig
 ```
 
+<!-- slide 1 -->
 # Why do we need data visualisations? {.divider}
 
 [Why we visualize · Day 01]{.eyebrow}
 
+<!-- slide 2 -->
 ## Anscombe's Quartet {.smaller}
 
 [Why we visualize]{.eyebrow}
@@ -138,6 +140,7 @@ plt.show()
 Source: Anscombe, F. J. (1973). Graphs in Statistical Analysis. *The American Statistician*, 27(1), 17–21.
 :::
 
+<!-- slide 3 -->
 ## The Datasaurus Dozen {.smaller}
 
 [Why we visualize]{.eyebrow}
@@ -206,10 +209,12 @@ plt.show()
 Source: Matejka & Fitzmaurice (2017). [Same Stats, Different Graphs](https://www.research.autodesk.com/publications/same-stats-different-graphs/). ACM CHI 2017.
 :::
 
+<!-- slide 4 -->
 # Big data in biology {.divider}
 
 [Why we visualize · scale]{.eyebrow}
 
+<!-- slide 5 -->
 ## The Genomics Data Explosion {.smaller}
 
 [Why we visualize]{.eyebrow}
@@ -238,6 +243,7 @@ For years we struggled to collect biological data, but now our biggest bottlenec
 :::
 ::::::
 
+<!-- slide 6 -->
 ## Why Python for Genomics Visualization? {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -294,6 +300,7 @@ import toytree                 # phylogenetics
 :::
 ::::::
 
+<!-- slide 7 -->
 ## From ggplot2 to Python — The Mental Map {.smaller .scrollable}
 
 [From ggplot2 to Python]{.eyebrow}
@@ -335,6 +342,7 @@ Built on the Grammar of Graphics — the same ideas power Python's ecosystem.
 :::
 ::::::
 
+<!-- slide 8 -->
 ## ggplot2 vs Python — Side by Side {.smaller .scrollable}
 
 [From ggplot2 to Python]{.eyebrow}
@@ -399,10 +407,12 @@ plt.tight_layout()
 :::
 ::::::
 
+<!-- slide 9 -->
 # The Python Visualization Ecosystem {.divider}
 
 [The Python viz stack · Day 01]{.eyebrow}
 
+<!-- slide 10 -->
 ## General-Purpose Libraries {.smaller}
 
 [The Python viz stack]{.eyebrow}
@@ -456,6 +466,7 @@ plt.show()
 All three libraries are installed with: `pip install matplotlib seaborn plotly`
 :::
 
+<!-- slide 11 -->
 ## Genomics-Specific Libraries {.smaller}
 
 [The Python viz stack]{.eyebrow}
@@ -505,6 +516,7 @@ plt.tight_layout()
 plt.show()
 ```
 
+<!-- slide 12 -->
 ## Setting Up Your Environment {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -559,10 +571,12 @@ A complete `environment.yml` file is included in your course materials
 :::
 :::
 
+<!-- slide 13 -->
 # Introduction to Matplotlib & Seaborn {.divider}
 
 [The Python viz stack · Day 01]{.eyebrow}
 
+<!-- slide 14.1 -->
 ## The Anatomy of a Matplotlib Figure {.smaller}
 
 [The Python viz stack]{.eyebrow}
@@ -583,6 +597,7 @@ A complete `environment.yml` file is included in your course materials
 **Artists** — Everything visible: lines, text, patches, images; controlled with `ax.set_*()` methods
 :::
 
+<!-- slide 14.2 -->
 ## The Anatomy of a Matplotlib Figure — Result {.plot-slide background-color="#f6f4ee"}
 
 [The Python viz stack]{.eyebrow}
@@ -620,6 +635,7 @@ plt.tight_layout()
 plt.show()
 ```
 
+<!-- slide 15 -->
 ## Building a Plot: Step 1 — Create the Canvas {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -655,6 +671,7 @@ plt.tight_layout(); plt.show()
 
 **Result:** An empty canvas with labelled axes — we've told matplotlib *how big* but not *what* to draw.
 
+<!-- slide 16 -->
 ## Building a Plot: Step 2 — Add Data {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -696,6 +713,7 @@ plt.tight_layout(); plt.show()
 
 **Result:** Points appear — default blue color, default size.
 
+<!-- slide 17 -->
 ## Building a Plot: Step 3 — Add Color {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -744,6 +762,7 @@ ax.set_xlabel('X'); ax.set_ylabel('Y')
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 18.1 -->
 ## Building a Plot: Step 4 — Polish & Labels {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -773,6 +792,7 @@ plt.tight_layout()
 plt.show()
 ```
 
+<!-- slide 18.2 -->
 ## Building a Plot: Step 4 — Result {.plot-slide background-color="#f6f4ee"}
 
 [The Python viz stack]{.eyebrow}
@@ -810,6 +830,7 @@ plt.tight_layout()
 plt.show()
 ```
 
+<!-- slide 19.1 -->
 ## Building a Plot: Step 5 — Publication Style {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -849,6 +870,7 @@ plt.rcParams.update({
 ```
 :::
 
+<!-- slide 19.2 -->
 ## Building a Plot: Step 5 — Result {.plot-slide background-color="#f6f4ee"}
 
 [The Python viz stack]{.eyebrow}
@@ -884,6 +906,7 @@ plt.tight_layout()
 plt.show()
 ```
 
+<!-- slide 20 -->
 ## Common Plot Types in Matplotlib & Seaborn {.plot-slide background-color="#f6f4ee"}
 
 [The Python viz stack]{.eyebrow}
@@ -959,10 +982,12 @@ plt.suptitle('Common Plot Types', fontsize=12, fontweight='bold')
 plt.show()
 ```
 
+<!-- slide 21 -->
 # How are we going to work? {.divider}
 
 [Course logistics · Day 01]{.eyebrow}
 
+<!-- slide 22 -->
 ## Course Structure {.smaller}
 
 [Course logistics]{.eyebrow}
@@ -998,10 +1023,12 @@ plt.show()
 | 17:00 – 18:00 | Pathway plots + peak visualization |
 :::
 
+<!-- slide 23 -->
 # Volcano Plots {.divider}
 
 [Differential expression · Day 01]{.eyebrow}
 
+<!-- slide 24.1 -->
 ## What is a Volcano Plot? {.smaller}
 
 [Differential expression]{.eyebrow}
@@ -1019,6 +1046,7 @@ plt.show()
 
 **Thresholds (typical):** |log₂FC| > 1 (2-fold change) ; p-value < 0.05 → −log₁₀(p) > 1.3
 
+<!-- slide 24.2 -->
 ## What is a Volcano Plot? — Result {.plot-slide background-color="#f6f4ee"}
 
 [Differential expression]{.eyebrow}
@@ -1060,6 +1088,7 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 25 -->
 ## Volcano Plot — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Differential expression]{.eyebrow}
@@ -1079,6 +1108,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
+<!-- slide 26 -->
 ## Volcano Plot: Data Preparation {.smaller .scrollable}
 
 [Differential expression]{.eyebrow}
@@ -1119,6 +1149,7 @@ print(de_results['regulation'].value_counts())
 # ns     1921
 ```
 
+<!-- slide 27 -->
 ## Volcano Plot: Building the Figure {.smaller .scrollable}
 
 [Differential expression]{.eyebrow}
@@ -1160,6 +1191,7 @@ plt.tight_layout()
 plt.show()
 ```
 
+<!-- slide 28 -->
 ## Volcano Plot: Labelling Top Genes {.smaller .scrollable}
 
 [Differential expression]{.eyebrow}
@@ -1221,6 +1253,7 @@ plt.tight_layout(); plt.show()
 Color encodes **direction** — red up, green down — and grey is everything that didn't clear the thresholds.
 :::
 
+<!-- slide 29 -->
 ## Exercise: Volcano Plot {.smaller .scrollable}
 
 [Differential expression]{.eyebrow}
@@ -1312,10 +1345,12 @@ plt.show()
 **Expected time:** 15 minutes
 :::
 
+<!-- slide 30 -->
 # Dimensionality Reduction {.divider}
 
 [Dimensionality reduction · Day 01]{.eyebrow}
 
+<!-- slide 31 -->
 ## PCA, t-SNE and UMAP at a Glance {.smaller}
 
 [Dimensionality reduction]{.eyebrow}
@@ -1375,6 +1410,7 @@ plt.tight_layout(); plt.show()
 | **t-SNE** | Local clusters | Medium | Cluster visualization |
 | **UMAP** | Local + some global | Fast | Single-cell, large datasets |
 
+<!-- slide 32 -->
 ## PCA / UMAP — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Dimensionality reduction]{.eyebrow}
@@ -1395,6 +1431,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
+<!-- slide 33.1 -->
 ## PCA: Step-by-Step Code {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -1441,6 +1478,7 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 33.2 -->
 ## PCA: Step-by-Step — Result {.plot-slide background-color="#f6f4ee"}
 
 [Dimensionality reduction]{.eyebrow}
@@ -1478,6 +1516,7 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 34.1 -->
 ## PCA: Scree Plot & Variance Explained {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -1518,6 +1557,7 @@ ax2.legend(frameon=False); ax2.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 34.2 -->
 ## PCA: Scree Plot — Result {.plot-slide background-color="#f6f4ee"}
 
 [Dimensionality reduction]{.eyebrow}
@@ -1555,6 +1595,7 @@ ax2.legend(frameon=False); ax2.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 35 -->
 ## t-SNE: Theory {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -1607,6 +1648,7 @@ tsne.fit_transform(X_raw)   # ❌
 :::
 ::::::
 
+<!-- slide 36 -->
 ## t-SNE: Code Walkthrough {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -1653,6 +1695,7 @@ plt.tight_layout(); plt.show()
 **Tip:** Always run t-SNE on PCA-reduced data for reproducibility and speed on large datasets.
 :::
 
+<!-- slide 37 -->
 ## UMAP: Theory {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -1713,6 +1756,7 @@ sc.pl.umap(adata, color='cell_type')
 :::
 ::::::
 
+<!-- slide 38 -->
 ## UMAP: Code Walkthrough {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -1755,6 +1799,7 @@ axes[1].set_title('UMAP — colored by sequencing depth', fontweight='bold')
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 39 -->
 ## Exercise: Dimensionality Reduction {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -1870,10 +1915,12 @@ plt.show()
 </details>
 :::
 
+<!-- slide 40 -->
 # Admixture Plots {.divider}
 
 [Population structure · Day 01]{.eyebrow}
 
+<!-- slide 41 -->
 ## Admixture Plots: Theory {.smaller .scrollable}
 
 [Population structure]{.eyebrow}
@@ -1923,6 +1970,7 @@ df = pd.DataFrame({
 :::
 ::::::
 
+<!-- slide 42 -->
 ## Admixture — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Population structure]{.eyebrow}
@@ -1942,6 +1990,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
+<!-- slide 43.1 -->
 ## Admixture: Code Walkthrough {.smaller .scrollable}
 
 [Population structure]{.eyebrow}
@@ -2004,6 +2053,7 @@ plt.tight_layout()
 plt.show()
 ```
 
+<!-- slide 43.2 -->
 ## Admixture: Code Walkthrough — Result {.plot-slide background-color="#f6f4ee"}
 
 [Population structure]{.eyebrow}
@@ -2081,6 +2131,7 @@ plt.tight_layout()
 plt.show()
 ```
 
+<!-- slide 44 -->
 ## Exercise: Admixture Plot {.smaller .scrollable}
 
 [Population structure]{.eyebrow}
@@ -2182,10 +2233,12 @@ plt.show()
 </details>
 :::
 
+<!-- slide 45 -->
 # Heatmaps {.divider}
 
 [Expression heatmaps · Day 01]{.eyebrow}
 
+<!-- slide 46.1 -->
 ## Heatmap Fundamentals {.smaller}
 
 [Expression heatmaps]{.eyebrow}
@@ -2203,6 +2256,7 @@ plt.show()
 
 **Libraries:** `seaborn.clustermap` (quick, good defaults) ; `PyComplexHeatmap` (publication-quality with rich annotations).
 
+<!-- slide 46.2 -->
 ## Heatmap Fundamentals — Result {.plot-slide background-color="#f6f4ee"}
 
 [Expression heatmaps]{.eyebrow}
@@ -2238,6 +2292,7 @@ cg.ax_heatmap.set_xlabel('Samples'); cg.ax_heatmap.set_ylabel('Genes')
 plt.show()
 ```
 
+<!-- slide 47 -->
 ## Heatmap / Clustermap — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Expression heatmaps]{.eyebrow}
@@ -2257,6 +2312,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
+<!-- slide 48.1 -->
 ## Seaborn Clustermap: Code {.smaller .scrollable}
 
 [Expression heatmaps]{.eyebrow}
@@ -2308,6 +2364,7 @@ cg.fig.suptitle('Gene Expression Heatmap', y=1.02,
 plt.show()
 ```
 
+<!-- slide 48.2 -->
 ## Seaborn Clustermap — Result {.plot-slide background-color="#f6f4ee"}
 
 [Expression heatmaps]{.eyebrow}
@@ -2351,6 +2408,7 @@ cg.fig.suptitle('Gene Expression Heatmap', y=1.02,
 plt.show()
 ```
 
+<!-- slide 49 -->
 ## PyComplexHeatmap: Rich Annotations {.smaller .scrollable}
 
 [Expression heatmaps]{.eyebrow}
@@ -2402,6 +2460,7 @@ cm = ClusterMapPlotter(
 PyComplexHeatmap is a Python port of R's ComplexHeatmap — nearly identical API for R users.
 :::
 
+<!-- slide 50 -->
 ## Exercise: Expression Heatmap {.smaller .scrollable}
 
 [Expression heatmaps]{.eyebrow}
@@ -2506,10 +2565,12 @@ plt.show()
 </details>
 :::
 
+<!-- slide 51 -->
 # Waffle & Waterfall Plots {.divider}
 
 [Cohort summaries · Day 01]{.eyebrow}
 
+<!-- slide 52.1 -->
 ## Waffle Charts: Proportions at a Glance {.smaller}
 
 [Cohort summaries]{.eyebrow}
@@ -2527,6 +2588,7 @@ plt.show()
 
 **Library:** `PyWaffle` — `pip install pywaffle`
 
+<!-- slide 52.2 -->
 ## Waffle Charts — Result {.plot-slide background-color="#f6f4ee"}
 
 [Cohort summaries]{.eyebrow}
@@ -2564,6 +2626,7 @@ plt.tight_layout()
 plt.show()
 ```
 
+<!-- slide 53 -->
 ## Waffle Chart — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Cohort summaries]{.eyebrow}
@@ -2582,6 +2645,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
+<!-- slide 54 -->
 ## Waffle Chart: Code Walkthrough {.smaller .scrollable}
 
 [Cohort summaries]{.eyebrow}
@@ -2627,6 +2691,7 @@ plt.savefig('waffle_pbmc.pdf', bbox_inches='tight')
 plt.show()
 ```
 
+<!-- slide 55.1 -->
 ## Waterfall Plots: Mutation Landscapes {.smaller}
 
 [Cohort summaries]{.eyebrow}
@@ -2642,6 +2707,7 @@ plt.show()
 - Color can encode cancer subtype, treatment response, or driver mutation
 - Often paired with an **OncoPrint** (mutation matrix below)
 
+<!-- slide 55.2 -->
 ## Waterfall Plot — Result {.plot-slide background-color="#f6f4ee"}
 
 [Cohort summaries]{.eyebrow}
@@ -2677,6 +2743,7 @@ ax.legend(handles=legend_elements, fontsize=8, frameon=False,
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 56 -->
 ## Waterfall Plot — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Cohort summaries]{.eyebrow}
@@ -2695,6 +2762,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
+<!-- slide 57 -->
 ## Waterfall Plot: Code {.smaller .scrollable}
 
 [Cohort summaries]{.eyebrow}
@@ -2742,6 +2810,7 @@ ax.legend(handles=legend_elements, frameon=False, loc='upper right')
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 58 -->
 ## Exercise: Waffle & Waterfall {.smaller .scrollable}
 
 [Cohort summaries]{.eyebrow}
@@ -2874,10 +2943,12 @@ plt.show()
 </details>
 :::
 
+<!-- slide 59 -->
 # Peak Visualization {.divider}
 
 [ChIP / ATAC peaks · Day 01]{.eyebrow}
 
+<!-- slide 60 -->
 ## What Are Genomic Peaks? {.smaller .scrollable}
 
 [ChIP / ATAC peaks]{.eyebrow}
@@ -2959,6 +3030,7 @@ plt.show()
 :::
 ::::::
 
+<!-- slide 61 -->
 ## pyGenomeTracks: Configuration {.smaller .scrollable}
 
 [ChIP / ATAC peaks]{.eyebrow}
@@ -3017,6 +3089,7 @@ subprocess.run([
 pyGenomeTracks is particularly powerful when overlaying multiple epigenomic datasets. See the [documentation](https://pygenometracks.readthedocs.io) for all track types.
 :::
 
+<!-- slide 62 -->
 ## Peak Visualization — Pipeline {.smaller background-color="#f6f4ee"}
 
 [ChIP / ATAC peaks]{.eyebrow}
@@ -3035,6 +3108,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
+<!-- slide 63.1 -->
 ## Custom Peak Plot with Matplotlib {.smaller .scrollable}
 
 [ChIP / ATAC peaks]{.eyebrow}
@@ -3086,6 +3160,7 @@ fig.suptitle('Epigenomic Signal Tracks — chr1:0-10 kb', fontsize=11, fontweigh
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 63.2 -->
 ## Custom Peak Plot — Result {.plot-slide background-color="#f6f4ee"}
 
 [ChIP / ATAC peaks]{.eyebrow}
@@ -3138,6 +3213,7 @@ fig.suptitle('Epigenomic Signal Tracks — chr1:0-10 kb', fontsize=11, fontweigh
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 64 -->
 ## Exercise: Peak Visualization {.smaller .scrollable}
 
 [ChIP / ATAC peaks]{.eyebrow}
@@ -3297,10 +3373,12 @@ plt.show()
 **Expected time:** 20 minutes
 :::
 
+<!-- slide 65 -->
 # Pathway & Annotation Plots {.divider}
 
 [Functional enrichment · Day 01]{.eyebrow}
 
+<!-- slide 66 -->
 ## Gene Ontology & Pathway Enrichment {.smaller}
 
 [Functional enrichment]{.eyebrow}
@@ -3364,6 +3442,7 @@ plt.tight_layout(); plt.show()
 :::
 ::::::
 
+<!-- slide 67 -->
 ## Pathway Enrichment — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Functional enrichment]{.eyebrow}
@@ -3383,6 +3462,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
+<!-- slide 68 -->
 ## gget: Enrichment in One Line {.smaller .scrollable}
 
 [Functional enrichment]{.eyebrow}
@@ -3431,6 +3511,7 @@ ax.legend(frameon=False); ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 69.1 -->
 ## Bubble Plot: Enrichment with Gene Counts {.smaller .scrollable}
 
 [Functional enrichment]{.eyebrow}
@@ -3482,6 +3563,7 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 69.2 -->
 ## Bubble Plot — Result {.plot-slide background-color="#f6f4ee"}
 
 [Functional enrichment]{.eyebrow}
@@ -3535,6 +3617,7 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
+<!-- slide 70 -->
 ## Exercise: Pathway Visualization {.smaller .scrollable}
 
 [Functional enrichment]{.eyebrow}
@@ -3681,10 +3764,12 @@ plt.show()
 </details>
 :::
 
+<!-- slide 71 -->
 # Day 1 Recap {.divider}
 
 [Day 01 · wrap]{.eyebrow}
 
+<!-- slide 72 -->
 ## What We Covered Today {.smaller}
 
 [Day 01 · wrap]{.eyebrow}
@@ -3716,6 +3801,7 @@ plt.show()
 :::
 :::
 
+<!-- slide 73 -->
 ## Looking Ahead {.smaller}
 
 [Day 01 · wrap]{.eyebrow}
@@ -3753,6 +3839,7 @@ notebooks/day1_python_genomics_viz.ipynb
 Questions? → loukesio@gmail.com &ensp;|&ensp; Course materials: GitHub/loukesio
 :::
 
+<!-- slide 74 -->
 ## Resources {.smaller .center}
 
 [Day 01 · wrap]{.eyebrow}
