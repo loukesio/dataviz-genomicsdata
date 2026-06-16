@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genomics_course"
+version = "0.1.0"
+description = "Teaching datasets and styled plots for the genomics course"
+requires-python = ">=3.9"
+dependencies = ["matplotlib>=3.6", "numpy", "pandas", "pyarrow"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+genomics_course = ["data/files/*.parquet"]

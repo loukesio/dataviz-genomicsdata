@@ -1,0 +1,635 @@
+/*═══════════════════════════════════════════════════════════════════════════
+  QUARTO REVEAL.JS PRESENTATION THEME
+  Custom SCSS theme for academic/scientific presentations
+
+  STRUCTURE:
+  1. Font Imports & Typography Variables
+  2. Color System & Brand Identity
+  3. Layout & Spacing Configuration
+  4. Title Slide Styling
+  5. Section Dividers & Backgrounds
+  6. Content Typography (headings, paragraphs, lists)
+  7. Interactive Elements (links, hover effects)
+  8. Tables & Data Display
+  9. Code & Syntax Highlighting
+  10. Media Elements (figures, captions)
+  11. UI Components (tabs, details, footers)
+  12. Custom Callout Boxes
+  13. Utility Classes & Helpers
+  14. Accessibility & Responsive Fixes
+═══════════════════════════════════════════════════════════════════════════*/
+
+
+/*-- scss:defaults --*/
+/* Everything here is for variables / defaults only (no selectors) */
+
+/*═══════════════════════════════════════════════════════════════════════════
+  1. FONT IMPORTS & TYPOGRAPHY VARIABLES
+═══════════════════════════════════════════════════════════════════════════*/
+
+@import url('https://fonts.googleapis.com/css2?family=Asap:ital,wdth,wght@0,87.5,400;0,87.5,500;0,87.5,600;0,87.5,700;0,87.5,800;0,87.5,900;0,100,400;0,100,500;0,100,600;0,100,700;0,100,800;0,100,900;1,87.5,400;1,87.5,500;1,87.5,600;1,87.5,700;1,87.5,800;1,87.5,900;1,100,400;1,100,500;1,100,600;1,100,700;1,100,800;1,100,900&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;0,7..72,700;0,7..72,800;0,7..72,900;1,7..72,400;1,7..72,500;1,7..72,600;1,7..72,700;1,7..72,800;1,7..72,900&family=Spline+Sans+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=Spline+Sans:wght@400;500;600;700&display=swap');
+
+/* Font family stacks with fallbacks */
+$font-family-sans-serif: 'Asap', 'Asap Condensed', 'Spline Sans', 'Tahoma', 'Arial', sans-serif;
+$font-family-serif: 'Literata', 'Bodoni MT', 'Bodoni 72', 'Georgia', 'Times', serif;
+$font-family-mono: 'Spline Sans Mono', 'Consolas', 'Monaco', monospace;
+
+
+/*═══════════════════════════════════════════════════════════════════════════
+  2. COLOR SYSTEM & BRAND IDENTITY
+═══════════════════════════════════════════════════════════════════════════*/
+
+/* Primary brand colors */
+$color-brand-primary: #28A87D;           // Main teal green
+$color-brand-light: #79dfbd;             // Light teal for hovers
+$color-brand-bg-light: #d9f6ec;          // Very light teal for backgrounds
+
+/* Accent colors for specific slide types */
+$color-accent-warm: #FFD4B3;             // Warm peach for title slide
+$color-accent-yellow: #FFD166;           // Yellow for polls/warnings
+$color-accent-yellow-light: #FFEDC2;     // Light yellow background
+$color-accent-purple: #663399;           // Purple for recap sections
+$color-accent-purple-light: #e6d9f2;     // Light purple background
+$color-accent-sand: #EDCBA0;             // Sandy beige for dark backgrounds
+
+/* Neutral grays */
+$color-gray-dark: #606060;               // Dark gray for text
+$color-gray-medium: #878787;             // Medium gray for captions
+$color-gray-light: #a0a0a0;              // Light gray for UI elements
+$color-gray-bg: #f8f8f8;                 // Light background
+$color-gray-text-light: #e2e2e2;         // Light text on dark backgrounds
+
+/* Semantic color assignments */
+$presentation-heading-color: $color-brand-primary;
+$presentation-heading-font-weight: 800;
+$presentation-selection-background-color: #C2D8D0;  // Text selection highlight
+
+/* Link colors */
+$link-color: $color-brand-primary;
+$link-color-dark: $color-brand-light;
+$link-color-visited: $color-brand-primary;
+$link-color-hover: $color-brand-primary;
+
+
+/*═══════════════════════════════════════════════════════════════════════════
+  3. LAYOUT & SPACING CONFIGURATION
+═══════════════════════════════════════════════════════════════════════════*/
+
+$presentation-title-slide-text-align: "center";
+$presentation-block-margin: 12px;        // breathing room between content blocks
+
+/* Slide-level font size — controls all em-based sizing */
+$presentation-font-size-root: 36px;
+
+
+/*-- scss:rules --*/
+/* Everything below are actual CSS rules (selectors) */
+
+/*═══════════════════════════════════════════════════════════════════════════
+  3b. OVERFLOW & CONTENT-FIT FIXES
+═══════════════════════════════════════════════════════════════════════════*/
+
+/* Prevent ANY content from escaping slide bounds */
+.reveal .slides section {
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 0.6em 0.8em;
+}
+
+/* Scrollable slides — use {.scrollable} attribute on heavy-content slides */
+.reveal .slides section.scrollable {
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+/* Auto-shrink: let Reveal.js scale down content that's too tall */
+.reveal .slides {
+  text-align: left;
+}
+
+/* Smaller-text utility: apply {.smaller} to a slide for dense content */
+.reveal section.smaller {
+  font-size: 0.8em;
+}
+.reveal section.smallest {
+  font-size: 0.65em;
+}
+
+/*═══════════════════════════════════════════════════════════════════════════
+  4. TITLE SLIDE STYLING
+═══════════════════════════════════════════════════════════════════════════*/
+
+/* Main title (h1) on title slide */
+h1.title {
+  font-family: $font-family-serif;
+  font-size: 1.7em;
+  font-style: italic;
+  font-weight: 800;
+  color: $color-brand-primary;
+  line-height: 1.07;
+  text-align: center;
+  margin-bottom: .4em;
+}
+
+/* Alternative title styling when on title slide */
+.title-slide h1 {
+  font-family: $font-family-serif;
+  font-size: 1.4em;
+  font-style: italic;
+  text-align: center;
+  line-height: 1.1;
+}
+
+/* Subtitle styling */
+p.subtitle {
+  color: $color-gray-dark;
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* Author information block */
+.quarto-title-author {
+  font-size: .8em;
+  font-weight: 600;
+  color: $color-gray-dark;
+  font-style: italic;
+  margin-top: 1.5em;
+  text-align: center;
+}
+
+/* Author link styling */
+.quarto-title-author a {
+  color: $color-brand-primary;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.quarto-title-author a:hover {
+  color: $color-brand-light;
+}
+
+/* Title slide background color */
+.backgrounds .title-slide {
+  background-color: $color-accent-warm;
+}
+
+
+/*═══════════════════════════════════════════════════════════════════════════
+  5. SECTION DIVIDERS & BACKGROUNDS
+═══════════════════════════════════════════════════════════════════════════*/
+
+/* Default slide background */
+.backgrounds {
+  background-color: $color-gray-bg;
+}
+
+/* Green section divider slides - large white text on brand color */
+.reveal section[data-background-color="#28A87D"] h1,
+.reveal section[data-background-color="#28a87d"] h1 {
+  line-height: 1.5 !important;
+  font-size: 2em !important;
+  color: white !important;
+  padding: 1em 0 !important;
+}
+
+/* Dark background sections - inverted color scheme */
+section.has-dark-background {
+  color: $color-gray-text-light;
+}
+
+section.has-dark-background h1,
+section.has-dark-background h2 {
+  color: $color-accent-sand;
+}
+
+section.has-dark-background a {
+  color: $color-accent-sand;
+}
+
+section.has-dark-background a:hover {
+  color: $color-brand-light;
+}
+
+
+/*═══════════════════════════════════════════════════════════════════════════
+  6. CONTENT TYPOGRAPHY
+═══════════════════════════════════════════════════════════════════════════*/
+
+/* 6.1 Base Typography Settings */
+
+/* Body text: slightly condensed for efficient space usage */
+body {
+  font-family: $font-family-sans-serif;
+  font-stretch: 87.5%;
+}
+
+/* Headings: normal width with proper line spacing for readability */
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4 {
+  font-family: $font-family-sans-serif;
+  font-stretch: 100%;     // Normal width (not condensed)
+  line-height: 1.2;       // Prevent text overlap
+}
+
+/* 6.2 Heading Sizes (h2-h5) */
+
+.reveal h2 {
+  font-size: 1.4em;
+  margin-bottom: 2.8px;
+}
+
+/* Code inside h2 headings */
+h2 > code {
+  font-size: .95em;
+  margin-bottom: 2.8px;
+}
+
+.reveal h3,
+.reveal h4 {
+  font-size: 1em;
+  margin-bottom: 2.8px;
+  font-weight: bold;
+  color: $color-gray-dark;
+}
+
+.reveal h5 {
+  font-size: .8em;
+  margin-bottom: 2.8px;
+  font-weight: bold;
+  color: $color-gray-dark;
+}
+
+/* 6.3 Paragraphs & Body Text */
+
+.reveal p {
+  font-size: .75em;
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+/* 6.4 Lists */
+
+.reveal li {
+  font-size: 1.85rem;
+  line-height: 1.4;
+  margin-bottom: 0.15em;
+}
+
+.reveal li li,
+li li li {
+  font-size: 1.55rem;                    // Nested lists are smaller
+}
+
+/* Code inside list items */
+.reveal li > code {
+  font-size: .9em;
+}
+
+
+/*═══════════════════════════════════════════════════════════════════════════
+  7. INTERACTIVE ELEMENTS
+═══════════════════════════════════════════════════════════════════════════*/
+
+/* 7.1 Link Styling */
+
+a:link,
+a:visited {
+  color: $link-color;
+}
+
+a:hover {
+  color: $link-color-dark;
+}
+
+/* 7.2 Tab Navigation */
+
+.panel-tabset li > a {
+  color: $color-gray-light;
+  font-size: .6em;
+  font-weight: bold;
+}
+
+/* 7.3 Details/Summary Disclosure Widgets */
+
+details {
+  margin-bottom: 5px;
+}
+
+details > summary {
+  font-family: $font-family-mono;
+  font-size: 1.25rem;
+  color: $color-gray-light;
+}
+
+
+/*═══════════════════════════════════════════════════════════════════════════
+  8. TABLES & DATA DISPLAY
+═══════════════════════════════════════════════════════════════════════════*/
+
+.reveal table {
+  font-size: .75em;
+  font-family: $font-family-mono;
+}
+
+/* Hover effect for lightable tables - highlights row on hover */
+.lightable-minimal.lightable-hover tbody tr:hover {
+  background-color: $color-brand-primary !important;
+  color: #ffffff;
+}
+
+
+/*═══════════════════════════════════════════════════════════════════════════
+  9. CODE & SYNTAX HIGHLIGHTING
+═══════════════════════════════════════════════════════════════════════════*/
+
+/* 9.1 Inline Code */
+
+code > a,
+code > span {
+  font-family: $font-family-mono;
+  font-size: 1.1rem;
+}
+
+/* 9.2 Code Blocks */
+
+.reveal pre {
+  height: 98.1%;
+}
+
+.reveal pre > code {
+  font-size: .75em;
+}
+
+/* 9.3 Code Cell Output (from knitr/Jupyter) */
+
+.cell {
+  margin-bottom: 12px;
+}
+
+
+/*═══════════════════════════════════════════════════════════════════════════
+  10. MEDIA ELEMENTS
+═══════════════════════════════════════════════════════════════════════════*/
+
+/* 10.1 Figure Captions */
+
+.reveal .slide figure > figcaption,
+.reveal .slide img.stretch + p.caption,
+.reveal .slide img.r-stretch + p.caption {
+  font-size: .4em;
+  color: $color-gray-medium;
+  text-align: center;
+  margin-top: 0.3em;
+}
+
+/* 10.2 Plot/Figure Container — ensures plots are visible and centered */
+
+.reveal .slide figure,
+.reveal .slide .cell-output-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.reveal .slide figure img,
+.reveal .slide .cell-output-display img {
+  max-height: 58vh;
+  max-width: 92%;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* Plot-only slides — figure fills available space, NEVER drops below fold */
+.reveal section.plot-slide {
+  display: flex !important;
+  flex-direction: column;
+  height: 100%;
+  padding: 0.3em 0.5em;
+}
+
+.reveal section.plot-slide h2 {
+  flex: 0 0 auto;            /* title takes only what it needs */
+  font-size: 1.1em;
+  margin-bottom: 0.2em;
+}
+
+.reveal section.plot-slide .cell,
+.reveal section.plot-slide figure,
+.reveal section.plot-slide .cell-output-display {
+  flex: 1 1 auto;            /* figure fills the rest */
+  min-height: 0;             /* CRITICAL: lets flex child shrink so it fits */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+.reveal section.plot-slide figure img,
+.reveal section.plot-slide .cell-output-display img {
+  max-height: 100%;          /* fit the flex container, not the viewport */
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* 10.3 Slide Logo */
+
+.reveal .slide-logo {
+  max-height: 2.8rem !important;
+  padding-bottom: 8px !important;
+}
+
+
+/*═══════════════════════════════════════════════════════════════════════════
+  11. UI COMPONENTS
+═══════════════════════════════════════════════════════════════════════════*/
+
+/* 11.1 Footer Styling */
+
+.footer p {
+  font-family: $font-family-mono;
+  font-size: .95rem;
+  color: $color-gray-dark;
+}
+
+/* 11.2 Scrollbar Control */
+
+/* Hide scrollbars in scrollable sections */
+.reveal .slide body::-webkit-scrollbar {
+  display: none;
+}
+
+/* Horizontal scroll container */
+.hscroll {
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+
+/*═══════════════════════════════════════════════════════════════════════════
+  12. CUSTOM CALLOUT BOXES
+═══════════════════════════════════════════════════════════════════════════*/
+
+/* Question box - teal accent */
+.reveal .slide .question {
+  border-left: 3px solid $color-brand-primary;
+  padding: 0.5rem;
+  background: $color-brand-bg-light;
+}
+
+/* Poll box - yellow accent */
+.reveal .slide .poll {
+  border-left: 3px solid $color-accent-yellow;
+  padding: 0.5rem;
+  background: $color-accent-yellow-light;
+}
+
+/* Recap box - purple accent */
+.reveal .slide .recap {
+  border-left: 3px solid $color-accent-purple;
+  padding: 0.5rem;
+  background: $color-accent-purple-light;
+}
+
+/* Sandbox / live-coding box — use {.sandbox} div */
+.reveal .slide .sandbox {
+  border-left: 3px solid #E67E22;
+  padding: 0.5rem 0.7rem;
+  background: #FDF2E9;
+  border-radius: 0 4px 4px 0;
+  font-size: 0.85em;
+}
+
+.reveal .slide .sandbox::before {
+  content: "🧪 Try it";
+  display: block;
+  font-family: $font-family-sans-serif;
+  font-size: 0.75em;
+  font-weight: 700;
+  color: #E67E22;
+  margin-bottom: 0.3em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Exercise box */
+.reveal .slide .exercise {
+  border-left: 3px solid #2980B9;
+  padding: 0.5rem 0.7rem;
+  background: #EBF5FB;
+  border-radius: 0 4px 4px 0;
+}
+
+.reveal .slide .exercise::before {
+  content: "✏️ Exercise";
+  display: block;
+  font-family: $font-family-sans-serif;
+  font-size: 0.75em;
+  font-weight: 700;
+  color: #2980B9;
+  margin-bottom: 0.3em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+
+/*═══════════════════════════════════════════════════════════════════════════
+  13. UTILITY CLASSES & HELPERS
+═══════════════════════════════════════════════════════════════════════════*/
+
+/* 13.1 Text Size Utilities */
+
+.small {
+  font-size: .75rem;
+}
+
+/* 13.2 Text Highlighting */
+
+.simple-highlight-ylw {
+  background-color: $color-accent-yellow;
+  padding: 0.1em 0.2em;
+  font-weight: bold;
+}
+
+.simple-highlight-grn {
+  background-color: $color-brand-light;
+  padding: 0.1em 0.2em;
+  font-weight: bold;
+}
+
+/* 13.3 Hand-Drawn Circle Highlight Effect */
+
+.circle-highlight {
+  position: relative;
+}
+
+/* Top arc of circle */
+.circle-highlight:before {
+  content: "";
+  z-index: -1;
+  left: -0.4em;
+  top: -0.15em;
+  border-width: 2.7px;
+  border-style: solid;
+  border-color: $color-brand-primary;
+  border-right-color: transparent;
+  position: absolute;
+  width: 100%;
+  height: 1em;
+  transform: rotate(2deg);
+  opacity: 0.65;
+  border-radius: 75%;
+}
+
+/* Bottom arc of circle */
+.circle-highlight:after {
+  content: "";
+  z-index: -1;
+  left: -0.6em;
+  top: 0.04em;
+  border-width: 2.7px;
+  border-style: solid;
+  border-color: $color-brand-primary;
+  border-left-color: transparent;
+  border-top-color: transparent;
+  position: absolute;
+  width: 100%;
+  height: 1em;
+  transform: rotate(-1deg);
+  opacity: 0.65;
+  border-radius: 80%;
+}
+
+/* 13.4 Centering Utilities */
+
+/* Center element both horizontally and vertically */
+.center-xy {
+  margin: 0;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translateY(-50%) translateX(-50%);
+}
+
+/* Center heading text */
+.center h2 {
+  text-align: center;
+}
+
+
+/*═══════════════════════════════════════════════════════════════════════════
+  14. ACCESSIBILITY & RESPONSIVE FIXES
+═══════════════════════════════════════════════════════════════════════════*/
+
+/* Ensure text selection is visible with branded color */
+::selection {
+  background-color: $presentation-selection-background-color;
+}
+
