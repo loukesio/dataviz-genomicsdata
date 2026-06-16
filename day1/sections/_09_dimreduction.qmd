@@ -1,9 +1,9 @@
-<!-- slide 30 -->
+<!-- slide 83 -->
 # Dimensionality Reduction {.divider}
 
 [Dimensionality reduction · Day 01]{.eyebrow}
 
-<!-- slide 31 -->
+<!-- slide 84 -->
 ## PCA, t-SNE and UMAP at a Glance {.smaller}
 
 [Dimensionality reduction]{.eyebrow}
@@ -63,7 +63,7 @@ plt.tight_layout(); plt.show()
 | **t-SNE** | Local clusters | Medium | Cluster visualization |
 | **UMAP** | Local + some global | Fast | Single-cell, large datasets |
 
-<!-- slide 32 -->
+<!-- slide 85 -->
 ## PCA / UMAP — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Dimensionality reduction]{.eyebrow}
@@ -84,7 +84,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
-<!-- slide 33.1 -->
+<!-- slide 86 -->
 ## PCA: Step-by-Step Code {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -131,7 +131,7 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 33.2 -->
+<!-- slide 87 -->
 ## PCA: Step-by-Step — Result {.plot-slide background-color="#f6f4ee"}
 
 [Dimensionality reduction]{.eyebrow}
@@ -169,7 +169,7 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 34.1 -->
+<!-- slide 88 -->
 ## PCA: Scree Plot & Variance Explained {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -210,7 +210,7 @@ ax2.legend(frameon=False); ax2.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 34.2 -->
+<!-- slide 89 -->
 ## PCA: Scree Plot — Result {.plot-slide background-color="#f6f4ee"}
 
 [Dimensionality reduction]{.eyebrow}
@@ -248,7 +248,7 @@ ax2.legend(frameon=False); ax2.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 35 -->
+<!-- slide 90 -->
 ## t-SNE: Theory {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -301,7 +301,7 @@ tsne.fit_transform(X_raw)   # ❌
 :::
 ::::::
 
-<!-- slide 36 -->
+<!-- slide 91 -->
 ## t-SNE: Code Walkthrough {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -344,11 +344,11 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-::: {.footer style="font-size: 0.7em; color: #606060;"}
+::: {.footer style="font-size: 0.55em; color: #808080; white-space: nowrap;"}
 **Tip:** Always run t-SNE on PCA-reduced data for reproducibility and speed on large datasets.
 :::
 
-<!-- slide 37 -->
+<!-- slide 92 -->
 ## UMAP: Theory {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -409,7 +409,7 @@ sc.pl.umap(adata, color='cell_type')
 :::
 ::::::
 
-<!-- slide 38 -->
+<!-- slide 93 -->
 ## UMAP: Code Walkthrough {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -452,7 +452,7 @@ axes[1].set_title('UMAP — colored by sequencing depth', fontweight='bold')
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 39 -->
+<!-- slide 94 -->
 ## Exercise: Dimensionality Reduction {.smaller .scrollable}
 
 [Dimensionality reduction]{.eyebrow}
@@ -500,7 +500,7 @@ X_sc = np.vstack([
 <summary>Show solution</summary>
 
 ```{python}
-#| echo: true
+#| echo: false
 #| eval: true
 
 import numpy as np, pandas as pd

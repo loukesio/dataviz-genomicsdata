@@ -1,9 +1,9 @@
-<!-- slide 71 -->
+<!-- slide 137 -->
 # Day 1 Recap {.divider}
 
 [Day 01 · wrap]{.eyebrow}
 
-<!-- slide 72 -->
+<!-- slide 138 -->
 ## What We Covered Today {.smaller}
 
 [Day 01 · wrap]{.eyebrow}
@@ -35,7 +35,7 @@
 :::
 :::
 
-<!-- slide 73 -->
+<!-- slide 139 -->
 ## Looking Ahead {.smaller}
 
 [Day 01 · wrap]{.eyebrow}
@@ -69,11 +69,11 @@ notebooks/day1_python_genomics_viz.ipynb
 ```
 :::
 
-::: {.footer style="font-size: 0.7em; color: #606060;"}
+::: {.footer style="font-size: 0.55em; color: #808080; white-space: nowrap;"}
 Questions? → loukesio@gmail.com &ensp;|&ensp; Course materials: GitHub/loukesio
 :::
 
-<!-- slide 74 -->
+<!-- slide 140 -->
 ## Resources {.smaller .center}
 
 [Day 01 · wrap]{.eyebrow}

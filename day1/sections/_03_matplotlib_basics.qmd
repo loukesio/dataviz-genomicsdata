@@ -1,9 +1,9 @@
-<!-- slide 13 -->
+<!-- slide 14 -->
 # Introduction to Matplotlib & Seaborn {.divider}
 
 [The Python viz stack · Day 01]{.eyebrow}
 
-<!-- slide 14.1 -->
+<!-- slide 15 -->
 ## The Anatomy of a Matplotlib Figure {.smaller}
 
 [The Python viz stack]{.eyebrow}
@@ -24,7 +24,7 @@
 **Artists** — Everything visible: lines, text, patches, images; controlled with `ax.set_*()` methods
 :::
 
-<!-- slide 14.2 -->
+<!-- slide 16 -->
 ## The Anatomy of a Matplotlib Figure — Result {.plot-slide background-color="#f6f4ee"}
 
 [The Python viz stack]{.eyebrow}
@@ -62,7 +62,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-<!-- slide 15 -->
+<!-- slide 17 -->
 ## Building a Plot: Step 1 — Create the Canvas {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -98,7 +98,7 @@ plt.tight_layout(); plt.show()
 
 **Result:** An empty canvas with labelled axes — we've told matplotlib *how big* but not *what* to draw.
 
-<!-- slide 16 -->
+<!-- slide 18 -->
 ## Building a Plot: Step 2 — Add Data {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -140,7 +140,7 @@ plt.tight_layout(); plt.show()
 
 **Result:** Points appear — default blue color, default size.
 
-<!-- slide 17 -->
+<!-- slide 19 -->
 ## Building a Plot: Step 3 — Add Color {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -189,7 +189,7 @@ ax.set_xlabel('X'); ax.set_ylabel('Y')
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 18.1 -->
+<!-- slide 20 -->
 ## Building a Plot: Step 4 — Polish & Labels {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -219,7 +219,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-<!-- slide 18.2 -->
+<!-- slide 21 -->
 ## Building a Plot: Step 4 — Result {.plot-slide background-color="#f6f4ee"}
 
 [The Python viz stack]{.eyebrow}
@@ -257,7 +257,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-<!-- slide 19.1 -->
+<!-- slide 22 -->
 ## Building a Plot: Step 5 — Publication Style {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -297,7 +297,7 @@ plt.rcParams.update({
 ```
 :::
 
-<!-- slide 19.2 -->
+<!-- slide 23 -->
 ## Building a Plot: Step 5 — Result {.plot-slide background-color="#f6f4ee"}
 
 [The Python viz stack]{.eyebrow}
@@ -333,7 +333,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-<!-- slide 20 -->
+<!-- slide 24 -->
 ## Common Plot Types in Matplotlib & Seaborn {.plot-slide background-color="#f6f4ee"}
 
 [The Python viz stack]{.eyebrow}

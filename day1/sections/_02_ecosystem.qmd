@@ -3,93 +3,76 @@
 
 [The Python viz stack · Day 01]{.eyebrow}
 
-<!-- slide 9.5 -->
+<!-- slide 10 -->
 ## Make matplotlib publication-ready {.smaller .scrollable}
 
 [Make it publication-ready]{.eyebrow}
 
 ### Five small moves take matplotlib from default to glorious
 
-Default matplotlib is functional — gridlines on every axis, a frame around the
-plot, a generic legend. Five small moves replace all of that with a tighter
-look that fits a journal page. The story carries through [color]{.up};
-everything else gets out of the way.
+:::: {.columns}
+::: {.column width="46%"}
+Default matplotlib is functional. Five small moves take it to publication-ready:
+one **bold** colour carries the story, the frame thins out, the grid quiets, the
+bars label themselves, and a descriptive title says what the chart shows.
 
-::: {.panel-tabset}
-
-### Code · matplotlib
-
-```{python}
-#| eval: false
-#| code-line-numbers: "5-8|10-12|14-17|19-22|24-28"
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
-import pandas as pd
-
-# 1) STRATEGIC COLOR — one bold, the rest quiet
-#    Spend the loudest colour on the row that carries the message;
-#    everything else becomes background.
-colors = [RED if c == "mixed" else GREY for c in df["category"]]
+```python {code-line-numbers="3-5|7-9|11-12|14-17|19-22"}
+# 1) STRATEGIC COLOUR — one bold, the rest quiet
+colors = [RED if c == "mixed" else GREY
+          for c in df["category"]]
 ax.barh(df["category"], df["value"], color=colors)
 
-# 2) DROP THE FRAME — only the bottom axis carries scale information
+# 2) DROP THE FRAME — only the bottom axis carries scale
 for side in ["left", "right", "top"]:
     ax.spines[side].set_visible(False)
-ax.tick_params(left=False)                # no tick marks on the y-axis
+ax.tick_params(left=False)
 
-# 3) MUTED GRID, X-AXIS ONLY — readable but quiet
+# 3) MUTED GRID, X-AXIS ONLY
 ax.grid(axis="x", alpha=0.3, linewidth=0.6)
-ax.set_axisbelow(True)
 
 # 4) LABEL THE BARS, DROP THE LEGEND
 ax.bar_label(ax.containers[0],
              labels=[f"{v:.0%}" for v in df["value"]],
-             padding=8, fontsize=10, color=INK)
-ax.xaxis.set_major_formatter(mtick.PercentFormatter(1, decimals=0))
+             padding=8, color=INK)
 
-# 5) DESCRIPTIVE TITLE + SUBTITLE — say what the chart shows
+# 5) DESCRIPTIVE TITLE
 fig.suptitle("Mixed training is gaining in popularity",
-             fontsize=14, fontweight="bold", color=INK, x=0.04, ha="left", y=0.97)
-fig.text(0.04, 0.90, "Share of athletes by primary training mode, 2024",
-         fontsize=10, color="#807b6d")
+             fontsize=14, fontweight="bold", color=INK,
+             x=0.04, ha="left")
 ```
-
-### Plot
-
+:::
+::: {.column width="54%"}
 ```{python}
 #| echo: false
-#| fig-width: 8.5
+#| out-width: "100%"
+#| fig-width: 7
 #| fig-height: 4.6
 import matplotlib.ticker as mtick
-import pandas as pd
-
 df = pd.DataFrame({
     "category": ["speed", "strength", "endurance", "mixed"],
     "value":    [0.10,    0.21,        0.27,        0.42],
 })
-
-fig, ax = plt.subplots(figsize=(8.5, 4.6))
+fig, ax = plt.subplots(figsize=(7, 4.6))
 colors = [RED if c == "mixed" else GREY for c in df["category"]]
 ax.barh(df["category"], df["value"], color=colors)
 for side in ["left", "right", "top"]:
     ax.spines[side].set_visible(False)
 ax.tick_params(left=False)
-ax.grid(axis="x", alpha=0.3, linewidth=0.6)
-ax.set_axisbelow(True)
+ax.grid(axis="x", alpha=0.3, linewidth=0.6); ax.set_axisbelow(True)
 ax.bar_label(ax.containers[0],
              labels=[f"{v:.0%}" for v in df["value"]],
              padding=8, fontsize=10, color=INK)
 ax.xaxis.set_major_formatter(mtick.PercentFormatter(1, decimals=0))
 ax.set_xlim(0, 0.55)
 fig.suptitle("Mixed training is gaining in popularity",
-             fontsize=14, fontweight="bold", color=INK, x=0.04, ha="left", y=0.97)
+             fontsize=13, fontweight="bold", color=INK, x=0.04, ha="left", y=0.97)
 fig.text(0.04, 0.90, "Share of athletes by primary training mode, 2024",
-         fontsize=10, color="#807b6d")
+         fontsize=10, color=MUTED)
 plt.tight_layout(rect=[0, 0, 1, 0.88])
 plt.show()
 ```
-
 :::
+::::
 
 ::: {.takeaway}
 [The bottom line]{.tl}
@@ -99,7 +82,7 @@ let everything else fade into context — frames, ticks, and legends disappear.
 
 <small>Adapted from [*Make Your Charts Look Glorious*](https://medium.com/data-science/make-your-charts-look-glorious-9ce3fa310b70).</small>
 
-<!-- slide 10 -->
+<!-- slide 11 -->
 ## General-Purpose Libraries {.smaller}
 
 [The Python viz stack]{.eyebrow}
@@ -149,11 +132,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-::: {.footer style="font-size: 0.7em; color: #606060;"}
+::: {.footer style="font-size: 0.55em; color: #808080; white-space: nowrap;"}
 All three libraries are installed with: `pip install matplotlib seaborn plotly`
 :::
 
-<!-- slide 11 -->
+<!-- slide 12 -->
 ## Genomics-Specific Libraries {.smaller}
 
 [The Python viz stack]{.eyebrow}
@@ -203,7 +186,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-<!-- slide 12 -->
+<!-- slide 13 -->
 ## Setting Up Your Environment {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -253,7 +236,7 @@ import numpy;      print(numpy.__version__)
 ::::::
 
 ::: fragment
-::: {.footer style="font-size: 0.7em; color: #606060;"}
+::: {.footer style="font-size: 0.55em; color: #808080; white-space: nowrap;"}
 A complete `environment.yml` file is included in your course materials
 :::
 :::

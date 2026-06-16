@@ -1,9 +1,9 @@
-<!-- slide 21 -->
+<!-- slide 50 -->
 # How are we going to work? {.divider}
 
 [Course logistics · Day 01]{.eyebrow}
 
-<!-- slide 22 -->
+<!-- slide 51 -->
 ## Course Structure {.smaller}
 
 [Course logistics]{.eyebrow}

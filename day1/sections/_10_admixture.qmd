@@ -1,9 +1,9 @@
-<!-- slide 40 -->
+<!-- slide 95 -->
 # Admixture Plots {.divider}
 
 [Population structure · Day 01]{.eyebrow}
 
-<!-- slide 41 -->
+<!-- slide 96 -->
 ## Admixture Plots: Theory {.smaller .scrollable}
 
 [Population structure]{.eyebrow}
@@ -53,7 +53,7 @@ df = pd.DataFrame({
 :::
 ::::::
 
-<!-- slide 42 -->
+<!-- slide 97 -->
 ## Admixture — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Population structure]{.eyebrow}
@@ -73,7 +73,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
-<!-- slide 43.1 -->
+<!-- slide 98 -->
 ## Admixture: Code Walkthrough {.smaller .scrollable}
 
 [Population structure]{.eyebrow}
@@ -136,7 +136,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-<!-- slide 43.2 -->
+<!-- slide 99 -->
 ## Admixture: Code Walkthrough — Result {.plot-slide background-color="#f6f4ee"}
 
 [Population structure]{.eyebrow}
@@ -214,7 +214,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-<!-- slide 44 -->
+<!-- slide 100 -->
 ## Exercise: Admixture Plot {.smaller .scrollable}
 
 [Population structure]{.eyebrow}
@@ -252,7 +252,7 @@ adm = load_admixture(K=4)
 <summary>Show solution</summary>
 
 ```{python}
-#| echo: true
+#| echo: false
 #| eval: true
 
 import numpy as np, pandas as pd
@@ -316,3 +316,193 @@ plt.show()
 </details>
 :::
 
+
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- STACKED AREA · load_lineages — proportions over time              -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+
+<!-- slide 101 -->
+## Stacked Area · the data {.smaller}
+
+[Proportions · barcode lineages]{.eyebrow}
+
+### Many tiny components that sum to 1 at every time point
+
+:::: {.columns}
+::: {.column width="46%"}
+`load_lineages()` returns 150 barcode lineages tracked across 21 days, in tidy
+long form. Every day's frequencies sum to 1, so the whole height is the
+population — perfect for a stacked area.
+
+```python {code-line-numbers="1-3"}
+lin = load_lineages()
+lin.head(3)
+# →   lineage  day      freq
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+lin = load_lineages()
+lin.head(3)
+```
+:::
+::::
+
+
+<!-- slide 102 -->
+## Stacked Area · Step 1: top lineages, a few bands {.smaller}
+
+[Proportions · stacked-area build]{.eyebrow}
+
+### Start with the handful of dominant lineages
+
+:::: {.columns}
+::: {.column width="46%"}
+A stacked area is a stacked bar with a continuous x-axis. Pivot long → wide,
+take the top six lineages by abundance, draw them stacked.
+
+```python {code-line-numbers="1-10"}
+lin = load_lineages()
+wide = lin.pivot(index="day", columns="lineage",
+                 values="freq").fillna(0)
+
+# top 6 by overall abundance
+top = wide.sum(axis=0).nlargest(6).index
+days = wide.index.values
+freq = wide[top].values.T
+
+cols = [econ_spectrum(i / 5) for i in range(6)]
+ax.stackplot(days, freq, colors=cols)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+lin = load_lineages()
+wide = lin.pivot(index="day", columns="lineage", values="freq").fillna(0)
+top = wide.sum(axis=0).nlargest(6).index
+days = wide.index.values
+freq = wide[top].values.T
+cols = [econ_spectrum(i / 5) for i in range(6)]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+ax.stackplot(days, freq, colors=cols, edgecolor=CREAM, lw=0.4)
+ax.set_xlim(days.min(), days.max())
+ax.set_xlabel("Time (days)"); ax.set_ylabel("Frequency")
+ax.set_title("STEP 1: TOP 6 LINEAGES", fontsize=12, fontweight="bold", color=INK, pad=10)
+for s in ["top", "right"]: ax.spines[s].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 103 -->
+## Stacked Area · Step 2: all 150, coloured by stack position {.smaller}
+
+[Proportions · stacked-area build]{.eyebrow}
+
+### Spread the full ramp across the whole height
+
+:::: {.columns}
+::: {.column width="46%"}
+With 150 lineages, the trick is **colour by where each band sits in the stack**,
+not by rank. The full blue → red ramp spans the whole y-axis, so every band
+gets its own colour.
+
+```python {code-line-numbers="1-10"}
+order = wide.sum(axis=0).sort_values(
+    ascending=False).index             # large at bottom
+freq = wide[order].values.T
+
+mean_ab = freq.mean(axis=1)            # mean height per band
+cum     = np.cumsum(mean_ab)
+centre  = (cum - mean_ab/2) / cum[-1]  # 0 → 1 up the stack
+
+cols = [econ_spectrum(c) for c in centre]
+ax.stackplot(days, freq, colors=cols, edgecolor="none")
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+lin = load_lineages()
+wide = lin.pivot(index="day", columns="lineage", values="freq").fillna(0)
+days = wide.index.values
+order = wide.sum(axis=0).sort_values(ascending=False).index
+freq = wide[order].values.T
+mean_ab = freq.mean(axis=1)
+cum     = np.cumsum(mean_ab)
+centre  = (cum - mean_ab / 2) / cum[-1]
+cols = [econ_spectrum(c) for c in centre]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+ax.stackplot(days, freq, colors=cols, edgecolor="none")
+ax.set_xlim(days.min(), days.max()); ax.set_ylim(0, 1)
+ax.set_xlabel("Time (days)"); ax.set_ylabel("Frequency")
+ax.set_title("STEP 2: ALL 150, FULL SPECTRUM", fontsize=12, fontweight="bold", color=GREEN, pad=10)
+for s in ["top", "right"]: ax.spines[s].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 104 -->
+## Stacked Area · Step 3: the message {.smaller}
+
+[Proportions · stacked-area build]{.eyebrow}
+
+### Title the dynamic, label the axes, leave the ramp to do the rest
+
+:::: {.columns}
+::: {.column width="46%"}
+The smooth blue → red gradient now shows each lineage as its own band; the eye
+can follow any band as it widens or fades. The title states the dynamic.
+
+```python {code-line-numbers="1-4"}
+ax.set_xlabel("Time (days)")
+ax.set_ylabel("Barcode frequency")
+ax.set_title(
+    "A FEW LINEAGES SWEEP TO FIXATION")
+```
+
+Recipe: **few bands → all bands by stack-height → label.**
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.8
+#| fig-height: 4.7
+lin = load_lineages()
+wide = lin.pivot(index="day", columns="lineage", values="freq").fillna(0)
+days = wide.index.values
+order = wide.sum(axis=0).sort_values(ascending=False).index
+freq = wide[order].values.T
+mean_ab = freq.mean(axis=1)
+cum     = np.cumsum(mean_ab)
+centre  = (cum - mean_ab / 2) / cum[-1]
+cols = [econ_spectrum(c) for c in centre]
+fig, ax = plt.subplots(figsize=(6.8, 4.7))
+ax.stackplot(days, freq, colors=cols, edgecolor="none")
+ax.set_xlim(days.min(), days.max()); ax.set_ylim(0, 1)
+ax.set_xlabel("Time (days)"); ax.set_ylabel("Barcode frequency")
+ax.set_title("A FEW LINEAGES SWEEP TO FIXATION",
+             fontsize=12, fontweight="bold", color=GREEN, pad=10)
+for s in ["top", "right"]: ax.spines[s].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+::: {.takeaway}
+Many components, one continuous ramp keyed to vertical position. Every band is
+its own colour and the eye can still track a lineage as it grows or fades.
+:::

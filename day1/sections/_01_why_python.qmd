@@ -13,13 +13,13 @@
 :::::: columns
 :::: {.column width="50%"}
 
-- <span style="color: #807b6d;">**1 to 2 exabytes** of data produced on YouTube per year</span>
+- <span style="color: var(--gv-muted);">**1 to 2 exabytes** of data produced on YouTube per year</span>
 
-- <span style="color: #208462; font-weight: 700;">220 million genomes</span> sequenced <span style="color: #208462; font-weight: 700;">per year</span>
+- <span style="color: var(--gv-green); font-weight: 700;">220 million genomes</span> sequenced <span style="color: var(--gv-green); font-weight: 700;">per year</span>
 
-- Equivalent to <span style="color: #807b6d; font-weight: 700;">40 exabytes</span> per year
+- Equivalent to <span style="color: var(--gv-muted); font-weight: 700;">40 exabytes</span> per year
 
-- That's more than <span style="color: #208462; font-weight: 700;">20 times</span> more than YouTube produces
+- That's more than <span style="color: var(--gv-green); font-weight: 700;">20 times</span> more than YouTube produces
 
 ::: fragment
 For years we struggled to collect biological data, but now our biggest bottleneck is [analyzing and interpreting it]{.alt}
@@ -149,9 +149,9 @@ ggplot(df, aes(x = log2FC,
                color = regulation)) +
   geom_point(alpha = 0.6, size = 1.5) +
   scale_color_manual(values = c(
-    up   = "#C23B22",
-    down = "#2B6CB0",
-    ns   = "#888888"
+    up   = RED,
+    down = BLUE,
+    ns   = GREY
   )) +
   geom_hline(yintercept = -log10(0.05),
              linetype = "dashed") +
@@ -170,9 +170,9 @@ ggplot(df, aes(x = log2FC,
 ```python
 import matplotlib.pyplot as plt
 
-pal = {"up": "#C23B22",
-       "down": "#2B6CB0",
-       "ns": "#888888"}
+pal = {"up": RED,
+       "down": BLUE,
+       "ns": GREY}
 
 fig, ax = plt.subplots(figsize=(7, 6))
 
@@ -182,9 +182,9 @@ for reg, grp in df.groupby("regulation"):
                s=15, label=reg)
 
 ax.axhline(-np.log10(0.05), ls="--",
-           color="#CCCCCC", lw=1)
-ax.axvline(-1, ls="--", color="#CCCCCC", lw=1)
-ax.axvline( 1, ls="--", color="#CCCCCC", lw=1)
+           color=LINE, lw=1)
+ax.axvline(-1, ls="--", color=LINE, lw=1)
+ax.axvline( 1, ls="--", color=LINE, lw=1)
 
 ax.set_title("VOLCANO PLOT", fontweight="bold")
 ax.set_xlabel("log₂ Fold Change")

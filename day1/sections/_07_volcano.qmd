@@ -1,9 +1,9 @@
-<!-- slide 23 -->
+<!-- slide 58 -->
 # Volcano Plots {.divider}
 
 [Differential expression · Day 01]{.eyebrow}
 
-<!-- slide 24.1 -->
+<!-- slide 59 -->
 ## What is a Volcano Plot? {.smaller}
 
 [Differential expression]{.eyebrow}
@@ -21,7 +21,7 @@
 
 **Thresholds (typical):** |log₂FC| > 1 (2-fold change) ; p-value < 0.05 → −log₁₀(p) > 1.3
 
-<!-- slide 24.2 -->
+<!-- slide 60 -->
 ## What is a Volcano Plot? — Result {.plot-slide background-color="#f6f4ee"}
 
 [Differential expression]{.eyebrow}
@@ -63,7 +63,7 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 25 -->
+<!-- slide 61 -->
 ## Volcano Plot — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Differential expression]{.eyebrow}
@@ -83,7 +83,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
-<!-- slide 26 -->
+<!-- slide 62 -->
 ## Volcano Plot: Data Preparation {.smaller .scrollable}
 
 [Differential expression]{.eyebrow}
@@ -124,7 +124,7 @@ print(de_results['regulation'].value_counts())
 # ns     1921
 ```
 
-<!-- slide 27 -->
+<!-- slide 63 -->
 ## Volcano Plot: Building the Figure {.smaller .scrollable}
 
 [Differential expression]{.eyebrow}
@@ -166,7 +166,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-<!-- slide 28 -->
+<!-- slide 64 -->
 ## Volcano Plot: Labelling Top Genes {.smaller .scrollable}
 
 [Differential expression]{.eyebrow}
@@ -174,7 +174,7 @@ plt.show()
 ### Annotate the most significant hits
 
 ```{python}
-#| echo: true
+#| echo: false
 #| fig-width: 10
 #| fig-height: 5.5
 
@@ -228,7 +228,7 @@ plt.tight_layout(); plt.show()
 Color encodes **direction** — red up, green down — and grey is everything that didn't clear the thresholds.
 :::
 
-<!-- slide 29 -->
+<!-- slide 65 -->
 ## Exercise: Volcano Plot {.smaller .scrollable}
 
 [Differential expression]{.eyebrow}
@@ -266,7 +266,7 @@ de_data = load_deseq2(contrast='drought')
 <summary>Show solution</summary>
 
 ```{python}
-#| echo: true
+#| echo: false
 #| eval: true
 
 import numpy as np, pandas as pd

@@ -1,9 +1,9 @@
-<!-- slide 65 -->
+<!-- slide 130 -->
 # Pathway & Annotation Plots {.divider}
 
 [Functional enrichment · Day 01]{.eyebrow}
 
-<!-- slide 66 -->
+<!-- slide 131 -->
 ## Gene Ontology & Pathway Enrichment {.smaller}
 
 [Functional enrichment]{.eyebrow}
@@ -67,7 +67,7 @@ plt.tight_layout(); plt.show()
 :::
 ::::::
 
-<!-- slide 67 -->
+<!-- slide 132 -->
 ## Pathway Enrichment — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Functional enrichment]{.eyebrow}
@@ -87,7 +87,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
-<!-- slide 68 -->
+<!-- slide 133 -->
 ## gget: Enrichment in One Line {.smaller .scrollable}
 
 [Functional enrichment]{.eyebrow}
@@ -136,7 +136,7 @@ ax.legend(frameon=False); ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 69.1 -->
+<!-- slide 134 -->
 ## Bubble Plot: Enrichment with Gene Counts {.smaller .scrollable}
 
 [Functional enrichment]{.eyebrow}
@@ -188,7 +188,7 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 69.2 -->
+<!-- slide 135 -->
 ## Bubble Plot — Result {.plot-slide background-color="#f6f4ee"}
 
 [Functional enrichment]{.eyebrow}
@@ -242,7 +242,7 @@ ax.spines[['top','right']].set_visible(False)
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 70 -->
+<!-- slide 136 -->
 ## Exercise: Pathway Visualization {.smaller .scrollable}
 
 [Functional enrichment]{.eyebrow}
@@ -294,7 +294,7 @@ enrichment_results = pd.concat([pathways_up, pathways_down])
 <summary>Show solution</summary>
 
 ```{python}
-#| echo: true
+#| echo: false
 #| eval: true
 
 import numpy as np, pandas as pd

@@ -48,7 +48,7 @@ plt.show()
 :::
 ::::::::::::::::::::::::::::::::::::::
 
-::: {.footer style="font-size: 0.7em; color: #606060;"}
+::: {.footer style="font-size: 0.55em; color: #808080; white-space: nowrap;"}
 Source: Anscombe, F. J. (1973). Graphs in Statistical Analysis. *The American Statistician*, 27(1), 17–21.
 :::
 
@@ -118,7 +118,7 @@ fig.suptitle("THE DATASAURUS DOZEN — IDENTICAL STATS, DIFFERENT SHAPES",
 plt.show()
 ```
 
-::: {.footer style="font-size: 0.7em; color: #606060;"}
+::: {.footer style="font-size: 0.55em; color: #808080; white-space: nowrap;"}
 Source: Matejka & Fitzmaurice (2017). [Same Stats, Different Graphs](https://www.research.autodesk.com/publications/same-stats-different-graphs/). ACM CHI 2017.
 :::
 

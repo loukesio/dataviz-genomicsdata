@@ -1,9 +1,9 @@
-<!-- slide 51 -->
+<!-- slide 113 -->
 # Waffle & Waterfall Plots {.divider}
 
 [Cohort summaries · Day 01]{.eyebrow}
 
-<!-- slide 52.1 -->
+<!-- slide 114 -->
 ## Waffle Charts: Proportions at a Glance {.smaller}
 
 [Cohort summaries]{.eyebrow}
@@ -21,7 +21,7 @@
 
 **Library:** `PyWaffle` — `pip install pywaffle`
 
-<!-- slide 52.2 -->
+<!-- slide 115 -->
 ## Waffle Charts — Result {.plot-slide background-color="#f6f4ee"}
 
 [Cohort summaries]{.eyebrow}
@@ -59,7 +59,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-<!-- slide 53 -->
+<!-- slide 116 -->
 ## Waffle Chart — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Cohort summaries]{.eyebrow}
@@ -78,7 +78,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
-<!-- slide 54 -->
+<!-- slide 117 -->
 ## Waffle Chart: Code Walkthrough {.smaller .scrollable}
 
 [Cohort summaries]{.eyebrow}
@@ -124,7 +124,7 @@ plt.savefig('waffle_pbmc.pdf', bbox_inches='tight')
 plt.show()
 ```
 
-<!-- slide 55.1 -->
+<!-- slide 118 -->
 ## Waterfall Plots: Mutation Landscapes {.smaller}
 
 [Cohort summaries]{.eyebrow}
@@ -140,7 +140,7 @@ plt.show()
 - Color can encode cancer subtype, treatment response, or driver mutation
 - Often paired with an **OncoPrint** (mutation matrix below)
 
-<!-- slide 55.2 -->
+<!-- slide 119 -->
 ## Waterfall Plot — Result {.plot-slide background-color="#f6f4ee"}
 
 [Cohort summaries]{.eyebrow}
@@ -176,7 +176,7 @@ ax.legend(handles=legend_elements, fontsize=8, frameon=False,
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 56 -->
+<!-- slide 120 -->
 ## Waterfall Plot — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Cohort summaries]{.eyebrow}
@@ -195,7 +195,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
-<!-- slide 57 -->
+<!-- slide 121 -->
 ## Waterfall Plot: Code {.smaller .scrollable}
 
 [Cohort summaries]{.eyebrow}
@@ -243,7 +243,7 @@ ax.legend(handles=legend_elements, frameon=False, loc='upper right')
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 58 -->
+<!-- slide 122 -->
 ## Exercise: Waffle & Waterfall {.smaller .scrollable}
 
 [Cohort summaries]{.eyebrow}
@@ -302,7 +302,7 @@ mutations = pd.DataFrame({
 <summary>Show solution</summary>
 
 ```{python}
-#| echo: true
+#| echo: false
 #| eval: true
 
 import numpy as np, pandas as pd

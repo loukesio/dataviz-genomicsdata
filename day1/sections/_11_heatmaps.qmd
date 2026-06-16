@@ -1,9 +1,9 @@
-<!-- slide 45 -->
+<!-- slide 105 -->
 # Heatmaps {.divider}
 
 [Expression heatmaps · Day 01]{.eyebrow}
 
-<!-- slide 46.1 -->
+<!-- slide 106 -->
 ## Heatmap Fundamentals {.smaller}
 
 [Expression heatmaps]{.eyebrow}
@@ -21,7 +21,7 @@
 
 **Libraries:** `seaborn.clustermap` (quick, good defaults) ; `PyComplexHeatmap` (publication-quality with rich annotations).
 
-<!-- slide 46.2 -->
+<!-- slide 107 -->
 ## Heatmap Fundamentals — Result {.plot-slide background-color="#f6f4ee"}
 
 [Expression heatmaps]{.eyebrow}
@@ -57,7 +57,7 @@ cg.ax_heatmap.set_xlabel('Samples'); cg.ax_heatmap.set_ylabel('Genes')
 plt.show()
 ```
 
-<!-- slide 47 -->
+<!-- slide 108 -->
 ## Heatmap / Clustermap — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Expression heatmaps]{.eyebrow}
@@ -77,7 +77,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
-<!-- slide 48.1 -->
+<!-- slide 109 -->
 ## Seaborn Clustermap: Code {.smaller .scrollable}
 
 [Expression heatmaps]{.eyebrow}
@@ -129,7 +129,7 @@ cg.fig.suptitle('Gene Expression Heatmap', y=1.02,
 plt.show()
 ```
 
-<!-- slide 48.2 -->
+<!-- slide 110 -->
 ## Seaborn Clustermap — Result {.plot-slide background-color="#f6f4ee"}
 
 [Expression heatmaps]{.eyebrow}
@@ -173,7 +173,7 @@ cg.fig.suptitle('Gene Expression Heatmap', y=1.02,
 plt.show()
 ```
 
-<!-- slide 49 -->
+<!-- slide 111 -->
 ## PyComplexHeatmap: Rich Annotations {.smaller .scrollable}
 
 [Expression heatmaps]{.eyebrow}
@@ -221,11 +221,11 @@ cm = ClusterMapPlotter(
 )
 ```
 
-::: {.footer style="font-size: 0.7em; color: #606060;"}
+::: {.footer style="font-size: 0.55em; color: #808080; white-space: nowrap;"}
 PyComplexHeatmap is a Python port of R's ComplexHeatmap — nearly identical API for R users.
 :::
 
-<!-- slide 50 -->
+<!-- slide 112 -->
 ## Exercise: Expression Heatmap {.smaller .scrollable}
 
 [Expression heatmaps]{.eyebrow}
@@ -277,7 +277,7 @@ expression = pd.DataFrame(
 <summary>Show solution</summary>
 
 ```{python}
-#| echo: true
+#| echo: false
 #| eval: true
 
 import numpy as np, pandas as pd
