@@ -1,0 +1,570 @@
+<!-- slide 30 -->
+# Dimensionality Reduction {.divider}
+
+[Dimensionality reduction · Day 01]{.eyebrow}
+
+<!-- slide 31 -->
+## PCA, t-SNE and UMAP at a Glance {.smaller}
+
+[Dimensionality reduction]{.eyebrow}
+
+### Three projections on one dataset
+
+```{python}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 4.5
+
+from sklearn.decomposition import PCA
+from sklearn.manifold      import TSNE
+from sklearn.datasets      import make_blobs
+
+np.random.seed(42)
+X, y = make_blobs(n_samples=400, centers=5, cluster_std=1.8,
+                  n_features=50, random_state=42)
+
+pca   = PCA(n_components=2, random_state=42).fit_transform(X)
+tsne  = TSNE(n_components=2, random_state=42, perplexity=30).fit_transform(X)
+
+try:
+    import umap as umap_lib
+    umap_res = umap_lib.UMAP(n_components=2, random_state=42).fit_transform(X)
+    has_umap = True
+except ImportError:
+    has_umap = False
+
+palette = [GREEN, ACCENT_YLW, PURPLE, RED, BLUE]
+labels  = ['Cluster A','Cluster B','Cluster C','Cluster D','Cluster E']
+
+fig, axes = plt.subplots(1, 3 if has_umap else 2, figsize=(11, 4.5))
+
+for ax, coords, title in zip(
+    axes,
+    [pca, tsne] + ([umap_res] if has_umap else []),
+    ['PCA', 't-SNE', 'UMAP'] if has_umap else ['PCA', 't-SNE']
+):
+    for i, (lab, col) in enumerate(zip(labels, palette)):
+        m = y == i
+        ax.scatter(coords[m,0], coords[m,1], color=col, s=20,
+                   alpha=0.75, label=lab, linewidths=0)
+    ax.set_title(title, fontsize=12, fontweight='bold')
+    ax.set_xlabel('Component 1'); ax.set_ylabel('Component 2')
+    ax.spines[['top','right']].set_visible(False)
+
+axes[0].legend(fontsize=8, frameon=False, loc='upper left')
+plt.suptitle('Dimensionality Reduction Comparison (50D → 2D)',
+             fontsize=12, fontweight='bold')
+plt.tight_layout(); plt.show()
+```
+
+| Method | Preserves | Speed | Main use |
+|--------|-----------|-------|----------|
+| **PCA** | Global variance | Fast | Quick QC, linear structure |
+| **t-SNE** | Local clusters | Medium | Cluster visualization |
+| **UMAP** | Local + some global | Fast | Single-cell, large datasets |
+
+<!-- slide 32 -->
+## PCA / UMAP — Pipeline {.smaller background-color="#f6f4ee"}
+
+[Dimensionality reduction]{.eyebrow}
+
+### Pipeline
+
+```{python}
+#| echo: false
+pipeline_flowchart([
+    "Cells x Genes",
+    "Normalise and log",
+    "Highly variable genes",
+    "Scale and PCA to 50D",
+    "k-NN graph",
+    "UMAP or t-SNE",
+    "Colour by cell type",
+])
+plt.show()
+```
+
+<!-- slide 33.1 -->
+## PCA: Step-by-Step Code {.smaller .scrollable}
+
+[Dimensionality reduction]{.eyebrow}
+
+### PCA from scratch
+
+```{python}
+#| echo: true
+#| eval: false
+#| code-line-numbers: "1-8|10-14|16-28"
+
+# Step 1: Prepare gene expression matrix (genes × samples → samples × genes)
+import numpy as np
+import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+np.random.seed(42)
+# 200 samples × 5 000 genes (simulated RNA-seq log2-counts)
+X = np.random.normal(8, 2, (200, 5000))
+groups = np.repeat(['Control', 'Treatment'], 100)
+
+# Step 2: Scale and run PCA
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+pca = PCA(n_components=10, random_state=42)
+coords = pca.fit_transform(X_scaled)  # shape: (200, 10)
+var_explained = pca.explained_variance_ratio_ * 100
+
+# Step 3: Plot PC1 vs PC2
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(8, 6))
+for grp, color in zip(['Control', 'Treatment'], [COLORS['primary'], '#E8A838']):
+    m = groups == grp
+    ax.scatter(coords[m, 0], coords[m, 1], color=color,
+               s=50, alpha=0.75, label=grp, linewidths=0)
+ax.set_xlabel(f'PC1 ({var_explained[0]:.1f}%)', fontsize=12)
+ax.set_ylabel(f'PC2 ({var_explained[1]:.1f}%)', fontsize=12)
+ax.set_title('PCA of RNA-seq Data', fontsize=14, fontweight='bold')
+ax.legend(title='Group', frameon=False)
+ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+
+<!-- slide 33.2 -->
+## PCA: Step-by-Step — Result {.plot-slide background-color="#f6f4ee"}
+
+[Dimensionality reduction]{.eyebrow}
+
+### PC1 vs PC2
+
+```{python}
+#| echo: false
+#| eval: true
+#| fig-width: 8
+#| fig-height: 5
+
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+np.random.seed(42)
+X = np.random.normal(8, 2, (200, 5000))
+groups = np.repeat(['Control', 'Treatment'], 100)
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+pca = PCA(n_components=10, random_state=42)
+coords = pca.fit_transform(X_scaled)
+var_explained = pca.explained_variance_ratio_ * 100
+
+fig, ax = plt.subplots(figsize=(8, 5))
+for grp, color in zip(['Control', 'Treatment'], [COLORS['primary'], '#E8A838']):
+    m = groups == grp
+    ax.scatter(coords[m, 0], coords[m, 1], color=color,
+               s=50, alpha=0.75, label=grp, linewidths=0)
+ax.set_xlabel(f'PC1 ({var_explained[0]:.1f}%)', fontsize=12)
+ax.set_ylabel(f'PC2 ({var_explained[1]:.1f}%)', fontsize=12)
+ax.set_title('PCA of RNA-seq Data', fontsize=14, fontweight='bold')
+ax.legend(title='Group', frameon=False)
+ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+
+<!-- slide 34.1 -->
+## PCA: Scree Plot & Variance Explained {.smaller .scrollable}
+
+[Dimensionality reduction]{.eyebrow}
+
+### How many PCs do we keep?
+
+```{python}
+#| echo: true
+#| eval: false
+
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+np.random.seed(42)
+X = np.random.normal(8, 2, (200, 5000))
+X_scaled = StandardScaler().fit_transform(X)
+pca = PCA(n_components=20, random_state=42).fit(X_scaled)
+var = pca.explained_variance_ratio_ * 100
+cum = np.cumsum(var)
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+
+# Scree plot
+ax1.bar(range(1, 21), var, color=BRAND, alpha=0.8, edgecolor='white')
+ax1.set_xlabel('Principal Component'); ax1.set_ylabel('Variance Explained (%)')
+ax1.set_title('Scree Plot', fontweight='bold')
+ax1.spines[['top','right']].set_visible(False)
+
+# Cumulative variance
+ax2.plot(range(1, 21), cum, marker='o', color=BRAND,
+         markersize=6, linewidth=2)
+ax2.axhline(80, color=RED, linewidth=1, linestyle='--', alpha=0.7, label='80% threshold')
+ax2.fill_between(range(1, 21), cum, alpha=0.15, color=BRAND)
+ax2.set_xlabel('Number of PCs'); ax2.set_ylabel('Cumulative Variance (%)')
+ax2.set_title('Cumulative Variance', fontweight='bold')
+ax2.legend(frameon=False); ax2.spines[['top','right']].set_visible(False)
+
+plt.tight_layout(); plt.show()
+```
+
+<!-- slide 34.2 -->
+## PCA: Scree Plot — Result {.plot-slide background-color="#f6f4ee"}
+
+[Dimensionality reduction]{.eyebrow}
+
+### Scree + cumulative variance
+
+```{python}
+#| echo: false
+#| eval: true
+#| fig-width: 10
+#| fig-height: 5
+
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+np.random.seed(42)
+X = np.random.normal(8, 2, (200, 5000))
+X_scaled = StandardScaler().fit_transform(X)
+pca = PCA(n_components=20, random_state=42).fit(X_scaled)
+var = pca.explained_variance_ratio_ * 100
+cum = np.cumsum(var)
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+ax1.bar(range(1, 21), var, color=BRAND, alpha=0.8, edgecolor='white')
+ax1.set_xlabel('Principal Component'); ax1.set_ylabel('Variance Explained (%)')
+ax1.set_title('Scree Plot', fontweight='bold')
+ax1.spines[['top','right']].set_visible(False)
+ax2.plot(range(1, 21), cum, marker='o', color=BRAND,
+         markersize=6, linewidth=2)
+ax2.axhline(80, color=RED, linewidth=1, linestyle='--', alpha=0.7, label='80% threshold')
+ax2.fill_between(range(1, 21), cum, alpha=0.15, color=BRAND)
+ax2.set_xlabel('Number of PCs'); ax2.set_ylabel('Cumulative Variance (%)')
+ax2.set_title('Cumulative Variance', fontweight='bold')
+ax2.legend(frameon=False); ax2.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+
+<!-- slide 35 -->
+## t-SNE: Theory {.smaller .scrollable}
+
+[Dimensionality reduction]{.eyebrow}
+
+### Local neighbourhoods first
+
+:::::: columns
+:::: {.column width="55%"}
+**t-SNE (t-distributed Stochastic Neighbour Embedding)**
+
+Converts high-dimensional distances into probabilities, then places points in 2D so that *similar* points are neighbours.
+
+**Key parameters:**
+
+| Parameter | Effect |
+|-----------|--------|
+| `perplexity` (5–50) | Controls effective number of neighbours; higher → more global structure |
+| `n_iter` (≥ 1000) | More iterations → better convergence |
+| `learning_rate` | Typical range 10–1000 |
+
+**When to use:**
+
+✅ Revealing cluster structure in single-cell data
+✅ Comparing transcriptional states
+⚠️ Distances between clusters are **not** meaningful
+⚠️ Run on PCA-reduced data (50 PCs) for speed
+::::
+
+::: {.column width="45%"}
+::: fragment
+**Typical workflow:**
+```python
+# Correct approach
+pca50 = PCA(n_components=50)
+X_pca = pca50.fit_transform(X_scaled)
+
+tsne = TSNE(perplexity=30, n_iter=1000)
+embedding = tsne.fit_transform(X_pca)
+```
+:::
+
+::: fragment
+**Common mistake:**
+```python
+# Wrong – running t-SNE on raw 5000-gene matrix
+# is very slow and noisy
+tsne.fit_transform(X_raw)   # ❌
+```
+:::
+:::
+::::::
+
+<!-- slide 36 -->
+## t-SNE: Code Walkthrough {.smaller .scrollable}
+
+[Dimensionality reduction]{.eyebrow}
+
+### Run t-SNE on PCA-reduced data
+
+```{python}
+#| echo: true
+#| eval: false
+#| code-line-numbers: "1-6|8-13|15-28"
+
+# Step 1: Start from PCA-reduced data (recommended for speed)
+from sklearn.manifold import TSNE
+
+# Use top 50 PCs as input to t-SNE
+pca50 = PCA(n_components=50, random_state=42)
+X_pca50 = pca50.fit_transform(X_scaled)
+
+# Step 2: Run t-SNE
+tsne = TSNE(
+    n_components = 2,
+    perplexity   = 30,      # typical range: 5–50
+    n_iter       = 1000,
+    random_state = 42,
+)
+coords_tsne = tsne.fit_transform(X_pca50)
+
+# Step 3: Plot with cell-type annotations
+fig, ax = plt.subplots(figsize=(8, 6))
+for cell, color in zip(cell_types, COURSE_PAL):
+    m = annotations == cell
+    ax.scatter(coords_tsne[m,0], coords_tsne[m,1],
+               color=color, s=20, alpha=0.8, label=cell, linewidths=0)
+
+ax.set_xlabel('t-SNE 1'); ax.set_ylabel('t-SNE 2')
+ax.set_title('t-SNE: Single-Cell RNA-seq', fontsize=14, fontweight='bold')
+ax.legend(title='Cell type', fontsize=8, frameon=False,
+          bbox_to_anchor=(1.01, 1), loc='upper left')
+ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+
+::: {.footer style="font-size: 0.7em; color: #606060;"}
+**Tip:** Always run t-SNE on PCA-reduced data for reproducibility and speed on large datasets.
+:::
+
+<!-- slide 37 -->
+## UMAP: Theory {.smaller .scrollable}
+
+[Dimensionality reduction]{.eyebrow}
+
+### Local and global, faster than t-SNE
+
+:::::: columns
+:::: {.column width="55%"}
+**UMAP (Uniform Manifold Approximation and Projection)**
+
+Constructs a topological representation of the data and optimises a low-dimensional layout that best preserves both local *and* some global structure.
+
+**Key parameters:**
+
+| Parameter | Effect |
+|-----------|--------|
+| `n_neighbors` (5–200) | Low → fine local detail; high → more global |
+| `min_dist` (0.0–0.99) | Low → tight clusters; high → spread out |
+| `metric` | Distance metric (`'euclidean'`, `'cosine'`, …) |
+
+**Comparison with t-SNE:**
+
+| Feature | t-SNE | UMAP |
+|---------|-------|------|
+| Speed | Slower | Faster |
+| Global structure | ✗ | Some |
+| Reproducibility | ✗ | ✅ (with seed) |
+| Out-of-sample | ✗ | ✅ |
+
+::::
+
+::: {.column width="45%"}
+::: fragment
+```python
+import umap
+
+# UMAP preserves more global structure
+# and is faster than t-SNE on large datasets
+reducer = umap.UMAP(
+    n_neighbors  = 15,
+    min_dist     = 0.1,
+    n_components = 2,
+    random_state = 42,
+)
+embedding = reducer.fit_transform(X_pca50)
+```
+:::
+
+::: fragment
+**UMAP is the default for single-cell analysis:**
+```python
+# scanpy (single-cell analysis toolkit)
+import scanpy as sc
+sc.tl.umap(adata)
+sc.pl.umap(adata, color='cell_type')
+```
+:::
+:::
+::::::
+
+<!-- slide 38 -->
+## UMAP: Code Walkthrough {.smaller .scrollable}
+
+[Dimensionality reduction]{.eyebrow}
+
+### UMAP for single-cell
+
+```{python}
+#| echo: true
+#| eval: false
+#| code-line-numbers: "1-3|5-11|13-22"
+
+# pip install umap-learn
+import umap
+
+# Step 1: Run UMAP
+reducer = umap.UMAP(
+    n_neighbors  = 15,    # balances local/global structure
+    min_dist     = 0.1,   # controls how tightly points cluster
+    n_components = 2,
+    random_state = 42,
+)
+embedding = reducer.fit_transform(X_pca50)   # use PCA50 as input
+
+# Step 2: Visualise with color-coded metadata
+fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
+
+# Color by cell type
+for cell, color in zip(cell_types, COURSE_PAL):
+    m = annotations == cell
+    axes[0].scatter(embedding[m,0], embedding[m,1],
+                    color=color, s=15, alpha=0.8, label=cell, linewidths=0)
+axes[0].set_title('UMAP — colored by cell type', fontweight='bold')
+axes[0].legend(fontsize=7, frameon=False)
+
+# Color by continuous variable (e.g. total UMI counts)
+sc = axes[1].scatter(embedding[:,0], embedding[:,1],
+                     c=total_umi, cmap='viridis', s=15, alpha=0.8)
+plt.colorbar(sc, ax=axes[1], label='Total UMI counts', shrink=0.8)
+axes[1].set_title('UMAP — colored by sequencing depth', fontweight='bold')
+plt.tight_layout(); plt.show()
+```
+
+<!-- slide 39 -->
+## Exercise: Dimensionality Reduction {.smaller .scrollable}
+
+[Dimensionality reduction]{.eyebrow}
+
+### Hands-on practice
+
+::: {.exercise}
+**Coding Exercise — Dimensionality Reduction**
+
+Run PCA, t-SNE, and UMAP on a simulated 4-cell-type scRNA-seq dataset and display all three embeddings side by side in a single figure.
+
+::: {.sandbox}
+```{python}
+#| echo: true
+#| eval: false
+
+np.random.seed(2026)
+n_cells, n_genes = 800, 3000
+
+# 4 cell types with distinct expression profiles
+cell_types = np.repeat(['T_cell','B_cell','NK_cell','Monocyte'], 200)
+centers = {
+    'T_cell'   : np.random.normal(8.0, 0.3, n_genes),
+    'B_cell'   : np.random.normal(7.5, 0.3, n_genes),
+    'NK_cell'  : np.random.normal(8.5, 0.3, n_genes),
+    'Monocyte' : np.random.normal(9.0, 0.3, n_genes),
+}
+X_sc = np.vstack([
+    np.random.normal(centers[ct], 1.2, (200, n_genes))
+    for ct in ['T_cell','B_cell','NK_cell','Monocyte']
+])
+
+# Your tasks:
+# 1. Scale X_sc with StandardScaler
+# 2. Run PCA; plot scree plot + PC1 vs PC2 colored by cell type
+# 3. Run t-SNE on top 50 PCs; visualize
+# 4. Run UMAP on top 50 PCs; visualize
+# 5. Arrange all three plots side by side in one figure
+
+# Bonus: Add 95% confidence ellipses for each cell-type cluster
+```
+:::
+
+<details>
+<summary>Show solution</summary>
+
+```{python}
+#| echo: true
+#| eval: true
+
+import numpy as np, pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+import umap
+
+np.random.seed(42)
+n_per = 300
+means = {'T cell': [2,0,1,0], 'B cell': [0,3,0,1],
+         'NK cell': [1,0,3,0], 'Monocyte': [0,1,0,3]}
+X_parts, y_parts = [], []
+for ct, mu in means.items():
+    X_parts.append(np.random.randn(n_per, 200) + np.array(mu * 50))
+    y_parts.extend([ct] * n_per)
+X_sc = np.vstack(X_parts)
+labels = np.array(y_parts)
+
+cell_pal = {ct: COLORS[c] for ct, c in zip(means.keys(),
+            ['primary','secondary','tertiary','quaternary'])}
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X_sc)
+
+pca = PCA(n_components=50)
+X_pca = pca.fit_transform(X_scaled)
+
+tsne = TSNE(n_components=2, perplexity=40, random_state=42, n_jobs=-1)
+X_tsne = tsne.fit_transform(X_pca)
+
+reducer = umap.UMAP(n_components=2, random_state=42)
+X_umap = reducer.fit_transform(X_pca)
+
+fig, axes = plt.subplots(1, 3, figsize=(15, 5), facecolor="white")
+for ax in axes:
+    ax.set_facecolor("white")
+
+for ct in means:
+    mask = labels == ct
+    axes[0].scatter(X_pca[mask,0], X_pca[mask,1],
+                    c=cell_pal[ct], s=20, alpha=0.6, linewidths=0, label=ct)
+    axes[1].scatter(X_tsne[mask,0], X_tsne[mask,1],
+                    c=cell_pal[ct], s=20, alpha=0.6, linewidths=0)
+    axes[2].scatter(X_umap[mask,0], X_umap[mask,1],
+                    c=cell_pal[ct], s=20, alpha=0.6, linewidths=0)
+
+var1 = pca.explained_variance_ratio_[0]*100
+var2 = pca.explained_variance_ratio_[1]*100
+axes[0].set_title('PCA', fontweight='bold')
+axes[0].set_xlabel(f'PC1 ({var1:.1f}%)')
+axes[0].set_ylabel(f'PC2 ({var2:.1f}%)')
+axes[0].legend(frameon=False, markerscale=1.5)
+axes[1].set_title('t-SNE', fontweight='bold')
+axes[1].set_xlabel('t-SNE 1'); axes[1].set_ylabel('t-SNE 2')
+axes[2].set_title('UMAP', fontweight='bold')
+axes[2].set_xlabel('UMAP 1'); axes[2].set_ylabel('UMAP 2')
+
+fig.suptitle('DIMENSIONALITY REDUCTION — SINGLE-CELL RNA-SEQ', fontweight='bold', fontsize=15)
+plt.tight_layout()
+plt.show()
+```
+
+</details>
+:::
+

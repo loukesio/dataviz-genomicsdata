@@ -1,0 +1,61 @@
+---
+title: "Genomics Data Visualization"
+subtitle: "<span style='font-size:1.25em;'>with Python</span> · Day 1 · Foundations & differential expression"
+author: "<div style='width: 100%; text-align: center; margin-left: auto; margin-right: auto;'><a href='https://github.com/loukesio' style='color:#208462;font-weight:600;'>Dr. Loukas Theodosiou</a>&ensp;//&ensp;Day 1 &ensp;//&ensp; May 2026</div>"
+date: "2026-06-01"
+format:
+  revealjs:
+    theme: [default, style.scss]
+    width: 1280
+    height: 720
+    slide-number: c
+    progress: true
+    transition: fade
+    history: false
+    footer: "Genomics Viz with Python"
+    highlight-style: arrow
+    code-line-numbers: true
+    fig-align: center
+execute:
+  echo: true
+  warning: false
+  freeze: auto
+jupyter: python3
+---
+
+```{python}
+#| label: setup
+#| echo: false
+# Single source of truth for palette, font, and rcParams lives in the package;
+# importing it registers IBM Plex Mono, defines the Economist palette + ramp
+# helpers (ECON, ECON_QUAL, econ_cmap, econ_diverging, econ_spectrum), and
+# applies the cream-canvas matplotlib rcParams. The same module is what the
+# `_04_fundamentals` section teaches students to build.
+from genomics_course.theme import *                # noqa: F401,F403
+from genomics_course.data import (                 # the nine course datasets
+    load_deseq2, load_admixture, load_gwas, load_variants, load_lineages,
+    load_timecourse, load_coexpression, load_anscombe, load_datasaurus,
+)
+import numpy as np, pandas as pd, matplotlib.pyplot as plt, seaborn as sns
+import warnings
+warnings.filterwarnings('ignore')
+
+rng = np.random.default_rng(7)   # only for the synthetic teaching examples
+```
+
+{{< include sections/_00_motivation.qmd >}}
+{{< include sections/_01_why_python.qmd >}}
+{{< include sections/_02_ecosystem.qmd >}}
+{{< include sections/_03_matplotlib_basics.qmd >}}
+{{< include sections/_04_fundamentals.qmd >}}
+{{< include sections/_05_logistics.qmd >}}
+{{< include sections/_06_scatter.qmd >}}
+{{< include sections/_07_volcano.qmd >}}
+{{< include sections/_08_distributions.qmd >}}
+{{< include sections/_09_dimreduction.qmd >}}
+{{< include sections/_10_admixture.qmd >}}
+{{< include sections/_11_heatmaps.qmd >}}
+{{< include sections/_12_waffle_waterfall.qmd >}}
+{{< include sections/_13_peaks.qmd >}}
+{{< include sections/_14_pathways.qmd >}}
+{{< include sections/_15_recap.qmd >}}
