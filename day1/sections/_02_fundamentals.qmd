@@ -1,0 +1,2632 @@
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- FUNDAMENTALS OF DATA VISUALIZATION (Act I–III)                   -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+
+<!-- slide 9 -->
+# Fundamentals of Data Visualization {.divider}
+
+[Chart design principles · Day 01]{.eyebrow}
+
+<!-- slide 10 -->
+## The Lie Factor {.smaller}
+
+[Honest charts · baselines]{.eyebrow}
+
+### Set bars to zero
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+Bars encode by **length**, so the value axis must start at zero. Truncate it and a routine batch looks like one sample failed.
+
+Lines and dots can be zoomed, just label the axis.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7
+#| fig-height: 4.4
+#| fig-dpi: 200
+reads = load_reads_per_sample()                 # sample, reads (M)
+fig, ax = plt.subplots(1, 2, figsize=(7, 4.4))  # two panels side by side
+
+# MISLEADING: y-axis starts at 30, so a small gap looks huge
+ax[0].bar(reads["sample"], reads["reads"],
+          color="#f4ab5c", edgecolor=CREAM)
+ax[0].set_ylim(30, 42)                           # the lie: truncated baseline
+ax[0].set_title("MISLEADING", color="#333333",
+                fontsize=11, fontweight="bold", pad=8)
+ax[0].set_ylabel("reads per sample (M)")
+
+# HONEST: y-axis starts at 0, so bar lengths are proportional
+ax[1].bar(reads["sample"], reads["reads"],
+          color="#d1422f", edgecolor=CREAM)
+ax[1].set_ylim(0, 45)                            # honest: zero baseline
+ax[1].set_title("HONEST", color="#333333",
+                fontsize=11, fontweight="bold", pad=8)
+ax[1].axhline(0, color=INK, lw=1.5)              # anchor the eye at zero
+for t in ax[1].get_yticklabels():               # make the 0 tick dark + bold
+    if t.get_text() in ("0", "0.0"):
+        t.set_color(INK); t.set_fontweight("bold")
+
+for a in ax:                                     # tidy both panels
+    a.tick_params(axis="x", labelsize=8)
+    a.spines[["top", "right"]].set_visible(False)
+fig.subplots_adjust(wspace=0.35, bottom=0.12)
+plt.show()
+```
+
+### Code
+
+```python
+reads = load_reads_per_sample()                 # sample, reads (M)
+fig, ax = plt.subplots(1, 2, figsize=(7, 4.4))  # two panels side by side
+
+# MISLEADING: y-axis starts at 30, so a small gap looks huge
+ax[0].bar(reads["sample"], reads["reads"],
+          color="#f4ab5c", edgecolor=CREAM)
+ax[0].set_ylim(30, 42)                           # the lie: truncated baseline
+ax[0].set_title("MISLEADING", color="#333333",
+                fontsize=11, fontweight="bold", pad=8)
+ax[0].set_ylabel("reads per sample (M)")
+
+# HONEST: y-axis starts at 0, so bar lengths are proportional
+ax[1].bar(reads["sample"], reads["reads"],
+          color="#d1422f", edgecolor=CREAM)
+ax[1].set_ylim(0, 45)                            # honest: zero baseline
+ax[1].set_title("HONEST", color="#333333",
+                fontsize=11, fontweight="bold", pad=8)
+ax[1].axhline(0, color=INK, lw=1.5)              # anchor the eye at zero
+for t in ax[1].get_yticklabels():               # make the 0 tick dark + bold
+    if t.get_text() in ("0", "0.0"):
+        t.set_color(INK); t.set_fontweight("bold")
+
+for a in ax:                                     # tidy both panels
+    a.tick_params(axis="x", labelsize=8)
+    a.spines[["top", "right"]].set_visible(False)
+fig.subplots_adjust(wspace=0.35, bottom=0.12)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Bars start at **zero**. Lines and dots can be zoomed, just label the axis.
+:::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+After Wilke, *Fundamentals of Data Visualization* (2019), ch. 17.
+:::
+
+<!-- slide 11 -->
+## Data-to-Ink Ratio {.smaller}
+
+[Honest charts · simplicity]{.eyebrow}
+
+### Remove what doesn't help, keep what does
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+Every drop of ink should encode data. Strip the gridlines, hatching, and heavy borders, keep the bars and the numbers.
+
+Like seasoning: too much overwhelms, too little is bland.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.6
+#| fig-height: 4.6
+#| fig-dpi: 200
+te = load_tissue_expression()          # tissue, tpm
+ts = te.sort_values("tpm")             # sort so bars rank cleanly
+fig, ax = plt.subplots(1, 2, figsize=(6.6, 4.6))
+
+# TOO MUCH INK: grid + hatch + heavy borders all fight the data
+ax[0].bar(te["tissue"], te["tpm"], color=PURPLE,
+          edgecolor=INK, linewidth=1.5, hatch="//")
+ax[0].grid(True, color=GREY)
+ax[0].set_title("TOO MUCH INK", color=RED,
+                fontsize=11, fontweight="bold", pad=8)
+ax[0].tick_params(axis="x", rotation=45, labelsize=7)
+
+# JUST RIGHT: clean bars, value labels, no chartjunk
+ax[1].barh(ts["tissue"], ts["tpm"],
+           color=GREEN, height=0.62)
+for i, v in enumerate(ts["tpm"]):      # label each bar with its value
+    ax[1].text(v + 1, i, str(v), va="center",
+               fontsize=9, color=MUTED)
+ax[1].set_title("JUST RIGHT", color=GREEN,
+                fontsize=11, fontweight="bold", pad=8)
+ax[1].set_xlim(0, 105)
+for s in ["top", "right", "bottom"]:   # drop unneeded spines
+    ax[1].spines[s].set_visible(False)
+ax[1].xaxis.set_visible(False)         # values are labelled, axis is redundant
+fig.subplots_adjust(wspace=0.5, bottom=0.18)
+plt.show()
+```
+
+### Code
+
+```python
+te = load_tissue_expression()          # tissue, tpm
+ts = te.sort_values("tpm")             # sort so bars rank cleanly
+fig, ax = plt.subplots(1, 2, figsize=(6.6, 4.6))
+
+# TOO MUCH INK: grid + hatch + heavy borders all fight the data
+ax[0].bar(te["tissue"], te["tpm"], color=PURPLE,
+          edgecolor=INK, linewidth=1.5, hatch="//")
+ax[0].grid(True, color=GREY)
+ax[0].set_title("TOO MUCH INK", color=RED,
+                fontsize=11, fontweight="bold", pad=8)
+ax[0].tick_params(axis="x", rotation=45, labelsize=7)
+
+# JUST RIGHT: clean bars, value labels, no chartjunk
+ax[1].barh(ts["tissue"], ts["tpm"],
+           color=GREEN, height=0.62)
+for i, v in enumerate(ts["tpm"]):      # label each bar with its value
+    ax[1].text(v + 1, i, str(v), va="center",
+               fontsize=9, color=MUTED)
+ax[1].set_title("JUST RIGHT", color=GREEN,
+                fontsize=11, fontweight="bold", pad=8)
+ax[1].set_xlim(0, 105)
+for s in ["top", "right", "bottom"]:   # drop unneeded spines
+    ax[1].spines[s].set_visible(False)
+ax[1].xaxis.set_visible(False)         # values are labelled, axis is redundant
+fig.subplots_adjust(wspace=0.5, bottom=0.18)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.takeaway}
+Maximise the share of ink that encodes real data. The right amount lets the data shine.
+:::
+
+<!-- slide 12 -->
+## Length Beats Area {.smaller}
+
+[Honest charts · geometric accuracy]{.eyebrow}
+
+### Compare with bars, not slices
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+The eye judges **length** well and **area** poorly. A pie asks you to compare wedge areas, and the small ancestry components blur together. The same proportions as bars rank in an instant.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+#| fig-dpi: 200
+adm = load_admixture()                 # individual, population, K1..K5
+K = [f"K{i+1}" for i in range(5)]
+
+# pick the most admixed individual (highest entropy = most mixed)
+ent = -(adm[K].values
+        * np.log(adm[K].values + 1e-9)).sum(1)
+one = adm[K].iloc[ent.argmax()].values
+cols = [BLUE, AMBER, GREEN, RED, PURPLE]
+fig, ax = plt.subplots(1, 2, figsize=(6.4, 4.7))
+
+# PIE: wedge areas are hard to compare, tiny slices blur together
+ax[0].pie(one, labels=K, colors=cols,
+          autopct="%1.0f%%", startangle=90,
+          textprops={"fontsize": 8})
+ax[0].set_title("PIE: HARD", color=RED,
+                fontsize=11, fontweight="bold", pad=8)
+
+# BAR: sort, then rank by length, the eye reads it instantly
+order = np.argsort(one)
+ax[1].barh(np.array(K)[order], one[order] * 100,
+           color=np.array(cols)[order], height=0.6)
+for i, v in enumerate(one[order] * 100):
+    ax[1].text(v + 1, i, f"{v:.0f}%", va="center",
+               fontsize=9, color=MUTED)
+ax[1].set_title("BAR: EASY", color=GREEN,
+                fontsize=11, fontweight="bold", pad=8)
+ax[1].set_xlim(0, one.max() * 100 + 12)
+for s in ["top", "right", "bottom"]:
+    ax[1].spines[s].set_visible(False)
+ax[1].xaxis.set_visible(False)
+fig.subplots_adjust(wspace=0.5)
+plt.show()
+```
+
+### Code
+
+```python
+adm = load_admixture()                 # individual, population, K1..K5
+K = [f"K{i+1}" for i in range(5)]
+
+# pick the most admixed individual (highest entropy = most mixed)
+ent = -(adm[K].values
+        * np.log(adm[K].values + 1e-9)).sum(1)
+one = adm[K].iloc[ent.argmax()].values
+cols = [BLUE, AMBER, GREEN, RED, PURPLE]
+fig, ax = plt.subplots(1, 2, figsize=(6.4, 4.7))
+
+# PIE: wedge areas are hard to compare, tiny slices blur together
+ax[0].pie(one, labels=K, colors=cols,
+          autopct="%1.0f%%", startangle=90,
+          textprops={"fontsize": 8})
+ax[0].set_title("PIE: HARD", color=RED,
+                fontsize=11, fontweight="bold", pad=8)
+
+# BAR: sort, then rank by length, the eye reads it instantly
+order = np.argsort(one)
+ax[1].barh(np.array(K)[order], one[order] * 100,
+           color=np.array(cols)[order], height=0.6)
+for i, v in enumerate(one[order] * 100):
+    ax[1].text(v + 1, i, f"{v:.0f}%", va="center",
+               fontsize=9, color=MUTED)
+ax[1].set_title("BAR: EASY", color=GREEN,
+                fontsize=11, fontweight="bold", pad=8)
+ax[1].set_xlim(0, one.max() * 100 + 12)
+for s in ["top", "right", "bottom"]:
+    ax[1].spines[s].set_visible(False)
+ax[1].xaxis.set_visible(False)
+fig.subplots_adjust(wspace=0.5)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+Cleveland & McGill (1984); Wilke (2019), ch. 17.
+:::
+
+<!-- slide 13 -->
+## How We See: Perceptual Ranking {.smaller}
+
+[Honest charts · perception]{.eyebrow}
+
+### Position is read most accurately, colour least
+
+::::: {.columns}
+
+:::: {.column width="42%"}
+The same four values, four ways. Position is read most accurately, then length, then area, and colour least of all.
+
+Encode your **main message** with position or length, reserve area and colour for secondary variables.
+::::
+
+:::: {.column width="58%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7
+#| fig-height: 5.5
+#| fig-dpi: 200
+fig, ax = plt.subplots(2, 2, figsize=(6.6, 5))
+labels = ["A", "B", "C", "D"]
+vals = [75, 50, 90, 30]                # same values, four encodings
+
+# 1. POSITION on a common scale, read most accurately
+ax[0, 0].scatter(vals, range(4), color=GREEN,
+                 s=90, zorder=3)
+ax[0, 0].set_yticks(range(4))
+ax[0, 0].set_yticklabels(labels, fontsize=8)
+ax[0, 0].set_xlim(0, 100)
+ax[0, 0].set_title("1. POSITION", color="#333333",
+                   fontsize=10, fontweight="bold")
+
+# 2. LENGTH of a bar, next most accurate
+ax[0, 1].barh(labels, vals, color=BLUE, height=0.55)
+ax[0, 1].set_xlim(0, 100)
+ax[0, 1].set_title("2. LENGTH", color="#333333",
+                   fontsize=10, fontweight="bold")
+
+# 3. AREA of a bubble (s = size), harder to judge
+for i, v in enumerate(vals):
+    ax[1, 0].scatter(i, 0.5, s=v * 8, color=PURPLE,
+                     alpha=0.75, edgecolors=CREAM)
+    ax[1, 0].text(i, -0.15, labels[i], ha="center",
+                  fontsize=8, color=MUTED)
+ax[1, 0].set_ylim(-0.5, 1.2)
+ax[1, 0].set_xlim(-0.8, 3.8)
+ax[1, 0].axis("off")
+ax[1, 0].set_title("3. AREA", color="#333333",
+                   fontsize=10, fontweight="bold")
+
+# 4. COLOUR shade, read least accurately of all
+cmap = econ_cmap("hongkong", reverse=True)
+norm = plt.Normalize(0, 100)
+for i, v in enumerate(vals):
+    ax[1, 1].barh(labels[i], 1, color=cmap(norm(v)),
+                  height=0.6)
+    ax[1, 1].text(0.5, i, str(v), ha="center",
+                  va="center", fontsize=9,
+                  fontweight="bold",
+                  color=CREAM if v > 55 else INK)
+ax[1, 1].set_xlim(0, 1)
+ax[1, 1].xaxis.set_visible(False)
+for s in ax[1, 1].spines.values():
+    s.set_visible(False)
+ax[1, 1].set_title("4. COLOUR", color="#333333",
+                   fontsize=10, fontweight="bold")
+fig.subplots_adjust(wspace=0.35, hspace=0.45)
+plt.show()
+```
+
+### Code
+
+```python
+fig, ax = plt.subplots(2, 2, figsize=(6.6, 5))
+labels = ["A", "B", "C", "D"]
+vals = [75, 50, 90, 30]                # same values, four encodings
+
+# 1. POSITION on a common scale, read most accurately
+ax[0, 0].scatter(vals, range(4), color=GREEN,
+                 s=90, zorder=3)
+ax[0, 0].set_yticks(range(4))
+ax[0, 0].set_yticklabels(labels, fontsize=8)
+ax[0, 0].set_xlim(0, 100)
+ax[0, 0].set_title("1. POSITION", color="#333333",
+                   fontsize=10, fontweight="bold")
+
+# 2. LENGTH of a bar, next most accurate
+ax[0, 1].barh(labels, vals, color=BLUE, height=0.55)
+ax[0, 1].set_xlim(0, 100)
+ax[0, 1].set_title("2. LENGTH", color="#333333",
+                   fontsize=10, fontweight="bold")
+
+# 3. AREA of a bubble (s = size), harder to judge
+for i, v in enumerate(vals):
+    ax[1, 0].scatter(i, 0.5, s=v * 8, color=PURPLE,
+                     alpha=0.75, edgecolors=CREAM)
+    ax[1, 0].text(i, -0.15, labels[i], ha="center",
+                  fontsize=8, color=MUTED)
+ax[1, 0].set_ylim(-0.5, 1.2)
+ax[1, 0].set_xlim(-0.8, 3.8)
+ax[1, 0].axis("off")
+ax[1, 0].set_title("3. AREA", color="#333333",
+                   fontsize=10, fontweight="bold")
+
+# 4. COLOUR shade, read least accurately of all
+cmap = econ_cmap("hongkong", reverse=True)
+norm = plt.Normalize(0, 100)
+for i, v in enumerate(vals):
+    ax[1, 1].barh(labels[i], 1, color=cmap(norm(v)),
+                  height=0.6)
+    ax[1, 1].text(0.5, i, str(v), ha="center",
+                  va="center", fontsize=9,
+                  fontweight="bold",
+                  color=CREAM if v > 55 else INK)
+ax[1, 1].set_xlim(0, 1)
+ax[1, 1].xaxis.set_visible(False)
+for s in ax[1, 1].spines.values():
+    s.set_visible(False)
+ax[1, 1].set_title("4. COLOUR", color="#333333",
+                   fontsize=10, fontweight="bold")
+fig.subplots_adjust(wspace=0.35, hspace=0.45)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.takeaway}
+Give your audience the easiest channel. Position and length for the headline, colour and area for the rest.
+:::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+Cleveland & McGill (1984), *JASA* 79(387).
+:::
+
+<!-- slide 14 -->
+## Pre-attentive Pop-out {.smaller}
+
+[Honest charts · perception]{.eyebrow}
+
+### Find the hit: a slow hunt, or an instant pop
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+Same Manhattan plot, same significant SNP. On the left every point is grey, so you have to **hunt** along the line for the hit. On the right one highlight colour makes it **pop out** before you even look.
+
+Colour, size, and orientation are pre-attentive. Encode the thing you want seen first with one of them.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7.6
+#| fig-height: 4
+#| fig-dpi: 200
+g = load_gwas().copy()                 # chrom, pos, pval (SNP-level)
+g["nlp"] = -np.log10(g["pval"])
+g["i"] = range(len(g))                 # simple running x position
+gw = -np.log10(5e-8)                    # genome-wide significance line
+sig = g["nlp"] > gw
+
+fig, ax = plt.subplots(1, 2, figsize=(7.6, 3.4))
+
+# ALL GREY: the hit is there, but you must hunt for it
+ax[0].scatter(g["i"], g["nlp"], c=GREY, s=7, edgecolors="none")
+ax[0].axhline(gw, color=GREY, lw=0.8, ls="--")
+ax[0].set_title("ALL GREY: HUNT FOR IT", color="#333333",
+                fontsize=10, fontweight="bold", pad=6)
+ax[0].set_ylabel("-log10 p", fontsize=8)
+
+# ONE COLOUR: highlight the significant SNP, it pops out
+ax[1].scatter(g["i"][~sig], g["nlp"][~sig], c=GREY, s=7, edgecolors="none")
+ax[1].scatter(g["i"][sig], g["nlp"][sig], c=RED, s=40,
+              edgecolors=CREAM, lw=0.5, zorder=5)
+ax[1].axhline(gw, color=GREY, lw=0.8, ls="--")
+ax[1].set_title("ONE COLOUR: POPS OUT", color="#333333",
+                fontsize=10, fontweight="bold", pad=6)
+
+for a in ax:
+    a.set_xticks([]); a.tick_params(labelsize=7)
+    a.spines[["top", "right"]].set_visible(False)
+fig.subplots_adjust(wspace=0.2, bottom=0.12)
+plt.show()
+```
+
+### Code
+
+```python
+g = load_gwas().copy()                 # chrom, pos, pval (SNP-level)
+g["nlp"] = -np.log10(g["pval"])
+g["i"] = range(len(g))                 # simple running x position
+gw = -np.log10(5e-8)                    # genome-wide significance line
+sig = g["nlp"] > gw
+
+fig, ax = plt.subplots(1, 2, figsize=(7.6, 3.4))
+
+# ALL GREY: the hit is there, but you must hunt for it
+ax[0].scatter(g["i"], g["nlp"], c=GREY, s=7, edgecolors="none")
+ax[0].axhline(gw, color=GREY, lw=0.8, ls="--")
+ax[0].set_title("ALL GREY: HUNT FOR IT", color="#333333",
+                fontsize=10, fontweight="bold", pad=6)
+ax[0].set_ylabel("-log10 p", fontsize=8)
+
+# ONE COLOUR: highlight the significant SNP, it pops out
+ax[1].scatter(g["i"][~sig], g["nlp"][~sig], c=GREY, s=7, edgecolors="none")
+ax[1].scatter(g["i"][sig], g["nlp"][sig], c=RED, s=40,
+              edgecolors=CREAM, lw=0.5, zorder=5)
+ax[1].axhline(gw, color=GREY, lw=0.8, ls="--")
+ax[1].set_title("ONE COLOUR: POPS OUT", color="#333333",
+                fontsize=10, fontweight="bold", pad=6)
+
+for a in ax:
+    a.set_xticks([]); a.tick_params(labelsize=7)
+    a.spines[["top", "right"]].set_visible(False)
+fig.subplots_adjust(wspace=0.2, bottom=0.12)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Colour, size, and orientation pop out pre-attentively. Put your one finding on a channel the eye catches for free.
+:::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+After Wilke, *Fundamentals of Data Visualization* (2019), ch. 19.
+:::
+
+<!-- slide 15 -->
+## Pre-attentive: Size {.smaller}
+
+[Honest charts · perception]{.eyebrow}
+
+### Make the size mean something, hubs jump out
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+In a co-expression network, every gene drawn the same size hides the structure. Map node **size to the number of connections** and the hub genes pop out instantly, no labels, no hunting.
+
+Size is pre-attentive: bigger reads as "more" before you think.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7.6
+#| fig-height: 3.6
+import networkx as nx
+G = nx.barabasi_albert_graph(40, 2, seed=7)   # scale-free: a few hubs
+deg = dict(G.degree())                         # connections per node
+pos = nx.spring_layout(G, seed=7, k=0.5)
+sizes = np.array([deg[n] for n in G.nodes()])
+hub = max(deg.values())
+
+fig, ax = plt.subplots(1, 2, figsize=(7.6, 3.6))
+for a in ax:
+    a.axis("off")
+
+# UNIFORM: same size everywhere, hubs are invisible
+nx.draw_networkx_edges(G, pos, ax=ax[0], edge_color=LINE, width=0.6)
+nx.draw_networkx_nodes(G, pos, ax=ax[0], node_size=90,
+                       node_color=BLUE, edgecolors=CREAM, linewidths=0.5)
+ax[0].set_title("UNIFORM: HUBS HIDDEN", color="#333333",
+                fontsize=10, fontweight="bold")
+
+# SIZE = CONNECTIONS: hubs grow and pop, top hubs in red
+node_cols = [RED if d >= hub - 1 else BLUE for d in sizes]
+nx.draw_networkx_edges(G, pos, ax=ax[1], edge_color=LINE, width=0.6)
+nx.draw_networkx_nodes(G, pos, ax=ax[1], node_size=sizes * 45,
+                       node_color=node_cols, edgecolors=CREAM, linewidths=0.5)
+ax[1].set_title("SIZE = CONNECTIONS: HUBS POP", color="#333333",
+                fontsize=10, fontweight="bold")
+fig.subplots_adjust(wspace=0.1)
+plt.show()
+```
+
+### Code
+
+```python
+import networkx as nx
+G = nx.barabasi_albert_graph(40, 2, seed=7)   # scale-free: a few hubs
+deg = dict(G.degree())                         # connections per node
+pos = nx.spring_layout(G, seed=7, k=0.5)
+sizes = np.array([deg[n] for n in G.nodes()])
+hub = max(deg.values())
+
+fig, ax = plt.subplots(1, 2, figsize=(7.6, 3.6))
+for a in ax:
+    a.axis("off")
+
+# UNIFORM: same size everywhere, hubs are invisible
+nx.draw_networkx_edges(G, pos, ax=ax[0], edge_color=LINE, width=0.6)
+nx.draw_networkx_nodes(G, pos, ax=ax[0], node_size=90,
+                       node_color=BLUE, edgecolors=CREAM, linewidths=0.5)
+ax[0].set_title("UNIFORM: HUBS HIDDEN", color="#333333",
+                fontsize=10, fontweight="bold")
+
+# SIZE = CONNECTIONS: hubs grow and pop, top hubs in red
+node_cols = [RED if d >= hub - 1 else BLUE for d in sizes]
+nx.draw_networkx_edges(G, pos, ax=ax[1], edge_color=LINE, width=0.6)
+nx.draw_networkx_nodes(G, pos, ax=ax[1], node_size=sizes * 45,
+                       node_color=node_cols, edgecolors=CREAM, linewidths=0.5)
+ax[1].set_title("SIZE = CONNECTIONS: HUBS POP", color="#333333",
+                fontsize=10, fontweight="bold")
+fig.subplots_adjust(wspace=0.1)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.takeaway}
+Map size to a real quantity (degree, expression, effect size). Bigger reads as more, instantly.
+:::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+After Wilke, *Fundamentals of Data Visualization* (2019), ch. 19.
+:::
+
+
+<!-- slide 16 -->
+## Pre-attentive: Direction {.smaller}
+
+[Honest charts · perception]{.eyebrow}
+
+### Left vs right reads as down vs up
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+A volcano splits genes by the **sign** of the fold change: down-regulated to the left, up-regulated to the right. Position relative to zero *is* the direction, the eye sorts the two groups before reading a single label.
+
+Like an age pyramid (male left, female right), direction carries meaning for free.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6
+#| fig-height: 4
+np.random.seed(42)
+n = 2000
+log2fc = np.random.normal(0, 1.5, n)
+pvals = np.random.exponential(0.4, n).clip(1e-30, 1)
+# spike in 80 truly significant genes (40 up, 40 down)
+sig_idx = np.random.choice(n, 80, replace=False)
+log2fc[sig_idx[:40]] += 3
+log2fc[sig_idx[40:]] -= 3
+pvals[sig_idx] *= 1e-6
+neg_log_p = -np.log10(pvals)
+
+# split by DIRECTION: down-left (blue), up-right (red), rest grey
+up = (log2fc > 1) & (neg_log_p > 1.3)
+down = (log2fc < -1) & (neg_log_p > 1.3)
+ns = ~(up | down)
+
+fig, ax = plt.subplots(figsize=(6, 4))
+ax.scatter(log2fc[ns], neg_log_p[ns], c=GREY, s=10, alpha=0.4, linewidths=0)
+ax.scatter(log2fc[down], neg_log_p[down], c=BLUE, s=22, alpha=0.85, linewidths=0)
+ax.scatter(log2fc[up], neg_log_p[up], c=RED, s=22, alpha=0.85, linewidths=0)
+ax.axhline(1.3, color=INK, lw=0.8, ls="--")     # p = 0.05
+ax.axvline(1, color=INK, lw=0.8, ls="--")       # 2-fold up
+ax.axvline(-1, color=INK, lw=0.8, ls="--")      # 2-fold down
+ax.text(-5.5, neg_log_p.max() * 0.92, f"DOWN {int(down.sum())}",
+        color=BLUE, fontsize=10, fontweight="bold")
+ax.text(3, neg_log_p.max() * 0.92, f"UP {int(up.sum())}",
+        color=RED, fontsize=10, fontweight="bold")
+ax.set_xlabel("log2 fold change", fontsize=8)
+ax.set_ylabel("-log10 p", fontsize=8)
+ax.spines[["top", "right"]].set_visible(False)
+fig.tight_layout()
+plt.show()
+```
+
+### Code
+
+```python
+np.random.seed(42)
+n = 2000
+log2fc = np.random.normal(0, 1.5, n)
+pvals = np.random.exponential(0.4, n).clip(1e-30, 1)
+# spike in 80 truly significant genes (40 up, 40 down)
+sig_idx = np.random.choice(n, 80, replace=False)
+log2fc[sig_idx[:40]] += 3
+log2fc[sig_idx[40:]] -= 3
+pvals[sig_idx] *= 1e-6
+neg_log_p = -np.log10(pvals)
+
+# split by DIRECTION: down-left (blue), up-right (red), rest grey
+up = (log2fc > 1) & (neg_log_p > 1.3)
+down = (log2fc < -1) & (neg_log_p > 1.3)
+ns = ~(up | down)
+
+fig, ax = plt.subplots(figsize=(6, 4))
+ax.scatter(log2fc[ns], neg_log_p[ns], c=GREY, s=10, alpha=0.4, linewidths=0)
+ax.scatter(log2fc[down], neg_log_p[down], c=BLUE, s=22, alpha=0.85, linewidths=0)
+ax.scatter(log2fc[up], neg_log_p[up], c=RED, s=22, alpha=0.85, linewidths=0)
+ax.axhline(1.3, color=INK, lw=0.8, ls="--")     # p = 0.05
+ax.axvline(1, color=INK, lw=0.8, ls="--")       # 2-fold up
+ax.axvline(-1, color=INK, lw=0.8, ls="--")      # 2-fold down
+ax.text(-5.5, neg_log_p.max() * 0.92, f"DOWN {int(down.sum())}",
+        color=BLUE, fontsize=10, fontweight="bold")
+ax.text(3, neg_log_p.max() * 0.92, f"UP {int(up.sum())}",
+        color=RED, fontsize=10, fontweight="bold")
+ax.set_xlabel("log2 fold change", fontsize=8)
+ax.set_ylabel("-log10 p", fontsize=8)
+ax.spines[["top", "right"]].set_visible(False)
+fig.tight_layout()
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Position around a zero line encodes direction. Down-left, up-right, the eye groups them before reading.
+:::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+After Wilke, *Fundamentals of Data Visualization* (2019), ch. 7.
+:::
+
+
+<!-- slide 17 -->
+## Pre-attentive: Direction with Bars {.smaller}
+
+[Honest charts · perception]{.eyebrow}
+
+### Anchor at zero, let the bars point up or down
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+The volcano shows direction by *position*; a diverging bar shows it by *length from zero*. Down-regulated genes grow left, up-regulated grow right, ranked by effect size.
+
+Same pre-attentive idea as an age pyramid: one zero line, two directions, no legend needed.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6
+#| fig-height: 4.2
+de = load_deseq2()                     # gene, log2FoldChange, pvalue, padj
+
+# take the 8 most up- and 8 most down-regulated genes
+top_up = de.nlargest(8, "log2FoldChange")
+top_dn = de.nsmallest(8, "log2FoldChange")
+sel = pd.concat([top_dn, top_up]).sort_values("log2FoldChange")
+cols = [BLUE if v < 0 else RED for v in sel["log2FoldChange"]]
+
+fig, ax = plt.subplots(figsize=(6, 4.2))
+ax.barh(range(len(sel)), sel["log2FoldChange"], color=cols, height=0.7)
+ax.axvline(0, color=INK, lw=1.2)       # the zero divide = direction line
+ax.set_yticks(range(len(sel)))
+ax.set_yticklabels(sel["gene"], fontsize=7)
+ax.set_xlabel("log2 fold change", fontsize=9)
+ax.text(-0.5, len(sel) - 0.5, "DOWN", color=BLUE,
+        fontsize=10, fontweight="bold", ha="right")
+ax.text(0.5, len(sel) - 0.5, "UP", color=RED,
+        fontsize=10, fontweight="bold", ha="left")
+ax.spines[["top", "right", "left"]].set_visible(False)
+fig.tight_layout()
+plt.show()
+```
+
+### Code
+
+```python
+de = load_deseq2()                     # gene, log2FoldChange, pvalue, padj
+
+# take the 8 most up- and 8 most down-regulated genes
+top_up = de.nlargest(8, "log2FoldChange")
+top_dn = de.nsmallest(8, "log2FoldChange")
+sel = pd.concat([top_dn, top_up]).sort_values("log2FoldChange")
+cols = [BLUE if v < 0 else RED for v in sel["log2FoldChange"]]
+
+fig, ax = plt.subplots(figsize=(6, 4.2))
+ax.barh(range(len(sel)), sel["log2FoldChange"], color=cols, height=0.7)
+ax.axvline(0, color=INK, lw=1.2)       # the zero divide = direction line
+ax.set_yticks(range(len(sel)))
+ax.set_yticklabels(sel["gene"], fontsize=7)
+ax.set_xlabel("log2 fold change", fontsize=9)
+ax.text(-0.5, len(sel) - 0.5, "DOWN", color=BLUE,
+        fontsize=10, fontweight="bold", ha="right")
+ax.text(0.5, len(sel) - 0.5, "UP", color=RED,
+        fontsize=10, fontweight="bold", ha="left")
+ax.spines[["top", "right", "left"]].set_visible(False)
+fig.tight_layout()
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Anchor bars at zero and let length encode direction. Down-left, up-right, ranked by effect size.
+:::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+After Wilke, *Fundamentals of Data Visualization* (2019), ch. 6.
+:::
+
+
+<!-- slide 18 -->
+# Colour in Data Visualization {.divider}
+
+[Colour theory for charts · Day 01]{.eyebrow}
+
+<!-- slide 19 -->
+## Three Palette Types {.smaller}
+
+[Colour · palette types]{.eyebrow}
+
+### Match the palette to your data's structure
+
+::::: {.columns}
+
+:::: {.column width="42%"}
+**Qualitative** for unordered categories, **sequential** for magnitude (one hue, light to dark), **diverging** for signed values around zero (two hues, neutral midpoint).
+::::
+
+:::: {.column width="58%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.6
+#| fig-height: 5
+#| fig-dpi: 200
+fig, ax = plt.subplots(3, 1, figsize=(6.6, 5))
+
+# QUALITATIVE: distinct hues for unordered categories
+cats = ["Liver", "Brain", "Heart", "Kidney", "Lung"]
+cv = [72, 58, 85, 63, 91]
+ax[0].barh(cats[::-1], cv[::-1],
+           color=ECON_QUAL[:5][::-1], height=0.65)
+ax[0].set_xlim(0, 105)
+ax[0].set_title("QUALITATIVE", color="#333333",
+                fontsize=10, fontweight="bold")
+ax[0].tick_params(labelsize=7)
+for s in ["top", "right", "bottom"]:
+    ax[0].spines[s].set_visible(False)
+ax[0].xaxis.set_visible(False)
+
+# SEQUENTIAL: one hue ramped light->dark for magnitude
+sv = np.linspace(10, 90, 8)
+cmap = econ_cmap("hongkong", reverse=True)
+norm = plt.Normalize(0, 100)
+ax[1].barh(range(8), sv,
+           color=[cmap(norm(v)) for v in sv],
+           height=0.7)
+ax[1].set_yticks([])
+ax[1].set_title("SEQUENTIAL", color="#333333",
+                fontsize=10, fontweight="bold")
+for s in ["top", "right", "bottom"]:
+    ax[1].spines[s].set_visible(False)
+ax[1].xaxis.set_visible(False)
+
+# DIVERGING: two hues around a neutral 0 (down vs up)
+genes = ["BRCA1", "TP53", "EGFR",
+         "MYC", "KRAS", "PTEN"]
+fc = [-2.1, -1.2, -0.3, 0.6, 1.4, 2.3]
+norm = plt.Normalize(-3, 3)
+ax[2].barh(genes, fc,
+           color=[econ_diverging(norm(v)) for v in fc],
+           height=0.65)
+ax[2].axvline(0, color=LINE, lw=1)     # the neutral midpoint
+ax[2].set_title("DIVERGING", color="#333333",
+                fontsize=10, fontweight="bold")
+ax[2].tick_params(labelsize=7)
+for s in ["top", "right"]:
+    ax[2].spines[s].set_visible(False)
+fig.subplots_adjust(hspace=0.55)
+plt.show()
+```
+
+### Code
+
+```python
+fig, ax = plt.subplots(3, 1, figsize=(6.6, 5))
+
+# QUALITATIVE: distinct hues for unordered categories
+cats = ["Liver", "Brain", "Heart", "Kidney", "Lung"]
+cv = [72, 58, 85, 63, 91]
+ax[0].barh(cats[::-1], cv[::-1],
+           color=ECON_QUAL[:5][::-1], height=0.65)
+ax[0].set_xlim(0, 105)
+ax[0].set_title("QUALITATIVE", color="#333333",
+                fontsize=10, fontweight="bold")
+ax[0].tick_params(labelsize=7)
+for s in ["top", "right", "bottom"]:
+    ax[0].spines[s].set_visible(False)
+ax[0].xaxis.set_visible(False)
+
+# SEQUENTIAL: one hue ramped light->dark for magnitude
+sv = np.linspace(10, 90, 8)
+cmap = econ_cmap("hongkong", reverse=True)
+norm = plt.Normalize(0, 100)
+ax[1].barh(range(8), sv,
+           color=[cmap(norm(v)) for v in sv],
+           height=0.7)
+ax[1].set_yticks([])
+ax[1].set_title("SEQUENTIAL", color="#333333",
+                fontsize=10, fontweight="bold")
+for s in ["top", "right", "bottom"]:
+    ax[1].spines[s].set_visible(False)
+ax[1].xaxis.set_visible(False)
+
+# DIVERGING: two hues around a neutral 0 (down vs up)
+genes = ["BRCA1", "TP53", "EGFR",
+         "MYC", "KRAS", "PTEN"]
+fc = [-2.1, -1.2, -0.3, 0.6, 1.4, 2.3]
+norm = plt.Normalize(-3, 3)
+ax[2].barh(genes, fc,
+           color=[econ_diverging(norm(v)) for v in fc],
+           height=0.65)
+ax[2].axvline(0, color=LINE, lw=1)     # the neutral midpoint
+ax[2].set_title("DIVERGING", color="#333333",
+                fontsize=10, fontweight="bold")
+ax[2].tick_params(labelsize=7)
+for s in ["top", "right"]:
+    ax[2].spines[s].set_visible(False)
+fig.subplots_adjust(hspace=0.55)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+Qualitative = `ECON_QUAL` · sequential = `econ_cmap()` · diverging = `econ_diverging`.
+:::
+
+<!-- slide 20 -->
+## The Rainbow Trap & Accessibility {.smaller}
+
+[Colour · accessibility]{.eyebrow}
+
+### Avoid rainbow scales, design for colour-blindness
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+Hue has no natural order, so the brain cannot turn a rainbow back into magnitude. Prefer perceptually-uniform maps, avoid red-green pairs, and use the squint test.
+
+About 5% of your audience is colour-blind.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6
+#| fig-height: 5
+#| fig-dpi: 200
+fig, ax = plt.subplots(2, 1, figsize=(6, 5))
+data = rng.normal(size=(12, 12))       # same data, two colourmaps
+
+# JET: rainbow isn't ordered, it invents bands that aren't real
+ax[0].imshow(data, cmap="jet", aspect="auto")
+ax[0].set_title("JET (RAINBOW): MISLEADING",
+                color=RED, fontsize=11,
+                fontweight="bold", pad=6)
+ax[0].set_xticks([])
+ax[0].set_yticks([])
+
+# VIRIDIS: perceptually uniform, equal steps look equal
+ax[1].imshow(data, cmap="viridis", aspect="auto")
+ax[1].set_title("VIRIDIS: UNIFORM", color=GREEN,
+                fontsize=11, fontweight="bold", pad=6)
+ax[1].set_xticks([])
+ax[1].set_yticks([])
+fig.subplots_adjust(hspace=0.3)
+plt.show()
+```
+
+### Code
+
+```python
+fig, ax = plt.subplots(2, 1, figsize=(6, 5))
+data = rng.normal(size=(12, 12))       # same data, two colourmaps
+
+# JET: rainbow isn't ordered, it invents bands that aren't real
+ax[0].imshow(data, cmap="jet", aspect="auto")
+ax[0].set_title("JET (RAINBOW): MISLEADING",
+                color=RED, fontsize=11,
+                fontweight="bold", pad=6)
+ax[0].set_xticks([])
+ax[0].set_yticks([])
+
+# VIRIDIS: perceptually uniform, equal steps look equal
+ax[1].imshow(data, cmap="viridis", aspect="auto")
+ax[1].set_title("VIRIDIS: UNIFORM", color=GREEN,
+                fontsize=11, fontweight="bold", pad=6)
+ax[1].set_xticks([])
+ax[1].set_yticks([])
+fig.subplots_adjust(hspace=0.3)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+Crameri, Shephard & Heron (2020), *Nat. Commun.*
+:::
+
+<!-- slide 21 -->
+## Colour Pitfall: Too Many Colours {.smaller}
+
+[Colour · pitfalls]{.eyebrow}
+
+### Don't give colour a job too big for it
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+One colour per gene across 30 genes is a rainbow with no meaning, the hues blur and the legend is useless. Group the genes into a few **pathways** and sort by group: now colour reads as six clean blocks instead of noise.
+
+Keep categorical palettes to about 5 to 7 colours. Beyond that, group, facet, or label.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7.8
+#| fig-height: 4
+from matplotlib.patches import Patch
+ngenes = 30
+vals = rng.uniform(2, 10, ngenes)
+pathway = rng.integers(0, 6, ngenes)            # each gene belongs to a pathway
+names = ["Glycolysis", "TCA cycle", "Defense",
+         "Hormone", "Cell wall", "Photosynth"]
+
+fig, ax = plt.subplots(1, 2, figsize=(7.8, 4))
+
+# WRONG: one colour per gene -> 30 hues, meaningless
+many = plt.get_cmap("hsv", ngenes)
+ax[0].bar(range(ngenes), vals, color=[many(i) for i in range(ngenes)])
+ax[0].set_title("ONE COLOUR PER GENE (30)", color="#333333",
+                fontsize=10, fontweight="bold")
+ax[0].set_ylabel("expression", fontsize=8)
+ax[0].set_xticks([])
+
+# RIGHT: sort by pathway so each colour forms one clean block
+order = np.argsort(pathway)
+ax[1].bar(range(ngenes), vals[order],
+          color=[ECON_QUAL[p] for p in pathway[order]])
+ax[1].set_title("GROUPED BY PATHWAY (6)", color="#333333",
+                fontsize=10, fontweight="bold")
+ax[1].set_xticks([])
+for a in ax:
+    a.spines[["top", "right"]].set_visible(False)
+    a.tick_params(labelsize=7)
+
+# legend as one horizontal row BELOW both panels, off the bars
+handles = [Patch(color=ECON_QUAL[p], label=names[p]) for p in range(6)]
+fig.legend(handles=handles, fontsize=7, frameon=False,
+           loc="lower center", ncol=6, bbox_to_anchor=(0.5, -0.02))
+fig.subplots_adjust(wspace=0.2, bottom=0.16)
+plt.show()
+```
+
+### Code
+
+```python
+from matplotlib.patches import Patch
+ngenes = 30
+vals = rng.uniform(2, 10, ngenes)
+pathway = rng.integers(0, 6, ngenes)            # each gene belongs to a pathway
+names = ["Glycolysis", "TCA cycle", "Defense",
+         "Hormone", "Cell wall", "Photosynth"]
+
+fig, ax = plt.subplots(1, 2, figsize=(7.8, 4))
+
+# WRONG: one colour per gene -> 30 hues, meaningless
+many = plt.get_cmap("hsv", ngenes)
+ax[0].bar(range(ngenes), vals, color=[many(i) for i in range(ngenes)])
+ax[0].set_title("ONE COLOUR PER GENE (30)", color="#333333",
+                fontsize=10, fontweight="bold")
+ax[0].set_ylabel("expression", fontsize=8)
+ax[0].set_xticks([])
+
+# RIGHT: sort by pathway so each colour forms one clean block
+order = np.argsort(pathway)
+ax[1].bar(range(ngenes), vals[order],
+          color=[ECON_QUAL[p] for p in pathway[order]])
+ax[1].set_title("GROUPED BY PATHWAY (6)", color="#333333",
+                fontsize=10, fontweight="bold")
+ax[1].set_xticks([])
+for a in ax:
+    a.spines[["top", "right"]].set_visible(False)
+    a.tick_params(labelsize=7)
+
+# legend as one horizontal row BELOW both panels, off the bars
+handles = [Patch(color=ECON_QUAL[p], label=names[p]) for p in range(6)]
+fig.legend(handles=handles, fontsize=7, frameon=False,
+           loc="lower center", ncol=6, bbox_to_anchor=(0.5, -0.02))
+fig.subplots_adjust(wspace=0.2, bottom=0.16)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.takeaway}
+[The bottom line]{.tl}
+When you have too many categories, group them. Colour by pathway, and sort so each group reads as a block.
+:::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+After Wilke, *Fundamentals of Data Visualization* (2019), ch. 19.
+:::
+
+<!-- slide 22 -->
+## Colour Pitfall: Colour for No Reason {.smaller}
+
+[Colour · pitfalls]{.eyebrow}
+
+### Don't encode in colour what's already shown
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+If the x-axis already tells you which tissue is which, colouring each bar a different hue adds nothing, it just adds visual load and a redundant legend. Use a single colour, and save a highlight hue for the one bar that matters.
+
+Colour should add information, not decorate.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7.4
+#| fig-height: 4
+te = load_tissue_expression().sort_values("tpm")
+fig, ax = plt.subplots(1, 2, figsize=(7.4, 4))
+
+# WRONG: a different colour per bar, but the label already says which is which
+ax[0].barh(te["tissue"], te["tpm"],
+           color=ECON_QUAL[:len(te)], height=0.6)
+ax[0].set_title("RAINBOW: COLOUR ADDS NOTHING", color="#333333",
+                fontsize=10, fontweight="bold")
+
+# RIGHT: one colour, highlight only the bar that matters
+bc = [GREEN if t == "Heart" else GREY for t in te["tissue"]]
+ax[1].barh(te["tissue"], te["tpm"], color=bc, height=0.6)
+ax[1].set_title("ONE COLOUR + ONE HIGHLIGHT", color="#333333",
+                fontsize=10, fontweight="bold")
+for a in ax:
+    a.set_xlim(0, 105); a.xaxis.set_visible(False)
+    a.tick_params(labelsize=8)
+    for s in ["top", "right", "bottom"]:
+        a.spines[s].set_visible(False)
+fig.subplots_adjust(wspace=0.4)
+plt.show()
+```
+
+### Code
+
+```python
+te = load_tissue_expression().sort_values("tpm")
+fig, ax = plt.subplots(1, 2, figsize=(7.4, 4))
+
+# WRONG: a different colour per bar, but the label already says which is which
+ax[0].barh(te["tissue"], te["tpm"],
+           color=ECON_QUAL[:len(te)], height=0.6)
+ax[0].set_title("RAINBOW: COLOUR ADDS NOTHING", color="#333333",
+                fontsize=10, fontweight="bold")
+
+# RIGHT: one colour, highlight only the bar that matters
+bc = [GREEN if t == "Heart" else GREY for t in te["tissue"]]
+ax[1].barh(te["tissue"], te["tpm"], color=bc, height=0.6)
+ax[1].set_title("ONE COLOUR + ONE HIGHLIGHT", color="#333333",
+                fontsize=10, fontweight="bold")
+for a in ax:
+    a.set_xlim(0, 105); a.xaxis.set_visible(False)
+    a.tick_params(labelsize=8)
+    for s in ["top", "right", "bottom"]:
+        a.spines[s].set_visible(False)
+fig.subplots_adjust(wspace=0.4)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.takeaway}
+If the axis already identifies the category, colour is redundant. Spend it on the one thing you want seen.
+:::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+After Wilke, *Fundamentals of Data Visualization* (2019), ch. 19.
+:::
+
+<!-- slide 23 -->
+## Colour Pitfall: Forgetting Colour-Blindness {.smaller}
+
+[Colour · pitfalls]{.eyebrow}
+
+### Test your palette the way ~5% will see it
+
+::::: {.columns}
+:::: {.column width="42%"}
+A red/green pair looks fine to you and collapses to one colour for a red-green colour-blind reader. Always check under simulated deficiency, and pair colour with a second cue (shape, position, label).
+
+These tools simulate it live, drop in your hexes and see.
+::::
+
+:::: {.column width="58%"}
+::: {.panel-tabset}
+
+### viz-palette
+
+```{=html}
+<video controls loop muted width="100%" style="border-radius:8px;">
+  <source src="images/vizalette.mp4" type="video/mp4">
+</video>
+```
+
+### pypalettes
+
+```{=html}
+<video controls loop muted width="100%" style="border-radius:8px;">
+  <source src="images/pypalette.mp4" type="video/mp4">
+</video>
+```
+
+:::
+::::
+:::::
+
+::: {.takeaway}
+[The bottom line]{.tl}
+A red/green pair can vanish for ~5% of readers. Simulate it, and never let colour carry the message alone.
+:::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+Test palettes: viz-palette · pypalettes · Crameri et al. (2020), *Nat. Commun.*
+:::
+
+<!-- slide 24 -->
+## Finding Good Palettes {.smaller}
+
+[Colour · resources]{.eyebrow}
+
+### Don't invent colours, borrow tested ones
+
+Three rules for any palette: enough contrast, colour-blind safe, and only as many colours as you have groups. Rather than guessing hexes, pull from a curated source:
+
+- **viz-palette** (`projects.susielu.com/viz-palette`), paste your hex list and simulate every type of colour-blindness.
+- **R color palettes**, Emil Hvitfeldt (`emilhvitfeldt.github.io/r-color-palettes`), curated discrete sets (Wes Anderson, scientific) with copyable hex codes.
+- **R Graph Gallery palette finder** (`r-graph-gallery.com/color-palette-finder`), browse and filter by palette type.
+
+::: {.takeaway}
+[In Python]{.tl}
+`pypalettes` brings all these curated palettes into matplotlib: `load_cmap("Darjeeling1")` and you're done.
+:::
+
+<!-- slide 25 -->
+## Typography for Scientific Figures {.smaller}
+
+[Design · typography]{.eyebrow}
+
+### Pick a font for the job, then stop choosing
+
+::::: {.columns}
+
+:::: {.column width="42%"}
+Five font categories, each with a job. For figures and slides you mostly need two: a clean **sans serif** for labels and a **monospace** for code and aligned numbers. A **display** face for titles is optional.
+
+Pick one of each and reuse them everywhere, consistency reads as polish.
+
+::: {style="text-align:center; margin-top:0.4em;"}
+![](images/Ellen_Lumpton.png){width="32%"}
+
+[Read]{.eyebrow} Ellen Lupton, *Thinking with Type*
+:::
+::::
+
+:::: {.column width="58%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7.6
+#| fig-height: 3.4
+rows = [
+    ["Sans Serif", "Clean, modern", "Screen, slides", "Asap, Helvetica"],
+    ["Serif", "Traditional, formal", "Papers, reports", "Georgia, Times"],
+    ["Slab Serif", "Bold serifs, strong", "Headings, emphasis", "Rockwell, Courier"],
+    ["Monospace", "Fixed-width", "Code, alignment", "JetBrains Mono"],
+    ["Display", "Decorative, distinct", "Titles, branding", "Space Grotesk"],
+]
+cols = ["Category", "Characteristics", "Best used for", "Examples"]
+
+fig, ax = plt.subplots(figsize=(7.6, 3.4))
+ax.axis("off")
+tbl = ax.table(cellText=rows, colLabels=cols, cellLoc="left",
+               loc="center", colWidths=[0.17, 0.28, 0.27, 0.28])
+tbl.auto_set_font_size(False); tbl.set_fontsize(9); tbl.scale(1, 1.8)
+for (r, c), cell in tbl.get_celld().items():
+    cell.set_edgecolor(LINE)
+    if r == 0:                                   # header row
+        cell.set_text_props(weight="bold", color=INK)
+        cell.set_facecolor(ECON["hongkong"][3])
+    else:
+        cell.set_facecolor(CREAM if r % 2 else "#FFFFFF")
+        if c == 0:                               # category column
+            cell.set_text_props(weight="bold", color=GREEN)
+        else:
+            cell.set_text_props(color=MUTED)
+plt.show()
+```
+
+### Code
+
+```python
+rows = [
+    ["Sans Serif", "Clean, modern", "Screen, slides", "Asap, Helvetica"],
+    ["Serif", "Traditional, formal", "Papers, reports", "Georgia, Times"],
+    ["Slab Serif", "Bold serifs, strong", "Headings, emphasis", "Rockwell, Courier"],
+    ["Monospace", "Fixed-width", "Code, alignment", "JetBrains Mono"],
+    ["Display", "Decorative, distinct", "Titles, branding", "Space Grotesk"],
+]
+cols = ["Category", "Characteristics", "Best used for", "Examples"]
+
+fig, ax = plt.subplots(figsize=(7.6, 3.4))
+ax.axis("off")
+tbl = ax.table(cellText=rows, colLabels=cols, cellLoc="left",
+               loc="center", colWidths=[0.17, 0.28, 0.27, 0.28])
+tbl.auto_set_font_size(False); tbl.set_fontsize(9); tbl.scale(1, 1.8)
+for (r, c), cell in tbl.get_celld().items():
+    cell.set_edgecolor(LINE)
+    if r == 0:                                   # header row
+        cell.set_text_props(weight="bold", color=INK)
+        cell.set_facecolor(ECON["hongkong"][3])
+    else:
+        cell.set_facecolor(CREAM if r % 2 else "#FFFFFF")
+        if c == 0:                               # category column
+            cell.set_text_props(weight="bold", color=GREEN)
+        else:
+            cell.set_text_props(color=MUTED)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+Typography guidance after Ellen Lupton, *Thinking with Type*.
+:::
+
+
+<!-- slide 26 -->
+## Grey Is Your Best Friend {.smaller}
+
+[Colour · strategic use]{.eyebrow}
+
+### Highlight by de-emphasising everything else
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+Grey the 95% that is context, colour the 5% that matters. In a volcano of 2,000 genes, the significant hits should be the only thing in colour.
+
+Like silence in music, it makes the melody stand out.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6
+#| fig-height: 4.1
+#| fig-dpi: 200
+np.random.seed(42)
+n = 2000
+log2fc = np.random.normal(0, 1.5, n)
+pvals = np.random.exponential(0.4, n).clip(1e-30, 1)
+# spike in 80 truly significant genes so the arms are dense
+sig_idx = np.random.choice(n, 80, replace=False)
+log2fc[sig_idx[:40]] += 3
+log2fc[sig_idx[40:]] -= 3
+pvals[sig_idx] *= 1e-6
+neg_log_p = -np.log10(pvals)
+
+# significant = big fold change AND small p-value
+sig = (np.abs(log2fc) > 1) & (neg_log_p > 1.3)
+fig, ax = plt.subplots(figsize=(6, 4.6))
+
+# CONTEXT: grey the 95%, faint and small so it recedes
+ax.scatter(log2fc[~sig], neg_log_p[~sig],
+           c=GREY, s=8, alpha=0.3, edgecolors="none")
+# MESSAGE: colour the 5% that matters, bigger and bolder
+ax.scatter(log2fc[sig], neg_log_p[sig],
+           c=RED, s=20, alpha=0.85,
+           edgecolors=CREAM, lw=0.3)
+ax.set_xlabel("log2 fold change")
+ax.set_ylabel("-log10 p")
+ax.set_title("GREY + ONE HIGHLIGHT", color=GREEN,
+             fontsize=11, fontweight="bold", pad=6)
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+
+### Code
+
+```python
+np.random.seed(42)
+n = 2000
+log2fc = np.random.normal(0, 1.5, n)
+pvals = np.random.exponential(0.4, n).clip(1e-30, 1)
+# spike in 80 truly significant genes so the arms are dense
+sig_idx = np.random.choice(n, 80, replace=False)
+log2fc[sig_idx[:40]] += 3
+log2fc[sig_idx[40:]] -= 3
+pvals[sig_idx] *= 1e-6
+neg_log_p = -np.log10(pvals)
+
+# significant = big fold change AND small p-value
+sig = (np.abs(log2fc) > 1) & (neg_log_p > 1.3)
+fig, ax = plt.subplots(figsize=(6, 4.6))
+
+# CONTEXT: grey the 95%, faint and small so it recedes
+ax.scatter(log2fc[~sig], neg_log_p[~sig],
+           c=GREY, s=8, alpha=0.3, edgecolors="none")
+# MESSAGE: colour the 5% that matters, bigger and bolder
+ax.scatter(log2fc[sig], neg_log_p[sig],
+           c=RED, s=20, alpha=0.85,
+           edgecolors=CREAM, lw=0.3)
+ax.set_xlabel("log2 fold change")
+ax.set_ylabel("-log10 p")
+ax.set_title("GREY + ONE HIGHLIGHT", color=GREEN,
+             fontsize=11, fontweight="bold", pad=6)
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.takeaway}
+Colour the 5% that matters, grey the 95% that is context.
+:::
+
+<!-- slide 27 -->
+# From Chart to Story {.divider}
+
+[Narrative data visualization · Day 01]{.eyebrow}
+
+<!-- slide 28 -->
+## The Story Arc {.smaller}
+
+[Storytelling · arc]{.eyebrow}
+
+### Every data presentation needs tension and resolution
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+A single figure rarely tells the whole story. Open with context, raise a challenge (which loci?), show the action (fine-mapping), then resolve it with the causal variant. Chapters, not one slide.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+#| fig-dpi: 200
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+
+# a rising-then-resting curve = engagement over the talk
+x = np.linspace(0, 10, 200)
+y = 0.5 + 4 * np.exp(-0.5 * ((x - 5.5) / 2.2) ** 2)
+ax.fill_between(x, 0, y, color=GREEN, alpha=0.15)
+ax.plot(x, y, color=GREEN, lw=3)
+
+# mark the four story beats along the curve
+for xp, lab in [(1.2, "OPENING"), (3.5, "CHALLENGE"),
+                (5.5, "CLIMAX"), (7.7, "RESOLUTION")]:
+    yp = 0.5 + 4 * np.exp(-0.5 * ((xp - 5.5) / 2.2) ** 2)
+    ax.plot(xp, yp, "o", color=GREEN, markersize=10, zorder=5)
+    ax.annotate(lab, (xp, yp), textcoords="offset points",
+                xytext=(0, 14), ha="center", fontsize=8,
+                fontweight="bold", color=INK)
+ax.set_xlabel("presentation flow")
+ax.set_ylabel("engagement")
+ax.set_xlim(0, 10); ax.set_ylim(0, 6.2)
+ax.set_xticks([]); ax.set_yticks([])
+ax.set_title("THE STORY ARC", color="#333333",
+             fontsize=12, fontweight="bold", pad=8)
+plt.show()
+```
+
+### Code
+
+```python
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+
+# a rising-then-resting curve = engagement over the talk
+x = np.linspace(0, 10, 200)
+y = 0.5 + 4 * np.exp(-0.5 * ((x - 5.5) / 2.2) ** 2)
+ax.fill_between(x, 0, y, color=GREEN, alpha=0.15)
+ax.plot(x, y, color=GREEN, lw=3)
+
+# mark the four story beats along the curve
+for xp, lab in [(1.2, "OPENING"), (3.5, "CHALLENGE"),
+                (5.5, "CLIMAX"), (7.7, "RESOLUTION")]:
+    yp = 0.5 + 4 * np.exp(-0.5 * ((xp - 5.5) / 2.2) ** 2)
+    ax.plot(xp, yp, "o", color=GREEN, markersize=10, zorder=5)
+    ax.annotate(lab, (xp, yp), textcoords="offset points",
+                xytext=(0, 14), ha="center", fontsize=8,
+                fontweight="bold", color=INK)
+ax.set_xlabel("presentation flow")
+ax.set_ylabel("engagement")
+ax.set_xlim(0, 10); ax.set_ylim(0, 6.2)
+ax.set_xticks([]); ax.set_yticks([])
+ax.set_title("THE STORY ARC", color="#333333",
+             fontsize=12, fontweight="bold", pad=8)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+Wilke (2019), ch. 29.
+:::
+
+<!-- slide 29 -->
+## Build Up Towards Complexity {.smaller}
+
+[Storytelling · progressive disclosure]{.eyebrow}
+
+### Show a simple version first, then reveal the full picture
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+Teach the reader to read **one** panel first, then show the full grid with shared scales. Like playing one bar on the piano before handing over the orchestral score.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+#| fig-dpi: 200
+tc = load_timecourse()                 # gene, time, tpm, sem
+piv = tc.pivot(index="time", columns="gene", values="tpm")
+genes = list(piv.columns)
+tp = np.arange(len(piv.index))
+tl = [f"{t}h" for t in piv.index]
+
+# one panel per gene, shared scales so they compare
+fig, ax = plt.subplots(2, 3, figsize=(6.4, 4.7),
+                       sharex=True, sharey=True)
+for a, g in zip(ax.flat, genes):
+    a.plot(tp, piv[g].values, "-o", color=GREEN,
+           lw=1.8, markersize=4)
+    a.set_title(g, fontsize=9, fontweight="bold",
+                color="#333333")
+    a.set_xticks(tp); a.set_xticklabels(tl, fontsize=6)
+    a.tick_params(axis="y", labelsize=6)
+fig.suptitle("ONE GENE, THEN THE GRID",
+             color="#333333", fontsize=11, fontweight="bold")
+fig.subplots_adjust(hspace=0.4, wspace=0.2, top=0.86)
+plt.show()
+```
+
+### Code
+
+```python
+tc = load_timecourse()                 # gene, time, tpm, sem
+piv = tc.pivot(index="time", columns="gene", values="tpm")
+genes = list(piv.columns)
+tp = np.arange(len(piv.index))
+tl = [f"{t}h" for t in piv.index]
+
+# one panel per gene, shared scales so they compare
+fig, ax = plt.subplots(2, 3, figsize=(6.4, 4.7),
+                       sharex=True, sharey=True)
+for a, g in zip(ax.flat, genes):
+    a.plot(tp, piv[g].values, "-o", color=GREEN,
+           lw=1.8, markersize=4)
+    a.set_title(g, fontsize=9, fontweight="bold",
+                color="#333333")
+    a.set_xticks(tp); a.set_xticklabels(tl, fontsize=6)
+    a.tick_params(axis="y", labelsize=6)
+fig.suptitle("ONE GENE, THEN THE GRID",
+             color="#333333", fontsize=11, fontweight="bold")
+fig.subplots_adjust(hspace=0.4, wspace=0.2, top=0.86)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+<!-- slide 30 -->
+## Editorial Thinking: Angle, Frame, Focus {.smaller}
+
+[Storytelling · editorial]{.eyebrow}
+
+### Put the finding in the title, the highlight on one bar
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+"Expression varies across tissues" is a topic. "Heart shows the highest BRCA1" is an **angle**, so put it in the title. Frame to the tissues that matter, focus with one highlight colour.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+#| fig-dpi: 200
+te = load_tissue_expression().sort_values("tpm")
+fig, ax = plt.subplots(2, 1, figsize=(6.4, 4.7))
+
+# TOPIC: no angle, all one grey, title just names the axes
+ax[0].barh(te["tissue"], te["tpm"], color=GREY, height=0.5)
+ax[0].set_title("EXPRESSION ACROSS TISSUES",
+                color="#333333", fontsize=10,
+                fontweight="bold", pad=6)
+
+# ANGLE: finding in the title, one bar highlighted
+bc = [GREEN if t == "Heart" else GREY
+      for t in te["tissue"]]
+ax[1].barh(te["tissue"], te["tpm"], color=bc, height=0.5)
+ax[1].set_title("HEART SHOWS HIGHEST BRCA1",
+                color=GREEN, fontsize=10,
+                fontweight="bold", pad=6)
+for a in ax:
+    a.set_xlim(0, 105); a.xaxis.set_visible(False)
+    a.tick_params(labelsize=8)
+    for s in ["top", "right", "bottom"]:
+        a.spines[s].set_visible(False)
+fig.subplots_adjust(hspace=0.5)
+plt.show()
+```
+
+### Code
+
+```python
+te = load_tissue_expression().sort_values("tpm")
+fig, ax = plt.subplots(2, 1, figsize=(6.4, 4.7))
+
+# TOPIC: no angle, all one grey, title just names the axes
+ax[0].barh(te["tissue"], te["tpm"], color=GREY, height=0.5)
+ax[0].set_title("EXPRESSION ACROSS TISSUES",
+                color="#333333", fontsize=10,
+                fontweight="bold", pad=6)
+
+# ANGLE: finding in the title, one bar highlighted
+bc = [GREEN if t == "Heart" else GREY
+      for t in te["tissue"]]
+ax[1].barh(te["tissue"], te["tpm"], color=bc, height=0.5)
+ax[1].set_title("HEART SHOWS HIGHEST BRCA1",
+                color=GREEN, fontsize=10,
+                fontweight="bold", pad=6)
+for a in ax:
+    a.set_xlim(0, 105); a.xaxis.set_visible(False)
+    a.tick_params(labelsize=8)
+    for s in ["top", "right", "bottom"]:
+        a.spines[s].set_visible(False)
+fig.subplots_adjust(hspace=0.5)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+Kirk (2019), *Data Visualisation*, 2nd ed.
+:::
+
+
+<!-- slide 31 -->
+## Make a Figure for the Generals {.smaller}
+
+[Storytelling · simplicity]{.eyebrow}
+
+### If a busy reader can't get the point in ten seconds, simplify
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+The generals aren't slow, they're busy. If five data dimensions are tangential to your point, strip them down to the one comparison that answers the question. *(after Claus Wilke)*
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.6
+#| fig-height: 4.7
+#| fig-dpi: 200
+fig, ax = plt.subplots(1, 2, figsize=(6.6, 4.7))
+
+# TOO COMPLEX: colour, size, and scatter all at once
+n = 130
+tis = rng.choice(["Brain", "Liver", "Heart",
+                  "Kidney", "Lung"], n)
+x = rng.normal(50, 15, n)
+y = 0.3 * x + rng.normal(0, 8, n)
+s = rng.uniform(20, 200, n)
+tc = dict(zip(["Brain", "Liver", "Heart",
+               "Kidney", "Lung"], ECON_QUAL[:5]))
+ax[0].scatter(x, y, c=[tc[t] for t in tis], s=s,
+              alpha=0.5, edgecolors=CREAM, lw=0.3)
+ax[0].set_title("TOO COMPLEX", color=RED,
+                fontsize=10, fontweight="bold", pad=6)
+ax[0].set_xlabel("feature A", fontsize=8)
+ax[0].set_ylabel("feature B", fontsize=8)
+
+# ONE CLEAR MESSAGE: rank the tissues, highlight the winner
+te = load_tissue_expression().sort_values("tpm")
+bc = [GREEN if t == "Heart" else GREY
+      for t in te["tissue"]]
+ax[1].barh(te["tissue"], te["tpm"], color=bc, height=0.6)
+ax[1].set_title("ONE CLEAR MESSAGE", color=GREEN,
+                fontsize=10, fontweight="bold", pad=6)
+ax[1].set_xlim(0, 105)
+for sp in ["top", "right", "bottom"]:
+    ax[1].spines[sp].set_visible(False)
+ax[1].xaxis.set_visible(False)
+ax[1].tick_params(labelsize=8)
+fig.subplots_adjust(wspace=0.45, bottom=0.16)
+plt.show()
+```
+
+### Code
+
+```python
+fig, ax = plt.subplots(1, 2, figsize=(6.6, 4.7))
+
+# TOO COMPLEX: colour, size, and scatter all at once
+n = 130
+tis = rng.choice(["Brain", "Liver", "Heart",
+                  "Kidney", "Lung"], n)
+x = rng.normal(50, 15, n)
+y = 0.3 * x + rng.normal(0, 8, n)
+s = rng.uniform(20, 200, n)
+tc = dict(zip(["Brain", "Liver", "Heart",
+               "Kidney", "Lung"], ECON_QUAL[:5]))
+ax[0].scatter(x, y, c=[tc[t] for t in tis], s=s,
+              alpha=0.5, edgecolors=CREAM, lw=0.3)
+ax[0].set_title("TOO COMPLEX", color=RED,
+                fontsize=10, fontweight="bold", pad=6)
+ax[0].set_xlabel("feature A", fontsize=8)
+ax[0].set_ylabel("feature B", fontsize=8)
+
+# ONE CLEAR MESSAGE: rank the tissues, highlight the winner
+te = load_tissue_expression().sort_values("tpm")
+bc = [GREEN if t == "Heart" else GREY
+      for t in te["tissue"]]
+ax[1].barh(te["tissue"], te["tpm"], color=bc, height=0.6)
+ax[1].set_title("ONE CLEAR MESSAGE", color=GREEN,
+                fontsize=10, fontweight="bold", pad=6)
+ax[1].set_xlim(0, 105)
+for sp in ["top", "right", "bottom"]:
+    ax[1].spines[sp].set_visible(False)
+ax[1].xaxis.set_visible(False)
+ax[1].tick_params(labelsize=8)
+fig.subplots_adjust(wspace=0.45, bottom=0.16)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.takeaway .alt}
+If five dimensions are tangential to your point, remove them.
+:::
+
+
+
+<!-- slide 32 -->
+## Memorability vs Minimalism {.smaller}
+
+[Storytelling · memorability]{.eyebrow}
+
+### Simple is clear, distinctive is remembered
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+Tufte says strip everything, research says distinctive figures stick. Both are right: add elements that **carry meaning**, one consistent colour per assay and the key number, never decoration.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+#| fig-dpi: 200
+ac = load_assay_counts()               # assay, n_datasets
+m = ac["assay"].tolist()
+c = ac["n_datasets"].tolist()
+fig, ax = plt.subplots(2, 1, figsize=(6.4, 4.7))
+
+# PLAIN: all grey, nothing to anchor the memory
+ax[0].barh(m[::-1], c[::-1], color=GREY, height=0.55)
+for i, v in enumerate(c[::-1]):
+    ax[0].text(v + 5, i, str(v), va="center",
+               fontsize=9, color=MUTED)
+ax[0].set_title("PLAIN: FORGETTABLE", color="#333333",
+                fontsize=10, fontweight="bold", pad=6)
+ax[0].set_xlim(0, 400)
+
+# SEMANTIC: one colour per assay + the number = sticky
+cols = [GREEN, BLUE, PURPLE, RED]
+ax[1].barh(m[::-1], c[::-1], color=cols[::-1], height=0.55)
+for i, (v, col) in enumerate(zip(c[::-1], cols[::-1])):
+    ax[1].text(v + 5, i, f"{v} datasets", va="center",
+               fontsize=9, fontweight="bold", color=col)
+ax[1].set_title("SEMANTIC: MEMORABLE", color=GREEN,
+                fontsize=10, fontweight="bold", pad=6)
+ax[1].set_xlim(0, 470)
+
+# curved annotation: point at the standout RNA-seq bar
+ax[1].annotate("the one\nyou remember",
+               xy=(345, 2.75), xytext=(360, 1.3),
+               fontsize=9, fontweight="bold", color=GREEN,
+               va="center", ha="left",
+               arrowprops=dict(arrowstyle="->", color=GREEN, lw=1.6,
+                               connectionstyle="arc3,rad=0.4"))
+
+for a in ax:
+    for s in ["top", "right", "bottom"]:
+        a.spines[s].set_visible(False)
+    a.xaxis.set_visible(False); a.tick_params(labelsize=8)
+fig.subplots_adjust(hspace=0.5)
+plt.show()
+```
+
+### Code
+
+```python
+ac = load_assay_counts()               # assay, n_datasets
+m = ac["assay"].tolist()
+c = ac["n_datasets"].tolist()
+fig, ax = plt.subplots(2, 1, figsize=(6.4, 4.7))
+
+# PLAIN: all grey, nothing to anchor the memory
+ax[0].barh(m[::-1], c[::-1], color=GREY, height=0.55)
+for i, v in enumerate(c[::-1]):
+    ax[0].text(v + 5, i, str(v), va="center",
+               fontsize=9, color=MUTED)
+ax[0].set_title("PLAIN: FORGETTABLE", color="#333333",
+                fontsize=10, fontweight="bold", pad=6)
+ax[0].set_xlim(0, 400)
+
+# SEMANTIC: one colour per assay + the number = sticky
+cols = [GREEN, BLUE, PURPLE, RED]
+ax[1].barh(m[::-1], c[::-1], color=cols[::-1], height=0.55)
+for i, (v, col) in enumerate(zip(c[::-1], cols[::-1])):
+    ax[1].text(v + 5, i, f"{v} datasets", va="center",
+               fontsize=9, fontweight="bold", color=col)
+ax[1].set_title("SEMANTIC: MEMORABLE", color=GREEN,
+                fontsize=10, fontweight="bold", pad=6)
+ax[1].set_xlim(0, 470)
+
+# curved annotation: point at the standout RNA-seq bar
+ax[1].annotate("the one\nyou remember",
+               xy=(345, 2.75), xytext=(360, 1.3),
+               fontsize=9, fontweight="bold", color=GREEN,
+               va="center", ha="left",
+               arrowprops=dict(arrowstyle="->", color=GREEN, lw=1.6,
+                               connectionstyle="arc3,rad=0.4"))
+
+for a in ax:
+    for s in ["top", "right", "bottom"]:
+        a.spines[s].set_visible(False)
+    a.xaxis.set_visible(False); a.tick_params(labelsize=8)
+fig.subplots_adjust(hspace=0.5)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+Bateman et al. (2010), *ACM CHI*.
+:::
+
+<!-- slide 33 -->
+## Data Transformations {.smaller}
+
+[Honest charts · scales]{.eyebrow}
+
+### Log the axis when values span orders of magnitude
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+Expression, counts, and p-values are **right-skewed**: most values are small, a few are huge. On a linear axis everything crushes left. A log axis spreads them out and the real shape appears.
+
+Log for orders of magnitude, sqrt for counts, linear for a narrow range.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7.4
+#| fig-height: 4
+#| fig-dpi: 200
+vals = 10 ** rng.normal(1.2, 0.8, 2000)   # right-skewed expression
+fig, ax = plt.subplots(1, 2, figsize=(7.4, 4))
+
+# LINEAR: a few huge values crush everything to the left
+ax[0].hist(vals, bins=40, color=GREY)
+ax[0].set_title("LINEAR: crushed", color=RED,
+                fontsize=11, fontweight="bold", pad=8)
+ax[0].set_xlabel("expression (TPM)")
+
+# LOG: log-spaced bins + log axis reveal the bell shape
+bins = np.logspace(np.log10(vals.min()),
+                   np.log10(vals.max()), 40)
+ax[1].hist(vals, bins=bins, color=GREEN)
+ax[1].set_xscale("log")
+ax[1].set_title("LOG: shape visible", color=GREEN,
+                fontsize=11, fontweight="bold", pad=8)
+ax[1].set_xlabel("expression (TPM, log)")
+for a in ax:
+    a.spines[["top", "right"]].set_visible(False)
+    a.set_yticks([])
+fig.subplots_adjust(wspace=0.25, bottom=0.16)
+plt.show()
+```
+
+### Code
+
+```python
+vals = 10 ** rng.normal(1.2, 0.8, 2000)   # right-skewed expression
+fig, ax = plt.subplots(1, 2, figsize=(7.4, 4))
+
+# LINEAR: a few huge values crush everything to the left
+ax[0].hist(vals, bins=40, color=GREY)
+ax[0].set_title("LINEAR: crushed", color=RED,
+                fontsize=11, fontweight="bold", pad=8)
+ax[0].set_xlabel("expression (TPM)")
+
+# LOG: log-spaced bins + log axis reveal the bell shape
+bins = np.logspace(np.log10(vals.min()),
+                   np.log10(vals.max()), 40)
+ax[1].hist(vals, bins=bins, color=GREEN)
+ax[1].set_xscale("log")
+ax[1].set_title("LOG: shape visible", color=GREEN,
+                fontsize=11, fontweight="bold", pad=8)
+ax[1].set_xlabel("expression (TPM, log)")
+for a in ax:
+    a.spines[["top", "right"]].set_visible(False)
+    a.set_yticks([])
+fig.subplots_adjust(wspace=0.25, bottom=0.16)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.takeaway}
+Log for data spanning orders of magnitude, sqrt for counts, linear for a narrow range. Always label the axis as transformed.
+:::
+
+<!-- slide 34 -->
+## Seeing Through Overplotting {.smaller}
+
+[Honest charts · density]{.eyebrow}
+
+### When points pile up, reveal the density
+
+::::: {.columns}
+
+:::: {.column width="42%"}
+Thousands of solid points become one blob. Four fixes: **transparency** (alpha) plus a thin edge, **jitter** to separate stacked points, and a **density contour** to show where the mass actually is.
+::::
+
+:::: {.column width="58%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7.6
+#| fig-height: 5
+#| fig-dpi: 200
+from scipy.stats import gaussian_kde
+n = 1500                                   # two overlapping clouds
+x = np.concatenate([rng.normal(3, 0.8, n),
+                    rng.normal(6, 0.7, n // 2)])
+y = np.concatenate([rng.normal(20, 4, n)
+                    - 2 * rng.normal(3, 0.8, n),
+                    rng.normal(12, 2, n // 2)])
+fig, ax = plt.subplots(2, 2, figsize=(7.6, 6))
+
+# NAIVE: solid opaque points merge into a blob
+ax[0, 0].scatter(x, y, color=BLUE, s=20)
+ax[0, 0].set_title("NAIVE: solid points", color=RED,
+                   fontsize=10, fontweight="bold")
+
+# ALPHA + thin edge: transparency shows density
+ax[0, 1].scatter(x, y, color=BLUE, s=20, alpha=0.18,
+                 edgecolors=CREAM, linewidths=0.3)
+ax[0, 1].set_title("ALPHA + edge", color="#333333",
+                   fontsize=10, fontweight="bold")
+
+# JITTER: nudge each point so stacked ones spread
+jx = x + rng.normal(0, 0.12, len(x))
+jy = y + rng.normal(0, 0.4, len(y))
+ax[1, 0].scatter(jx, jy, color=BLUE, s=14,
+                 alpha=0.25, edgecolors="none")
+ax[1, 0].set_title("JITTER", color="#333333",
+                   fontsize=10, fontweight="bold")
+
+# DENSITY CONTOUR: KDE shows where the mass actually is
+kde = gaussian_kde(np.vstack([x, y]))
+xg, yg = np.mgrid[x.min():x.max():80j,
+                  y.min():y.max():80j]
+zz = kde(np.vstack([xg.ravel(),
+                    yg.ravel()])).reshape(xg.shape)
+ax[1, 1].scatter(x, y, color=GREY, s=6,
+                 alpha=0.15, edgecolors="none")
+ax[1, 1].contour(xg, yg, zz, levels=6,
+                 cmap="viridis", linewidths=1.2)
+ax[1, 1].set_title("DENSITY CONTOUR", color="#333333",
+                   fontsize=10, fontweight="bold")
+for a in ax.flat:
+    a.set_xticks([]); a.set_yticks([])
+    a.spines[["top", "right"]].set_visible(False)
+fig.subplots_adjust(wspace=0.15, hspace=0.3)
+plt.show()
+```
+
+### Code
+
+```python
+from scipy.stats import gaussian_kde
+n = 1500                                   # two overlapping clouds
+x = np.concatenate([rng.normal(3, 0.8, n),
+                    rng.normal(6, 0.7, n // 2)])
+y = np.concatenate([rng.normal(20, 4, n)
+                    - 2 * rng.normal(3, 0.8, n),
+                    rng.normal(12, 2, n // 2)])
+fig, ax = plt.subplots(2, 2, figsize=(7.6, 6))
+
+# NAIVE: solid opaque points merge into a blob
+ax[0, 0].scatter(x, y, color=BLUE, s=20)
+ax[0, 0].set_title("NAIVE: solid points", color=RED,
+                   fontsize=10, fontweight="bold")
+
+# ALPHA + thin edge: transparency shows density
+ax[0, 1].scatter(x, y, color=BLUE, s=20, alpha=0.18,
+                 edgecolors=CREAM, linewidths=0.3)
+ax[0, 1].set_title("ALPHA + edge", color="#333333",
+                   fontsize=10, fontweight="bold")
+
+# JITTER: nudge each point so stacked ones spread
+jx = x + rng.normal(0, 0.12, len(x))
+jy = y + rng.normal(0, 0.4, len(y))
+ax[1, 0].scatter(jx, jy, color=BLUE, s=14,
+                 alpha=0.25, edgecolors="none")
+ax[1, 0].set_title("JITTER", color="#333333",
+                   fontsize=10, fontweight="bold")
+
+# DENSITY CONTOUR: KDE shows where the mass actually is
+kde = gaussian_kde(np.vstack([x, y]))
+xg, yg = np.mgrid[x.min():x.max():80j,
+                  y.min():y.max():80j]
+zz = kde(np.vstack([xg.ravel(),
+                    yg.ravel()])).reshape(xg.shape)
+ax[1, 1].scatter(x, y, color=GREY, s=6,
+                 alpha=0.15, edgecolors="none")
+ax[1, 1].contour(xg, yg, zz, levels=6,
+                 cmap="viridis", linewidths=1.2)
+ax[1, 1].set_title("DENSITY CONTOUR", color="#333333",
+                   fontsize=10, fontweight="bold")
+for a in ax.flat:
+    a.set_xticks([]); a.set_yticks([])
+    a.spines[["top", "right"]].set_visible(False)
+fig.subplots_adjust(wspace=0.15, hspace=0.3)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Solid points hide structure. Add transparency and a thin edge, jitter to unstack, or draw a density contour to show where points concentrate.
+:::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+After Wilke, *Fundamentals of Data Visualization* (2019), ch. 18.
+:::
+
+
+
+
+<!-- slide 35 -->
+## Don't Repeat Yourself: Vary Chart Types {.smaller}
+
+[Storytelling · variety]{.eyebrow}
+
+### Use a different visualization for each distinct analysis
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+Two bar charts blur together. Use a **bar** for the discrete comparison and a **line** for the time course, and each panel reads as its own idea.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.6
+#| fig-height: 4.6
+#| fig-dpi: 200
+fig, ax = plt.subplots(1, 2, figsize=(6.6, 4.6))
+
+# COMPARISON: discrete conditions -> bar
+cond = ["Control", "Drug A", "Drug B"]; ev = [45, 68, 72]
+ax[0].barh(cond[::-1], ev[::-1],
+           color=[BLUE, BLUE, GREY][::-1], height=0.55)
+for i, v in enumerate(ev[::-1]):
+    ax[0].text(v + 1, i, str(v), va="center",
+               fontsize=9, color=MUTED)
+ax[0].set_title("COMPARISON (BAR)", color="#333333",
+                fontsize=10, fontweight="bold", pad=6)
+ax[0].set_xlim(0, 85)
+for s in ["top", "right", "bottom"]:
+    ax[0].spines[s].set_visible(False)
+ax[0].xaxis.set_visible(False); ax[0].tick_params(labelsize=8)
+
+# TIME COURSE: continuous time -> line
+tm = ["0h", "6h", "12h", "24h"]; tv = [45, 55, 68, 72]
+ax[1].plot(tm, tv, "-o", color=GREEN, lw=2.5, markersize=8)
+ax[1].fill_between(range(4), [v - 4 for v in tv],
+                   [v + 4 for v in tv], color=GREEN, alpha=0.12)
+ax[1].set_title("TIME COURSE (LINE)", color="#333333",
+                fontsize=10, fontweight="bold", pad=6)
+ax[1].tick_params(labelsize=8)
+fig.subplots_adjust(wspace=0.35)
+plt.show()
+```
+
+### Code
+
+```python
+fig, ax = plt.subplots(1, 2, figsize=(6.6, 4.6))
+
+# COMPARISON: discrete conditions -> bar
+cond = ["Control", "Drug A", "Drug B"]; ev = [45, 68, 72]
+ax[0].barh(cond[::-1], ev[::-1],
+           color=[BLUE, BLUE, GREY][::-1], height=0.55)
+for i, v in enumerate(ev[::-1]):
+    ax[0].text(v + 1, i, str(v), va="center",
+               fontsize=9, color=MUTED)
+ax[0].set_title("COMPARISON (BAR)", color="#333333",
+                fontsize=10, fontweight="bold", pad=6)
+ax[0].set_xlim(0, 85)
+for s in ["top", "right", "bottom"]:
+    ax[0].spines[s].set_visible(False)
+ax[0].xaxis.set_visible(False); ax[0].tick_params(labelsize=8)
+
+# TIME COURSE: continuous time -> line
+tm = ["0h", "6h", "12h", "24h"]; tv = [45, 55, 68, 72]
+ax[1].plot(tm, tv, "-o", color=GREEN, lw=2.5, markersize=8)
+ax[1].fill_between(range(4), [v - 4 for v in tv],
+                   [v + 4 for v in tv], color=GREEN, alpha=0.12)
+ax[1].set_title("TIME COURSE (LINE)", color="#333333",
+                fontsize=10, fontweight="bold", pad=6)
+ax[1].tick_params(labelsize=8)
+fig.subplots_adjust(wspace=0.35)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+Aim for 3 to 6 figures per story. Wilke (2019), ch. 29.
+:::
+
+<!-- slide 36 -->
+## Small Multiples · Step 1: the spaghetti problem {.smaller}
+
+[Storytelling · faceting]{.eyebrow}
+
+### Six genes on one axis overlap into an unreadable tangle
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+Plotting many series on a single axis quickly becomes spaghetti: the lines cross, the legend grows, and no one trend is followable.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+#| fig-dpi: 200
+tc = load_timecourse()                 # gene, time, tpm, sem
+piv = tc.pivot(index="time", columns="gene", values="tpm")
+genes = list(piv.columns)
+tp = np.arange(len(piv.index))
+tl = [f"{t}h" for t in piv.index]
+
+# all six genes on ONE axis = tangled spaghetti
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+for g, c in zip(genes, ECON_QUAL[:6]):
+    ax.plot(tp, piv[g].values, "-o", color=c,
+            lw=2.2, markersize=5, label=g, alpha=0.8)
+ax.set_xticks(tp); ax.set_xticklabels(tl)
+ax.set_ylabel("Expression (TPM)")
+ax.set_title("SPAGHETTI: HARD TO FOLLOW", color=RED,
+             fontsize=11, fontweight="bold", pad=8)
+ax.legend(fontsize=8, frameon=False, ncol=3, loc="upper left")
+plt.show()
+```
+
+### Code
+
+```python
+tc = load_timecourse()                 # gene, time, tpm, sem
+piv = tc.pivot(index="time", columns="gene", values="tpm")
+genes = list(piv.columns)
+tp = np.arange(len(piv.index))
+tl = [f"{t}h" for t in piv.index]
+
+# all six genes on ONE axis = tangled spaghetti
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+for g, c in zip(genes, ECON_QUAL[:6]):
+    ax.plot(tp, piv[g].values, "-o", color=c,
+            lw=2.2, markersize=5, label=g, alpha=0.8)
+ax.set_xticks(tp); ax.set_xticklabels(tl)
+ax.set_ylabel("Expression (TPM)")
+ax.set_title("SPAGHETTI: HARD TO FOLLOW", color=RED,
+             fontsize=11, fontweight="bold", pad=8)
+ax.legend(fontsize=8, frameon=False, ncol=3, loc="upper left")
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+<!-- slide 37 -->
+## Small Multiples · Step 2: the faceted fix {.smaller}
+
+[Storytelling · faceting]{.eyebrow}
+
+### One small panel per gene, with shared scales, scans at a glance
+
+::::: {.columns}
+
+:::: {.column width="44%"}
+Give each series its own panel and **share the axes** so the panels are comparable. The eye scans a grid far faster than it untangles overlapping lines.
+::::
+
+:::: {.column width="56%"}
+
+::: {.panel-tabset}
+
+### Plot
+
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.6
+#| fig-height: 4.7
+#| fig-dpi: 200
+tc = load_timecourse()                 # gene, time, tpm, sem
+piv = tc.pivot(index="time", columns="gene", values="tpm")
+genes = list(piv.columns)
+tp = np.arange(len(piv.index))
+tl = [f"{t}h" for t in piv.index]
+
+# one panel per gene, sharex/sharey so they compare
+fig, ax = plt.subplots(2, 3, figsize=(6.6, 4.7),
+                       sharex=True, sharey=True)
+for a, (g, c) in zip(ax.flat, zip(genes, ECON_QUAL[:6])):
+    a.plot(tp, piv[g].values, "-o", color=c,
+           lw=2.2, markersize=5)
+    a.set_title(g, fontsize=9, fontweight="bold", color=c)
+    a.set_xticks(tp); a.set_xticklabels(tl, fontsize=6)
+    a.tick_params(axis="y", labelsize=6)
+fig.suptitle("SMALL MULTIPLES: EASY TO SCAN",
+             color="#333333", fontsize=11, fontweight="bold")
+fig.subplots_adjust(hspace=0.4, wspace=0.2, top=0.86)
+plt.show()
+```
+
+### Code
+
+```python
+tc = load_timecourse()                 # gene, time, tpm, sem
+piv = tc.pivot(index="time", columns="gene", values="tpm")
+genes = list(piv.columns)
+tp = np.arange(len(piv.index))
+tl = [f"{t}h" for t in piv.index]
+
+# one panel per gene, sharex/sharey so they compare
+fig, ax = plt.subplots(2, 3, figsize=(6.6, 4.7),
+                       sharex=True, sharey=True)
+for a, (g, c) in zip(ax.flat, zip(genes, ECON_QUAL[:6])):
+    a.plot(tp, piv[g].values, "-o", color=c,
+           lw=2.2, markersize=5)
+    a.set_title(g, fontsize=9, fontweight="bold", color=c)
+    a.set_xticks(tp); a.set_xticklabels(tl, fontsize=6)
+    a.tick_params(axis="y", labelsize=6)
+fig.suptitle("SMALL MULTIPLES: EASY TO SCAN",
+             color="#333333", fontsize=11, fontweight="bold")
+fig.subplots_adjust(hspace=0.4, wspace=0.2, top=0.86)
+plt.show()
+```
+
+:::
+
+::::
+
+:::::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+Tufte (1983); `facet_wrap()` / `sns.FacetGrid`.
+:::
+
+<!-- slide 38 -->
+## What We've Covered, What's Next {.smaller}
+
+[Fundamentals · recap]{.eyebrow}
+
+### The rules so far, and the ones still ahead
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.recap-col .done}
+[Covered today]{.eyebrow}
+
+[Honest charts]{.recap-head .done}
+Bars start at zero · maximise data-ink · length beats area · see through overplotting
+
+[Perception]{.recap-head .done}
+Perceptual ranking, position first · pre-attentive pop-out · Gestalt grouping
+
+[Colour]{.recap-head .done}
+Three palette types · no rainbow · design for colour-blindness · grey is your friend
+
+[Storytelling]{.recap-head .done}
+Angle in the title · story arc · figure for the generals · small multiples
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.recap-col .next}
+[Coming later]{.eyebrow}
+
+[Distributions]{.recap-head .next}
+Histogram bin width · KDE bandwidth · boxplots hide shape
+
+[Proportions]{.recap-head .next}
+Pie vs stacked vs side-by-side · stacked only for ~2 categories
+
+[Scales]{.recap-head .next}
+Log bars anchor at 1, not 0 · amounts or ratios?
+
+[Dimensionality]{.recap-head .next}
+Why we avoid 3D · map the third variable to colour or facets
+:::
+::::
+
+:::::
+
+::: {.takeaway}
+[The thread]{.tl}
+Every rule serves one goal: let the reader's eye extract the true quantity with the least effort and the least chance of being misled.
+:::
+
+<!-- slide 39 -->
+## Read These Next {.smaller}
+
+[Day 01 · further reading]{.eyebrow}
+
+### Four books that shaped this course
+
+::::: {.columns}
+
+:::: {.column width="25%"}
+::: {style="text-align:center;"}
+![](images/book0.png){width="62%"}
+
+**Fundamentals of Data Visualization**
+[Claus Wilke]{style="color:#666666;"}
+
+[Free online]{.key} `clauswilke.com/dataviz`
+:::
+::::
+
+:::: {.column width="25%"}
+::: {style="text-align:center;"}
+![](images/book1.jpg){width="62%"}
+
+**Beautiful Visualization**
+[Steele & Iliinsky]{style="color:#666666;"}
+
+[O'Reilly]{.key} `oreilly.com`
+:::
+::::
+
+:::: {.column width="25%"}
+::: {style="text-align:center;"}
+![](images/book2.jpg){width="62%"}
+
+**The Functional Art**
+[Alberto Cairo]{style="color:#666666;"}
+
+[Author site]{.key} `thefunctionalart.com`
+:::
+::::
+
+:::: {.column width="25%"}
+::: {style="text-align:center;"}
+![](images/book3.jpg){width="62%"}
+
+**Storytelling with Data**
+[Cole Nussbaumer Knaflic]{style="color:#666666;"}
+
+[Author site]{.key} `storytellingwithdata.com`
+:::
+::::
+
+:::::
+
+::: {.takeaway}
+[Start here]{.tl}
+Wilke is free online and closest to this course. The other three deepen storytelling, colour, and craft.
+:::

@@ -1,0 +1,856 @@
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SHOWING DISTRIBUTIONS · boxplot · violin · ridgeline               -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+
+<!-- slide 73 -->
+# Showing Distributions {.divider}
+
+[Boxplots, violins & ridgelines · Day 01]{.eyebrow}
+
+
+<!-- slide 74 -->
+## Choosing a Distribution Plot {.smaller}
+
+[Showing distributions · what to plot when]{.eyebrow}
+
+### Six lenses on a single variable
+
+:::::: columns
+::: {.column width="33%"}
+![](images/plot-icons/02-distributions/01-histogram.svg){height=3.4em}
+
+**Histogram**
+
+Counts in bins. Raw shape; sensitive to bin width.
+:::
+::: {.column width="33%"}
+![](images/plot-icons/02-distributions/02-density.svg){height=3.4em}
+
+**Density (KDE)**
+
+Smoothed shape. Best for overlaying a few groups.
+:::
+::: {.column width="33%"}
+![](images/plot-icons/02-distributions/03-boxplot.svg){height=3.4em}
+
+**Boxplot**
+
+Five-number summary. Compact across many groups.
+:::
+::::::
+
+:::::: columns
+::: {.column width="33%"}
+![](images/plot-icons/02-distributions/04-violins.svg){height=3.4em}
+
+**Violin**
+
+Density mirrored. Shape + summary in one footprint.
+:::
+::: {.column width="33%"}
+![](images/plot-icons/02-distributions/05-strip-chart.svg){height=3.4em}
+
+**Strip / sina**
+
+Every point shown. Honest when n is small.
+:::
+::: {.column width="33%"}
+![](images/plot-icons/02-distributions/07-ridgeline.svg){height=3.4em}
+
+**Ridgeline**
+
+Distributions stacked across groups or time.
+:::
+::::::
+
+::: {.takeaway}
+[Rule of thumb]{.tl}
+**Small n → strip · few groups → density or histogram · many groups → boxplot or ridgeline · need shape *and* summary → violin.**
+:::
+
+
+<!-- slide 75 -->
+## When & Why a Boxplot {.smaller}
+
+[Distributions · when to use]{.eyebrow}
+
+### A boxplot summarises spread, pick the chart that fits your question
+
+:::: {.columns}
+::: {.column width="46%"}
+Use a boxplot to compare the **distribution** of a continuous value across a few
+groups — its centre, spread, and outliers — without plotting every point.
+
+**Spread is not precision.** SD describes how the data scatter around the mean;
+SE describes how precise your estimate of the mean is. A boxplot answers the
+first question; error bars on a mean answer the second.
+
+```python
+r = np.random.default_rng(1)
+groups = ["WT", "Mut A", "Mut B"]
+data = [r.normal(50, 6, 70),                # WT
+        r.normal(62, 10, 70),               # Mut A — bigger spread
+        r.normal(58, 4, 70)]                # Mut B — tighter
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 5
+r = np.random.default_rng(1)
+groups = ["WT", "Mut A", "Mut B"]
+data = [r.normal(50, 6, 70), r.normal(62, 10, 70), r.normal(58, 4, 70)]
+fig, ax = plt.subplots(figsize=(6.4, 5))
+bp = ax.boxplot(data, widths=0.55, patch_artist=True, labels=groups)
+for p in bp["boxes"]: p.set_facecolor(ECON["hongkong"][3]); p.set_edgecolor(GREEN)
+for m in bp["medians"]: m.set_color(INK); m.set_linewidth(2)
+for w in bp["whiskers"] + bp["caps"]: w.set_color(GREEN)
+for fl in bp["fliers"]: fl.set(marker="o", markerfacecolor=CREAM, markeredgecolor=RED, markersize=5)
+ax.set_ylabel("Expression (TPM)")
+ax.set_title("DISTRIBUTION ACROSS THREE GENOTYPES", fontsize=11, fontweight="bold", color=INK, pad=10)
+plt.show()
+```
+:::
+::::
+
+::: {.takeaway}
+SD vs SE: spread of the **data** vs precision of the **estimate**. Same numbers,
+different question, different chart. *(Wilke 2019, Ch. 9)*
+:::
+
+
+<!-- slide 76 -->
+## Building a Boxplot · Step 1: the canvas {.smaller}
+
+[Distributions · boxplot build]{.eyebrow}
+
+### Set up the figure, labels, and scale before any data
+
+:::: {.columns}
+::: {.column width="46%"}
+Start with an empty, labelled canvas: axes, group positions, y-scale. Decide
+the frame first, fill it after.
+
+```python {code-line-numbers="1-7"}
+groups = ["WT", "Mut A", "Mut B"]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+ax.set_ylabel("Expression (TPM)")
+ax.set_xticks([1, 2, 3])
+ax.set_xticklabels(groups)
+ax.set_xlim(0.5, 3.5)
+ax.set_ylim(30, 85)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+groups = ["WT", "Mut A", "Mut B"]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+ax.set_ylabel("Expression (TPM)")
+ax.set_xticks([1, 2, 3]); ax.set_xticklabels(groups)
+ax.set_xlim(0.5, 3.5); ax.set_ylim(30, 85)
+ax.set_title("STEP 1: THE CANVAS", fontsize=12, fontweight="bold", color=MUTED, pad=10)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 77 -->
+## Building a Boxplot · Step 2: the raw points {.smaller}
+
+[Distributions · boxplot build]{.eyebrow}
+
+### Look at the data first, with a little horizontal jitter
+
+:::: {.columns}
+::: {.column width="46%"}
+Plot every observation, jittering x-position so points don't stack on one line.
+This shows the sample size and shape that a summary will later hide.
+
+```python {code-line-numbers="2-7"}
+# data: list of three np.ndarrays, one per group
+rj = np.random.default_rng(2)
+for i, d in enumerate(data, start=1):
+    x = rj.normal(i, 0.06, len(d))           # gentle jitter
+    ax.scatter(x, d,
+               color=GREEN, s=18,
+               alpha=0.5, edgecolors="none")
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+groups = ["WT", "Mut A", "Mut B"]
+r = np.random.default_rng(1)
+data = [r.normal(50, 6, 70), r.normal(62, 10, 70), r.normal(58, 4, 70)]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+ax.set_ylabel("Expression (TPM)"); ax.set_xticks([1, 2, 3]); ax.set_xticklabels(groups)
+ax.set_xlim(0.5, 3.5); ax.set_ylim(30, 85)
+rj = np.random.default_rng(2)
+for i, d in enumerate(data, start=1):
+    ax.scatter(rj.normal(i, 0.06, len(d)), d, color=GREEN, s=18, alpha=0.5, edgecolors="none")
+ax.set_title("STEP 2: RAW POINTS", fontsize=12, fontweight="bold", color=GREEN, pad=10)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 78 -->
+## Building a Boxplot · Step 3: add the box {.smaller}
+
+[Distributions · boxplot build]{.eyebrow}
+
+### Overlay the five-number summary on top of the points
+
+:::: {.columns}
+::: {.column width="46%"}
+The box draws Q1 → Q3, the median line, and whiskers to the most extreme points
+within 1.5 × IQR. Matplotlib computes all of it for you.
+
+```python {code-line-numbers="1-6"}
+bp = ax.boxplot(
+    data,
+    positions=[1, 2, 3],
+    widths=0.5,
+    patch_artist=True,        # so we can colour it
+)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+groups = ["WT", "Mut A", "Mut B"]
+r = np.random.default_rng(1)
+data = [r.normal(50, 6, 70), r.normal(62, 10, 70), r.normal(58, 4, 70)]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+ax.set_ylabel("Expression (TPM)"); ax.set_xticks([1, 2, 3]); ax.set_xticklabels(groups)
+ax.set_xlim(0.5, 3.5); ax.set_ylim(30, 85)
+rj = np.random.default_rng(2)
+for i, d in enumerate(data, start=1):
+    ax.scatter(rj.normal(i, 0.06, len(d)), d, color=GREEN, s=18, alpha=0.35, edgecolors="none")
+ax.boxplot(data, positions=[1, 2, 3], widths=0.5, patch_artist=True)
+ax.set_title("STEP 3: ADD THE BOX (DEFAULT)", fontsize=12, fontweight="bold", color=INK, pad=10)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 79 -->
+## Building a Boxplot · Step 4: style on-palette {.smaller}
+
+[Distributions · boxplot build]{.eyebrow}
+
+### Economist green box, ink median, fade the points behind
+
+:::: {.columns}
+::: {.column width="46%"}
+Style every element: a soft teal fill, a green edge, a bold ink median, green
+whiskers. Drop the alpha on the points so the box reads on top.
+
+```python {code-line-numbers="2-8"}
+bp = ax.boxplot(data, positions=[1,2,3], widths=0.5, patch_artist=True)
+for p in bp["boxes"]:
+    p.set_facecolor(ECON["hongkong"][3])
+    p.set_edgecolor(GREEN); p.set_alpha(0.75)
+for m in bp["medians"]:
+    m.set_color(INK); m.set_linewidth(2)
+for w in bp["whiskers"] + bp["caps"]:
+    w.set_color(GREEN)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+groups = ["WT", "Mut A", "Mut B"]
+r = np.random.default_rng(1)
+data = [r.normal(50, 6, 70), r.normal(62, 10, 70), r.normal(58, 4, 70)]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+ax.set_ylabel("Expression (TPM)"); ax.set_xticks([1, 2, 3]); ax.set_xticklabels(groups)
+ax.set_xlim(0.5, 3.5); ax.set_ylim(30, 85)
+rj = np.random.default_rng(2)
+for i, d in enumerate(data, start=1):
+    ax.scatter(rj.normal(i, 0.06, len(d)), d, color=GREEN, s=18, alpha=0.3, edgecolors="none")
+bp = ax.boxplot(data, positions=[1, 2, 3], widths=0.5, patch_artist=True)
+for p in bp["boxes"]: p.set_facecolor(ECON["hongkong"][3]); p.set_edgecolor(GREEN); p.set_alpha(0.75)
+for m in bp["medians"]: m.set_color(INK); m.set_linewidth(2)
+for w in bp["whiskers"] + bp["caps"]: w.set_color(GREEN)
+ax.set_title("STEP 4: STYLED ON-PALETTE", fontsize=12, fontweight="bold", color=INK, pad=10)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 80 -->
+## Building a Boxplot · Step 5: the message {.smaller}
+
+[Distributions · boxplot build]{.eyebrow}
+
+### Hide duplicate outliers, title the finding
+
+:::: {.columns}
+::: {.column width="46%"}
+The points already show every value, so turn off the default flier markers.
+Finish with a title that says what the reader should take away.
+
+```python {code-line-numbers="1-2"}
+bp = ax.boxplot(data, showfliers=False, ...)
+ax.set_title("MUT A SHOWS THE WIDEST SPREAD")
+```
+
+That's the whole recipe: **canvas → points → box → style → message.**
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+groups = ["WT", "Mut A", "Mut B"]
+r = np.random.default_rng(1)
+data = [r.normal(50, 6, 70), r.normal(62, 10, 70), r.normal(58, 4, 70)]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+ax.set_ylabel("Expression (TPM)"); ax.set_xticks([1, 2, 3]); ax.set_xticklabels(groups)
+ax.set_xlim(0.5, 3.5); ax.set_ylim(30, 85)
+rj = np.random.default_rng(2)
+for i, d in enumerate(data, start=1):
+    ax.scatter(rj.normal(i, 0.06, len(d)), d, color=GREEN, s=18, alpha=0.3, edgecolors="none")
+bp = ax.boxplot(data, positions=[1, 2, 3], widths=0.5, patch_artist=True, showfliers=False)
+for p in bp["boxes"]: p.set_facecolor(ECON["hongkong"][3]); p.set_edgecolor(GREEN); p.set_alpha(0.75)
+for m in bp["medians"]: m.set_color(INK); m.set_linewidth(2)
+for w in bp["whiskers"] + bp["caps"]: w.set_color(GREEN)
+ax.set_title("MUT A SHOWS THE WIDEST SPREAD", fontsize=12, fontweight="bold", color=GREEN, pad=10)
+plt.show()
+```
+:::
+::::
+
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- VIOLIN                                                              -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+
+<!-- slide 81 -->
+## When & Why a Violin {.smaller}
+
+[Distributions · when to use]{.eyebrow}
+
+### Reach for a violin when the shape matters, not just the summary
+
+:::: {.columns}
+::: {.column width="46%"}
+A boxplot hides shape — two very different distributions can share the same
+five-number summary. A violin draws a **mirrored density**, so a second hump or
+a long skew is visible at a glance.
+
+Use it when the distribution might be **bimodal** or strongly skewed. Use a
+plain boxplot when a clean five-number summary is all you need.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 5
+r = np.random.default_rng(3)
+bimodal = np.concatenate([r.normal(45, 5, 45), r.normal(62, 5, 35)])
+fig, ax = plt.subplots(figsize=(6.4, 5))
+vp = ax.violinplot([bimodal], positions=[1], widths=0.7, showextrema=False)
+for b in vp["bodies"]:
+    b.set_facecolor(ECON["hongkong"][3]); b.set_edgecolor(GREEN); b.set_alpha(0.85)
+bx = ax.boxplot([bimodal], positions=[1], widths=0.12, patch_artist=True, showfliers=False)
+for p in bx["boxes"]: p.set_facecolor(INK)
+for m in bx["medians"]: m.set_color(CREAM)
+ax.set_xticks([1]); ax.set_xticklabels(["one sample"]); ax.set_ylabel("Expression (TPM)")
+ax.set_title("THE BOX MISSES THE TWO PEAKS", fontsize=11, fontweight="bold", color=INK, pad=10)
+plt.show()
+```
+:::
+::::
+
+::: {.takeaway}
+The boxplot shows the summary. The violin shows the **shape**. Bimodality is the
+story the box can't tell. *(Wilke 2019, Ch. 7)*
+:::
+
+
+<!-- slide 82 -->
+## Building a Violin · Step 1: the canvas {.smaller}
+
+[Distributions · violin build]{.eyebrow}
+
+### Same canvas as the boxplot, three groups, one deliberately bimodal
+
+:::: {.columns}
+::: {.column width="46%"}
+The recipe starts identically: an empty, labelled frame. One group is
+deliberately **bimodal** so the violin has something a box would hide.
+
+```python {code-line-numbers="1-7"}
+r = np.random.default_rng(3)
+groups = ["WT", "Mut A", "Mut B"]
+data = [np.concatenate([r.normal(45, 5, 45),
+                        r.normal(62, 5, 35)]),  # WT is bimodal
+        r.normal(62, 10, 80),
+        r.normal(58,  4, 80)]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+groups = ["WT", "Mut A", "Mut B"]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+ax.set_xticks([1, 2, 3]); ax.set_xticklabels(groups); ax.set_xlim(0.5, 3.5)
+ax.set_ylim(25, 85); ax.set_ylabel("Expression (TPM)")
+ax.set_title("STEP 1: THE CANVAS", fontsize=12, fontweight="bold", color=MUTED, pad=10)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 83 -->
+## Building a Violin · Step 2: the raw points {.smaller}
+
+[Distributions · violin build]{.eyebrow}
+
+### Jittered points already hint at the bimodality
+
+:::: {.columns}
+::: {.column width="46%"}
+The WT group sits in two clouds, not one. The violin will make that explicit.
+
+```python {code-line-numbers="1-5"}
+rj = np.random.default_rng(4)
+for i, d in enumerate(data, start=1):
+    ax.scatter(rj.normal(i, 0.06, len(d)), d,
+               color=GREEN, s=16, alpha=0.5,
+               edgecolors="none")
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+groups = ["WT", "Mut A", "Mut B"]
+r = np.random.default_rng(3)
+data = [np.concatenate([r.normal(45, 5, 45), r.normal(62, 5, 35)]),
+        r.normal(62, 10, 80), r.normal(58, 4, 80)]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+ax.set_xticks([1, 2, 3]); ax.set_xticklabels(groups); ax.set_xlim(0.5, 3.5)
+ax.set_ylim(25, 85); ax.set_ylabel("Expression (TPM)")
+rj = np.random.default_rng(4)
+for i, d in enumerate(data, start=1):
+    ax.scatter(rj.normal(i, 0.06, len(d)), d, color=GREEN, s=16, alpha=0.5, edgecolors="none")
+ax.set_title("STEP 2: RAW POINTS", fontsize=12, fontweight="bold", color=GREEN, pad=10)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 84 -->
+## Building a Violin · Step 3: add the density {.smaller}
+
+[Distributions · violin build]{.eyebrow}
+
+### violinplot draws a kernel density and mirrors it about each axis
+
+:::: {.columns}
+::: {.column width="46%"}
+The body width at any height is the point density there. The WT violin now
+shows two bulges, the bimodality a box would flatten away.
+
+```python {code-line-numbers="1-5"}
+vp = ax.violinplot(
+    data,
+    positions=[1, 2, 3],
+    showextrema=False,
+)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+groups = ["WT", "Mut A", "Mut B"]
+r = np.random.default_rng(3)
+data = [np.concatenate([r.normal(45, 5, 45), r.normal(62, 5, 35)]),
+        r.normal(62, 10, 80), r.normal(58, 4, 80)]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+ax.set_xticks([1, 2, 3]); ax.set_xticklabels(groups); ax.set_xlim(0.5, 3.5)
+ax.set_ylim(25, 85); ax.set_ylabel("Expression (TPM)")
+rj = np.random.default_rng(4)
+for i, d in enumerate(data, start=1):
+    ax.scatter(rj.normal(i, 0.06, len(d)), d, color=GREEN, s=14, alpha=0.3, edgecolors="none")
+ax.violinplot(data, positions=[1, 2, 3], showextrema=False)
+ax.set_title("STEP 3: ADD THE DENSITY (DEFAULT)", fontsize=12, fontweight="bold", color=INK, pad=10)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 85 -->
+## Building a Violin · Step 4: style on-palette {.smaller}
+
+[Distributions · violin build]{.eyebrow}
+
+### Teal body, green edge, fade the points behind
+
+:::: {.columns}
+::: {.column width="46%"}
+Loop over the violin bodies and colour them on-brand, then drop the points'
+alpha so the density reads on top.
+
+```python {code-line-numbers="2-6"}
+vp = ax.violinplot(data, positions=[1,2,3], showextrema=False)
+for b in vp["bodies"]:
+    b.set_facecolor(ECON["hongkong"][3])
+    b.set_edgecolor(GREEN)
+    b.set_alpha(0.75)
+    b.set_linewidth(1.4)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+groups = ["WT", "Mut A", "Mut B"]
+r = np.random.default_rng(3)
+data = [np.concatenate([r.normal(45, 5, 45), r.normal(62, 5, 35)]),
+        r.normal(62, 10, 80), r.normal(58, 4, 80)]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+ax.set_xticks([1, 2, 3]); ax.set_xticklabels(groups); ax.set_xlim(0.5, 3.5)
+ax.set_ylim(25, 85); ax.set_ylabel("Expression (TPM)")
+rj = np.random.default_rng(4)
+for i, d in enumerate(data, start=1):
+    ax.scatter(rj.normal(i, 0.06, len(d)), d, color=GREEN, s=14, alpha=0.25, edgecolors="none")
+vp = ax.violinplot(data, positions=[1, 2, 3], showextrema=False)
+for b in vp["bodies"]:
+    b.set_facecolor(ECON["hongkong"][3]); b.set_edgecolor(GREEN); b.set_alpha(0.75); b.set_linewidth(1.4)
+ax.set_title("STEP 4: STYLED ON-PALETTE", fontsize=12, fontweight="bold", color=INK, pad=10)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 86 -->
+## Building a Violin · Step 5: the message {.smaller}
+
+[Distributions · violin build]{.eyebrow}
+
+### Slim inner boxplot for the summary, title the finding
+
+:::: {.columns}
+::: {.column width="46%"}
+A thin boxplot inside each violin gives the five-number summary and the shape
+together. Finish with the takeaway in the title.
+
+```python {code-line-numbers="1-7"}
+for i, d in enumerate(data, start=1):
+    bx = ax.boxplot(d, positions=[i],
+                    widths=0.1, patch_artist=True,
+                    showfliers=False)
+    bx["boxes"][0].set_facecolor(INK)
+    bx["medians"][0].set_color(CREAM)
+ax.set_title("WT IS BIMODAL")
+```
+
+Same recipe as the box: **canvas → points → density → style → message.**
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.4
+#| fig-height: 4.7
+groups = ["WT", "Mut A", "Mut B"]
+r = np.random.default_rng(3)
+data = [np.concatenate([r.normal(45, 5, 45), r.normal(62, 5, 35)]),
+        r.normal(62, 10, 80), r.normal(58, 4, 80)]
+fig, ax = plt.subplots(figsize=(6.4, 4.7))
+ax.set_xticks([1, 2, 3]); ax.set_xticklabels(groups); ax.set_xlim(0.5, 3.5)
+ax.set_ylim(25, 85); ax.set_ylabel("Expression (TPM)")
+vp = ax.violinplot(data, positions=[1, 2, 3], showextrema=False)
+for b in vp["bodies"]:
+    b.set_facecolor(ECON["hongkong"][3]); b.set_edgecolor(GREEN); b.set_alpha(0.6); b.set_linewidth(1.4)
+for i, d in enumerate(data, start=1):
+    bx = ax.boxplot(d, positions=[i], widths=0.1, patch_artist=True, showfliers=False)
+    for p in bx["boxes"]: p.set_facecolor(INK)
+    for m in bx["medians"]: m.set_color(CREAM); m.set_linewidth(1.4)
+    for w in bx["whiskers"] + bx["caps"]: w.set_color(INK)
+ax.set_title("WT IS BIMODAL", fontsize=12, fontweight="bold", color=GREEN, pad=10)
+plt.show()
+```
+:::
+::::
+
+::: {.takeaway}
+Box vs violin: the box gives the **summary**, the violin reveals the **shape**.
+Show the violin when bimodality or skew is the story.
+:::
+
+<!-- slide 87 -->
+## Ridgeline · The Data {.smaller}
+
+[Distributions · ridgeline]{.eyebrow}
+
+### 2,000 single cells, ordered along a trajectory
+
+`load_pseudotime()` is single-cell data in tidy long form: **one row per cell**. Each cell has a pseudotime `stage` (1 = earliest, 8 = latest along the differentiation path) and the marker gene's `expression`. With 250 cells per stage, every stage is a proper distribution, not a single number.
+
+```{python}
+#| echo: true
+#| output-location: column
+from genomics_course.data import load_pseudotime
+
+pt = load_pseudotime()        # cell, stage, expression
+print(pt.shape)               # 2000 cells × 3 columns
+pt.head(4)
+```
+
+
+<!-- slide 88 -->
+## Ridgeline · See the Cells First {.smaller}
+
+[Distributions · ridgeline]{.eyebrow}
+
+### Before any smoothing: one dot per cell
+
+Plot every cell as a dot, expression on the x-axis, stage on the y-axis with a little jitter. Early stages sit in a low cloud (gene OFF); late stages sit in a high cloud (gene ON); the middle stages show **both clouds at once**, that's the bimodal hand-off. The ridgeline next just replaces each row of dots with a smooth density.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "8-12"
+#| output-location: column
+#| fig-width: 6.4
+#| fig-height: 5.0
+from genomics_course.data import load_pseudotime
+
+pt = load_pseudotime()                                     # 2000 cells: cell, stage, expression
+stages = sorted(pt.stage.unique())                         # ordered pseudotime stages 1..8
+n = len(stages)
+rng = np.random.default_rng(0)                             # reproducible jitter
+
+fig, ax = plt.subplots(figsize=(6.4, 5.0))
+for i, s in enumerate(stages):                             # one row of dots per stage
+    vals = pt.loc[pt.stage == s, "expression"].values      # this stage's cells
+    y = i + rng.uniform(-0.32, 0.32, len(vals))            # jitter so dots don't pile on one line
+    ax.scatter(vals, y, s=6, color=econ_spectrum(i / (n - 1)),  # x = expression, one dot per cell
+               alpha=.35, linewidths=0)                    # low alpha shows where cells pile up
+ax.set_yticks(range(n)); ax.set_yticklabels([f"stage {s}" for s in stages], fontsize=9)
+ax.set_xlabel("NEUROD1 expression"); ax.set_ylabel("pseudotime →")
+ax.set_xlim(0, 12)
+for sp in ["top", "right", "left"]:                        # bare frame, same look as the ridgeline
+    ax.spines[sp].set_visible(False)
+ax.set_title("each dot is one cell", color=MUTED, fontsize=11, loc="left")
+plt.show()
+```
+
+<!-- slide 89 -->
+# Ridgelines {.divider}
+
+[Many distributions, one panel · Day 01]{.eyebrow}
+
+
+<!-- slide 90 -->
+## When a Ridgeline {.smaller}
+
+[Distributions · theory]{.eyebrow}
+
+### Watch a distribution change across an ordered factor
+
+A ridgeline stacks one density per group, slightly overlapping, so you compare many distributions in a compact panel. It earns its place when the groups have a **meaningful order** and the distribution *shifts* across it: expression along pseudotime, a signal across tissues, a metric over time. The **shape** is the story, a mode appearing, a peak sliding right.
+
+Two requirements keep it honest: enough points per group for a smooth density (a KDE on twenty values is noise), and a colour ramp **keyed to the group order** so the eye follows the progression instead of decoding a rainbow. Here: a neural marker switching on as cells differentiate.
+
+
+<!-- slide 91 -->
+## Ridgeline · The Data {.smaller}
+
+[Distributions · ridgeline]{.eyebrow}
+
+### A marker gene across single cells, ordered by pseudotime
+
+`load_pseudotime()` is tidy long: one row per cell, its pseudotime `stage` (1 = earliest), and the marker's `expression`. Each stage is a distribution we'll turn into one ridge.
+
+```{python}
+#| echo: true
+#| output-location: column
+from genomics_course.data import load_pseudotime
+
+pt = load_pseudotime()   # cell, stage, expression
+pt.head(4)
+```
+
+
+<!-- slide 92 -->
+## Ridgeline · Step 1 — A Density Per Stage {.smaller}
+
+[Distributions · build]{.eyebrow}
+
+### 1 · KDE each group
+
+Smooth each stage's expression into a density with `gaussian_kde`, on a shared x-grid, and normalise to the same height so shapes are comparable. Overlaid, you can already see a second hump appear, but they collide.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "9-12"
+#| output-location: column
+#| fig-width: 6.4
+#| fig-height: 4.7
+from scipy.stats import gaussian_kde                       # kernel density estimator
+from genomics_course.data import load_pseudotime
+
+pt = load_pseudotime()                                     # cell, stage, expression
+stages = sorted(pt.stage.unique())                         # ordered pseudotime stages 1..8
+xs = np.linspace(0, 12, 300)                               # shared grid for every density
+
+fig, ax = plt.subplots(figsize=(6.4, 4.7))                 # one panel
+for s in stages:                                           # one KDE per stage
+    vals = pt.loc[pt.stage == s, "expression"].values      # this stage's cells
+    k = gaussian_kde(vals)(xs)                              # smooth density over xs
+    ax.plot(xs, k / k.max(), color=GREEN, lw=1.2, alpha=.6)  # normalise height; all overlaid
+ax.set_xlabel("NEUROD1 expression"); ax.set_ylabel("density (normalised)")
+plt.show()
+```
+
+
+<!-- slide 93 -->
+## Ridgeline · Step 2 — Stack the Ridges {.smaller}
+
+[Distributions · build]{.eyebrow}
+
+### 2 · Offset and fill
+
+Give each density its own baseline `y = i` and `fill_between` it, scaled by `overlap` (>1 so neighbours touch). Colour by stage along `econ_spectrum`, and the `zorder` puts lower ridges in front. Now they read as a stack.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "7,12-15"
+#| output-location: column
+#| fig-width: 6.4
+#| fig-height: 5.2
+from scipy.stats import gaussian_kde
+from genomics_course.data import load_pseudotime
+
+pt = load_pseudotime()                                     # cell, stage, expression
+stages = sorted(pt.stage.unique())                         # ordered stages
+xs = np.linspace(0, 12, 300)                               # shared grid
+n = len(stages); overlap = 1.8                             # ridge height (>1 → ridges overlap)
+
+fig, ax = plt.subplots(figsize=(6.4, 5.2))
+for i, s in enumerate(stages):                             # stage 1 at the bottom, 8 at the top
+    vals = pt.loc[pt.stage == s, "expression"].values      # this stage's cells
+    k = gaussian_kde(vals)(xs); k = k / k.max() * overlap  # normalise, then scale to ridge height
+    col = econ_spectrum(i / (n - 1))                       # colour keyed to pseudotime order
+    ax.fill_between(xs, i + k, i, color=col, alpha=.8,     # ridge sits on baseline y = i
+                    lw=1, edgecolor=CREAM, zorder=n - i)    # lower ridges drawn in front
+ax.set_yticks(range(n)); ax.set_yticklabels([f"stage {s}" for s in stages], fontsize=9)
+ax.set_xlabel("NEUROD1 expression"); ax.set_ylabel("pseudotime →")
+ax.set_xlim(0, 12)
+plt.show()
+```
+
+
+<!-- slide 94 -->
+## Ridgeline · Step 3 — The Message {.smaller}
+
+[Distributions · build]{.eyebrow}
+
+### 3 · Clean edge, no frame, name the finding
+
+Trace each ridge's top in cream so overlaps stay crisp, drop the frame (ridgelines read better bare), and title with the result. The OFF→bimodal→ON march is the whole point.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "15,19-22"
+#| output-location: column
+#| fig-width: 6.4
+#| fig-height: 5.2
+from scipy.stats import gaussian_kde
+from genomics_course.data import load_pseudotime
+
+pt = load_pseudotime()                                     # cell, stage, expression
+stages = sorted(pt.stage.unique())                         # ordered stages
+xs = np.linspace(0, 12, 300)                               # shared grid
+n = len(stages); overlap = 1.8                             # ridge height
+
+fig, ax = plt.subplots(figsize=(6.4, 5.2))
+for i, s in enumerate(stages):                             # bottom → top
+    vals = pt.loc[pt.stage == s, "expression"].values      # this stage's cells
+    k = gaussian_kde(vals)(xs); k = k / k.max() * overlap  # normalised, scaled density
+    col = econ_spectrum(i / (n - 1))                       # spectrum keyed to order
+    ax.fill_between(xs, i + k, i, color=col, alpha=.8, lw=1, edgecolor=CREAM, zorder=n - i)
+    ax.plot(xs, i + k, color=CREAM, lw=.8, zorder=n - i)   # crisp cream top edge per ridge
+ax.set_yticks(range(n)); ax.set_yticklabels([f"stage {s}" for s in stages], fontsize=9)
+ax.set_xlabel("NEUROD1 expression"); ax.set_ylabel("pseudotime →")
+ax.set_xlim(0, 12); ax.set_ylim(-0.3, n + overlap)         # headroom for the top ridge
+for sp in ["top", "right", "left"]:                        # ridgelines read better frameless
+    ax.spines[sp].set_visible(False)
+ax.set_title("NEUROD1 SWITCHES ON ALONG THE TRAJECTORY",   # title states the finding
+             color=GREEN, fontweight="bold", loc="left")
+plt.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+A ridgeline is many densities stacked along an ordered factor: **KDE each group → offset and fill → ramp keyed to order**. Watch the marker switch on, a single OFF hump, a bimodal transition where some cells flip, then a single ON hump. The shift *is* the result.
+:::
+
+
+<!-- slide 95 -->
+## Exercise · Library QC {.smaller}
+
+[Distributions · exercise]{.eyebrow}
+
+### Are the libraries comparable?
+
+::: {.exercise}
+[Real scenario]{.xl}
+Before differential expression, you check that every sample's expression distribution looks alike, a ridge sitting clearly left or right of the rest flags a library that needs normalising. Melt `load_expression()` to long and build one ridge per sample, coloured by condition.
+
+```{python}
+#| echo: true
+#| eval: false
+from scipy.stats import gaussian_kde
+from genomics_course.data import load_expression
+
+expr = load_expression()                                   # genes × samples
+long = expr.melt(var_name="sample", value_name="expr")     # one row per gene-sample
+
+# 1. xs over the expression range; samples = expr.columns
+# 2. for each sample i: k = gaussian_kde(values); fill_between(xs, i + k/k.max(), i)
+# 3. colour by condition: BLUE if name starts with "C", AMBER if "D"
+# 4. read it: does any sample's ridge sit offset from the rest? → normalise before DE
+```
+:::

@@ -1,0 +1,982 @@
+<!-- slide 47 -->
+# The Python Visualization Ecosystem {.divider}
+
+[The Python viz stack · Day 01]{.eyebrow}
+
+
+<!-- slide 48 -->
+## Build Your Own Palette · Step 2: the ECON ramps {.smaller}
+
+[Theme builder · palette]{.eyebrow}
+
+### Nine named ramps cover qualitative + sequential needs
+
+:::: {.columns}
+::: {.column width="46%"}
+For many-category and continuous data, the five aren't enough. Drop in **nine
+named ramps** — each a dark-to-light gradient — so any chart can pick a ramp by
+city name.
+
+```python {code-line-numbers="1-7"}
+ECON = {
+    "chicago":   ["#141F52", ..., "#EBEDFA"],
+    "hongkong":  ["#169C7F", ..., "#E9FCF8"],
+    "newyork":   ["#F9C31F", ..., "#FEF8E6"],
+    "shanghai":  ["#4C9C16", ..., "#F0FCE9"],
+    "tokyo":     ["#9C1633", ..., "#FCE9ED"],
+    # singapore, red, london (grey), canvas
+}
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7
+#| fig-height: 4.5
+fig, ax = plt.subplots(figsize=(7, 4.5))
+max_len = max(len(r) for r in ECON.values())
+for j, (name, ramp) in enumerate(ECON.items()):
+    for i, hex in enumerate(ramp):
+        ax.add_patch(plt.Rectangle((i, -j), 0.95, 0.9, color=hex, ec=CREAM, lw=0.6))
+    ax.text(-0.2, -j + 0.45, name, ha="right", va="center",
+            fontsize=9, color=INK, family="IBM Plex Mono")
+ax.set_xlim(-2.5, max_len); ax.set_ylim(-len(ECON) + 0.5, 1)
+ax.axis("off")
+ax.set_title("ECON RAMPS", fontsize=11, fontweight="bold", color=INK, pad=6)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 49 -->
+## Build Your Own Palette · Step 3: continuous cmaps {.smaller}
+
+[Theme builder · palette]{.eyebrow}
+
+### Three helpers turn the ramps into matplotlib colormaps
+
+:::: {.columns}
+::: {.column width="46%"}
+For heatmaps and stacked areas you want a *continuous* gradient.
+`LinearSegmentedColormap.from_list` interpolates between any list of hexes.
+
+```python {code-line-numbers="1-12"}
+from matplotlib.colors \
+    import LinearSegmentedColormap
+
+def econ_cmap(ramp="chicago"):
+    return LinearSegmentedColormap.from_list(
+        f"econ_{ramp}", ECON[ramp])
+
+econ_diverging = LinearSegmentedColormap.from_list(
+    "econ_div", [BLUE, CREAM, RED])
+
+econ_spectrum = LinearSegmentedColormap.from_list(
+    "econ_spectrum",
+    [ECON["chicago"][2], ECON["hongkong"][0],
+     ECON["shanghai"][1], ECON["newyork"][0],
+     ECON["red"][1]])
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7
+#| fig-height: 3.6
+import numpy as np
+fig, ax = plt.subplots(3, 1, figsize=(7, 3.6))
+gradient = np.linspace(0, 1, 256).reshape(1, -1)
+demos = [(econ_cmap("chicago"),     "econ_cmap('chicago')   — sequential"),
+         (econ_diverging,            "econ_diverging         — blue ←→ red"),
+         (econ_spectrum,             "econ_spectrum          — blue → red")]
+for a, (cmap, name) in zip(ax, demos):
+    a.imshow(gradient, aspect="auto", cmap=cmap)
+    a.set_yticks([]); a.set_xticks([])
+    a.set_title(name, fontsize=10, color=INK, loc="left",
+                family="IBM Plex Mono", pad=4)
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 50 -->
+## Build Your Own Theme · Step 1: register IBM Plex Mono {.smaller}
+
+[Theme builder · font]{.eyebrow}
+
+### Tell matplotlib about the .ttf files, set it as the default
+
+:::: {.columns}
+::: {.column width="46%"}
+The repo ships `fonts/IBM_Plex_Mono/`. Walk the folder, add each `.ttf` to
+matplotlib's font manager, and remember the family name. A fallback keeps the
+render alive if the folder ever moves.
+
+```python {code-line-numbers="1-12"}
+from pathlib import Path
+import matplotlib.font_manager as fm
+
+font_dir = Path("../fonts/IBM_Plex_Mono")
+if font_dir.exists():
+    for ttf in font_dir.glob("*.ttf"):
+        fm.fontManager.addfont(str(ttf))
+    _MONO = "IBM Plex Mono"
+else:
+    _MONO = "DejaVu Sans Mono"   # safe fallback
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7
+#| fig-height: 4
+fig, ax = plt.subplots(figsize=(7, 4))
+ax.axis("off")
+ax.text(0.5, 0.78, "IBM Plex Mono", ha="center", va="center",
+        fontsize=32, fontweight="bold", color=GREEN,
+        family="IBM Plex Mono")
+ax.text(0.5, 0.55, "registered, available everywhere",
+        ha="center", va="center", fontsize=14, color=INK,
+        family="IBM Plex Mono")
+ax.text(0.5, 0.30, "ax.set_title(\"BRCA1 expression\")",
+        ha="center", va="center", fontsize=12, color=MUTED,
+        family="IBM Plex Mono")
+ax.text(0.5, 0.12, "↳ now in IBM Plex Mono by default",
+        ha="center", va="center", fontsize=10, color=GREY,
+        family="IBM Plex Mono", style="italic")
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 51 -->
+## Build Your Own Theme · Step 2: rcParams once {.smaller}
+
+[Theme builder · rcParams]{.eyebrow}
+
+### Set every default once; inherit it forever
+
+:::: {.columns}
+::: {.column width="46%"}
+A single `rcParams.update` call sets the cream canvas, muted axes, and IBM Plex
+Mono as the matplotlib default. Every later figure inherits it — no per-chunk
+boilerplate.
+
+```python {code-line-numbers="1-10"}
+import matplotlib as mpl
+
+mpl.rcParams.update({
+    "figure.facecolor": CREAM,
+    "axes.facecolor":   CREAM,
+    "savefig.facecolor": CREAM,
+    "font.family":      _MONO,
+    "axes.edgecolor":   LINE,
+    "axes.labelcolor":  MUTED,
+    "xtick.color":      MUTED,
+    "ytick.color":      MUTED,
+    "axes.spines.top":   False,
+    "axes.spines.right": False,
+})
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7
+#| fig-height: 4.4
+genes = ["BRCA1", "TP53", "EGFR", "MYC", "KRAS"]
+vals = [72, 58, 85, 63, 91]
+fig, ax = plt.subplots(figsize=(7, 4.4))
+ax.barh(genes[::-1], vals[::-1], color=GREEN, height=0.62)
+for i, v in enumerate(vals[::-1]):
+    ax.text(v + 1, i, str(v), va="center", fontsize=10, color=MUTED)
+ax.set_xlim(0, 105)
+ax.set_xlabel("Expression (TPM)")
+for s in ["top", "right", "bottom"]: ax.spines[s].set_visible(False)
+ax.xaxis.set_visible(False)
+ax.set_title("EVERY DEFAULT SET, NOTHING REPEATED",
+             fontsize=12, fontweight="bold", color=INK, pad=10)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 52 -->
+## The Whole Theme in One Line {.smaller}
+
+[Theme builder · the payoff]{.eyebrow}
+
+### `from genomics_course.theme import *`
+
+:::: {.columns}
+::: {.column width="46%"}
+You've just seen the inside of `genomics_course/theme.py`. The deck itself never
+re-declares the palette or font — it just imports the same module:
+
+```python
+from genomics_course.theme import *
+```
+
+That single line brings in **`GREEN BLUE AMBER RED PURPLE`** plus the
+neutrals, the `ECON` ramps, the helpers (`econ_cmap`, `econ_diverging`,
+`econ_spectrum`), and applies the cream-canvas rcParams. Every figure in
+**Day 1 through Day 3** inherits the same look.
+
+That's the recipe: **palette → font → rcParams → one import line.**
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7
+#| fig-height: 4.4
+fig, ax = plt.subplots(figsize=(7, 4.4))
+ax.axis("off")
+ax.text(0.5, 0.82, "from genomics_course.theme import *",
+        ha="center", va="center", fontsize=18, fontweight="bold",
+        color=GREEN, family="IBM Plex Mono",
+        bbox=dict(boxstyle="round,pad=0.6", fc=ECON["hongkong"][3],
+                  ec=GREEN, lw=1.4))
+items = [
+    ("•", "five story colours",              GREEN),
+    ("•", "nine named ECON ramps",           BLUE),
+    ("•", "econ_cmap / diverging / spectrum", AMBER),
+    ("•", "IBM Plex Mono registered",        PURPLE),
+    ("•", "cream canvas + muted axes",       RED),
+]
+for i, (bul, text, c) in enumerate(items):
+    y = 0.55 - i * 0.09
+    ax.text(0.15, y, bul, ha="center", va="center",
+            fontsize=18, fontweight="bold", color=c)
+    ax.text(0.20, y, text, ha="left", va="center",
+            fontsize=12, color=INK, family="IBM Plex Mono")
+plt.show()
+```
+:::
+::::
+
+::: {.takeaway}
+One line, one identity. Every figure in the deck shares it; every figure in
+your work can share it too.
+:::
+
+
+
+<!-- slide 53 -->
+## The Three Objects Behind a Theme {.smaller}
+
+[Make it publication-ready]{.eyebrow}
+
+### A palette, an rcParams block, and per-plot tuning
+
+::: {.full-width-lead}
+Publication style is not magic per chart. It is three objects: design tokens you pick once, an `rcParams` block that makes them the default everywhere, and the `ax.set_*` calls you tune per figure. That is all `theme.py` is.
+:::
+
+::: {.panel-tabset}
+
+### 1 · Palette + font
+
+:::: {.columns}
+::: {.column width="46%"}
+Pick a few colours and one typeface, name them as constants. One bold colour to carry the story, the rest quiet neutrals. These are your tokens, nothing renders yet.
+
+```{.python code-line-numbers="2,8"}
+# story colours
+GREEN = "#379A8B"
+BLUE  = "#006BA2"
+RED   = "#B4405F"
+# neutrals
+INK   = "#0D0D0D"
+MUTED = "#666666"
+GREY  = "#B3B3B3"
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6
+#| fig-height: 4.4
+swatch = [("GREEN", GREEN), ("BLUE", BLUE), ("AMBER", AMBER),
+          ("RED", RED), ("PURPLE", PURPLE), ("INK", INK),
+          ("LINE", LINE), ("MUTED", MUTED), ("GREY", GREY), ("CREAM", CREAM)]
+fig, ax = plt.subplots(figsize=(6, 4.4), facecolor=CREAM); ax.set_facecolor(CREAM)
+for i, (name, hexv) in enumerate(swatch):
+    y = len(swatch) - 1 - i
+    ax.add_patch(plt.Rectangle((0, y), 1.1, 0.8, color=hexv,
+                 ec=LINE if name in ("CREAM", "LINE") else "none", lw=0.8))
+    ax.text(1.3, y + 0.4, name, va="center", fontweight="bold", color=INK)
+    ax.text(2.7, y + 0.4, hexv, va="center", color=MUTED)
+ax.set_xlim(0, 4); ax.set_ylim(0, len(swatch)); ax.axis("off")
+plt.show()
+```
+:::
+::::
+
+### 2 · rcParams
+
+:::: {.columns}
+::: {.column width="46%"}
+Push the tokens into `plt.rcParams` once. Now every plot inherits the font, the cream canvas, thinned spines, and a quiet grid, with no per-plot styling at all. This is the same figure tab 3 will label.
+
+```{.python code-line-numbers="1|3-6"}
+plt.rcParams.update({
+    "font.family": "IBM Plex Mono",
+    "figure.facecolor": CREAM,
+    "axes.facecolor": CREAM,
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+    "axes.edgecolor": LINE,
+    "axes.labelcolor": MUTED,
+    "grid.color": LINE,
+    "grid.alpha": 0.4,
+})
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6.4
+#| fig-height: 4.4
+x = np.linspace(0, 10, 50)
+fig, ax = plt.subplots(figsize=(6.4, 4.4), facecolor=CREAM)
+ax.set_facecolor(CREAM)
+for k, c in zip((1, 1.5, 2), (GREEN, BLUE, AMBER)):
+    ax.plot(x, np.sin(x*0.6)*k + k, color=c, lw=2.2)
+ax.grid(True, color=LINE, alpha=0.5, linewidth=0.6); ax.set_axisbelow(True)
+for s in ("top", "right"): ax.spines[s].set_visible(False)
+for s in ("left", "bottom"): ax.spines[s].set_color(LINE)
+ax.tick_params(colors=MUTED)
+plt.show()
+```
+:::
+::::
+
+### 3 · ax.set_* (per plot)
+
+:::: {.columns}
+::: {.column width="46%"}
+Same curves, same theme, now named for *this* figure. `ax.set_*` is the only thing you touch per plot: the title, the axis labels, the limits. The layer on top of the inherited defaults.
+
+```{.python code-line-numbers="5-7"}
+fig, ax = plt.subplots()
+for k, c in zip((1, 1.5, 2), (GREEN, BLUE, AMBER)):
+    ax.plot(x, np.sin(x*0.6)*k + k, color=c)
+
+ax.set_title("Three signals over time")
+ax.set_xlabel("time (s)")
+ax.set_ylabel("amplitude")
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6.4
+#| fig-height: 4.4
+fig, ax = plt.subplots(figsize=(6.4, 4.4), facecolor=CREAM)
+ax.set_facecolor(CREAM)
+for k, c in zip((1, 1.5, 2), (GREEN, BLUE, AMBER)):
+    ax.plot(x, np.sin(x*0.6)*k + k, color=c, lw=2.2)
+ax.set_title("Three signals over time", fontweight="bold", color=INK, loc="left")
+ax.set_xlabel("time (s)")
+ax.set_ylabel("amplitude")
+ax.grid(True, color=LINE, alpha=0.5, linewidth=0.6); ax.set_axisbelow(True)
+for s in ("top", "right"): ax.spines[s].set_visible(False)
+for s in ("left", "bottom"): ax.spines[s].set_color(LINE)
+ax.tick_params(colors=MUTED)
+plt.show()
+```
+:::
+::::
+
+:::
+
+<!-- slide 54 -->
+## Theme It Once, Then Tune {.smaller}
+
+[Make it publication-ready]{.eyebrow}
+
+### The bottom line, and three things to try
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Set the **palette and rcParams once** in `theme.py`, then every plot starts publication-ready. `ax.set_*` is all you touch per figure.
+:::
+
+:::::: columns
+::: {.column width="50%"}
+**Q1 · Italicise one word in a title**
+How do you make only *gaining* italic in "Mixed training is gaining"?
+
+::: {.fragment}
+Mathtext, not rcParams:
+```python
+ax.set_title(r"Mixed training is $\it{gaining}$")
+```
+:::
+
+**Q2 · One plot off-theme**
+Your theme is global. How do you make a single plot use a white background without changing the others?
+
+::: {.fragment}
+Scope it with a context manager:
+```python
+with mpl.rc_context({"axes.facecolor": "white"}):
+    fig, ax = plt.subplots()
+```
+:::
+:::
+
+::: {.column width="50%"}
+**Q3 · Style only the x-axis font**
+rcParams sets the font everywhere. How do you change it on the x-ticks alone?
+
+::: {.fragment}
+A per-axis call:
+```python
+ax.tick_params(axis="x", labelfontfamily="serif")
+```
+:::
+
+**Q4 · You broke your rcParams**
+You experimented in a notebook and every plot looks wrong. How do you get back to defaults?
+
+::: {.fragment}
+One line resets the lot:
+```python
+import matplotlib as mpl
+mpl.rcdefaults()
+```
+:::
+:::
+::::::
+
+<!-- slide 55 -->
+## Make matplotlib publication-ready {.smaller .scrollable}
+
+[Make it publication-ready]{.eyebrow}
+
+### Five small moves take matplotlib from default to glorious
+
+:::: {.columns}
+::: {.column width="46%"}
+Default matplotlib is functional. Five small moves take it to publication-ready:
+one **bold** colour carries the story, the frame thins out, the grid quiets, the
+bars label themselves, and a descriptive title says what the chart shows.
+
+```python {code-line-numbers="3-5|7-9|11-12|14-17|19-22"}
+# 1) STRATEGIC COLOUR — one bold, the rest quiet
+colors = [RED if c == "mixed" else GREY
+          for c in df["category"]]
+ax.barh(df["category"], df["value"], color=colors)
+
+# 2) DROP THE FRAME — only the bottom axis carries scale
+for side in ["left", "right", "top"]:
+    ax.spines[side].set_visible(False)
+ax.tick_params(left=False)
+
+# 3) MUTED GRID, X-AXIS ONLY
+ax.grid(axis="x", alpha=0.3, linewidth=0.6)
+
+# 4) LABEL THE BARS, DROP THE LEGEND
+ax.bar_label(ax.containers[0],
+             labels=[f"{v:.0%}" for v in df["value"]],
+             padding=8, color=INK)
+
+# 5) DESCRIPTIVE TITLE
+fig.suptitle("Mixed training is gaining in popularity",
+             fontsize=14, fontweight="bold", color=INK,
+             x=0.04, ha="left")
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 7
+#| fig-height: 4.6
+import matplotlib.ticker as mtick
+df = pd.DataFrame({
+    "category": ["speed", "strength", "endurance", "mixed"],
+    "value":    [0.10,    0.21,        0.27,        0.42],
+})
+fig, ax = plt.subplots(figsize=(7, 4.6))
+colors = [RED if c == "mixed" else GREY for c in df["category"]]
+ax.barh(df["category"], df["value"], color=colors)
+for side in ["left", "right", "top"]:
+    ax.spines[side].set_visible(False)
+ax.tick_params(left=False)
+ax.grid(axis="x", alpha=0.3, linewidth=0.6); ax.set_axisbelow(True)
+ax.bar_label(ax.containers[0],
+             labels=[f"{v:.0%}" for v in df["value"]],
+             padding=8, fontsize=10, color=INK)
+ax.xaxis.set_major_formatter(mtick.PercentFormatter(1, decimals=0))
+ax.set_xlim(0, 0.55)
+fig.suptitle("Mixed training is gaining in popularity",
+             fontsize=13, fontweight="bold", color=INK, x=0.04, ha="left", y=0.97)
+fig.text(0.04, 0.90, "Share of athletes by primary training mode, 2024",
+         fontsize=10, color=MUTED)
+plt.tight_layout(rect=[0, 0, 1, 0.88])
+plt.show()
+```
+:::
+::::
+
+::: {.takeaway}
+[The bottom line]{.tl}
+**Color carries the story.** Spend the loud colour on the row that matters and
+let everything else fade into context — frames, ticks, and legends disappear.
+:::
+
+<small>Adapted from [*Make Your Charts Look Glorious*](https://medium.com/data-science/make-your-charts-look-glorious-9ce3fa310b70).</small>
+
+<!-- slide 56 -->
+## A Dumbbell for QC {.smaller}
+
+[Make it publication-ready]{.eyebrow}
+
+### The job: summarise sequencing QC to your boss
+
+You sent 12 samples for sequencing. For each, you have the **raw mapping rate** and the **callable rate after QC**. The boss wants one chart: which samples held up, and which lost too much.
+
+:::: {.columns}
+::: {.column width="46%"}
+Start with the data, one row per sample, sorted so the worst callable rate sits at the bottom.
+
+```{.python code-line-numbers="1-4"}
+qc = load_qc()                       # 12 samples
+qc = qc.sort_values("callable")      # worst at the bottom
+y  = range(len(qc))                  # one row each
+qc.head()
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| class-output: df-preview
+qc = load_qc().sort_values("callable").reset_index(drop=True)
+y = range(len(qc))
+print(qc[["sample", "raw", "callable", "loss"]].head())
+```
+:::
+::::
+
+<!-- slide 57 -->
+## A Dumbbell for QC {.smaller}
+
+[Make it publication-ready]{.eyebrow}
+
+### Draw the bars: the gap is the story
+
+:::: {.columns}
+::: {.column width="46%"}
+One horizontal bar per sample, from callable to raw. The bar length *is* the QC loss, longer means more lost.
+
+```{.python code-line-numbers="1|3-5"}
+fig, ax = plt.subplots(figsize=(7, 5))
+
+for i, r in qc.iterrows():            # one bar per row
+    ax.plot([r.callable, r.raw],      # x: callable -> raw
+            [i, i], color=GREY, lw=2)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 5
+fig, ax = plt.subplots(figsize=(7, 5), facecolor=CREAM); ax.set_facecolor(CREAM)
+for i, r in qc.iterrows():
+    ax.plot([r.callable, r.raw], [i, i], color=GREY, lw=2, zorder=1)
+ax.set_yticks(list(y)); ax.set_yticklabels(qc["sample"])
+ax.set_xlim(60, 100)
+ax.spines[["top", "right", "left"]].set_visible(False); ax.tick_params(left=False)
+plt.show()
+```
+:::
+::::
+
+<!-- slide 58 -->
+## A Dumbbell for QC {.smaller}
+
+[Make it publication-ready]{.eyebrow}
+
+### Add the dumbbell ends: raw and callable
+
+:::: {.columns}
+::: {.column width="46%"}
+Two dots per row: where the sample started (raw) and where it landed after QC (callable).
+
+```{.python code-line-numbers="6-7"}
+for i, r in qc.iterrows():
+    ax.plot([r.callable, r.raw],
+            [i, i], color=GREY, lw=2)
+
+ax.scatter(qc.raw, y, color=GREY)        # raw mapping
+ax.scatter(qc.callable, y, color=GREEN)  # callable after QC
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 5
+fig, ax = plt.subplots(figsize=(7, 5), facecolor=CREAM); ax.set_facecolor(CREAM)
+for i, r in qc.iterrows():
+    ax.plot([r.callable, r.raw], [i, i], color=GREY, lw=2, zorder=1)
+ax.scatter(qc.raw, list(y), color=GREY, s=55, zorder=2)
+ax.scatter(qc.callable, list(y), color=GREEN, s=55, zorder=3)
+ax.set_yticks(list(y)); ax.set_yticklabels(qc["sample"])
+ax.set_xlim(60, 100)
+ax.spines[["top", "right", "left"]].set_visible(False); ax.tick_params(left=False)
+plt.show()
+```
+:::
+::::
+
+<!-- slide 59 -->
+## A Dumbbell for QC {.smaller}
+
+[Make it publication-ready]{.eyebrow}
+
+### Style it: percent axis, quiet grid, labels
+
+:::: {.columns}
+::: {.column width="46%"}
+Format x as a percentage, add a faint x-grid so rows are easy to read across, and label the axis.
+
+```{.python code-line-numbers="1|3-4"}
+import matplotlib.ticker as mtick
+
+ax.xaxis.set_major_formatter(
+    mtick.PercentFormatter(100, decimals=0))
+ax.set_xlabel("genome callable")
+ax.grid(axis="x", color=LINE, alpha=0.5)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 5
+import matplotlib.ticker as mtick
+fig, ax = plt.subplots(figsize=(7, 5), facecolor=CREAM); ax.set_facecolor(CREAM)
+for i, r in qc.iterrows():
+    ax.plot([r.callable, r.raw], [i, i], color=GREY, lw=2, zorder=1)
+ax.scatter(qc.raw, list(y), color=GREY, s=55, zorder=2)
+ax.scatter(qc.callable, list(y), color=GREEN, s=55, zorder=3)
+ax.set_yticks(list(y)); ax.set_yticklabels(qc["sample"])
+ax.xaxis.set_major_formatter(mtick.PercentFormatter(100, decimals=0))
+ax.set_xlim(60, 100); ax.set_xlabel("genome callable")
+ax.grid(axis="x", color=LINE, alpha=0.5, lw=0.6); ax.set_axisbelow(True)
+ax.spines[["top", "right", "left"]].set_visible(False); ax.tick_params(left=False)
+plt.show()
+```
+:::
+::::
+
+<!-- slide 60 -->
+## A Dumbbell for QC {.smaller}
+
+[Make it publication-ready]{.eyebrow}
+
+### The message: one bold colour flags the problem
+
+:::: {.columns}
+::: {.column width="46%"}
+A sample that loses more than 15 points is a concern. Colour those bars and dots **red**, everything else stays quiet. The eye goes straight to S01 and S12.
+
+```{.python code-line-numbers="1|3-4|6-7"}
+qc["flag"] = qc.loss > 15            # the rule
+
+bar = [RED if f else GREY for f in qc.flag]
+dot = [RED if f else GREEN for f in qc.flag]
+
+ax.set_title("Two samples lose too much to QC",
+             fontweight="bold", loc="left")
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 5
+import matplotlib.ticker as mtick
+fig, ax = plt.subplots(figsize=(7, 5), facecolor=CREAM); ax.set_facecolor(CREAM)
+qc["flag"] = qc.loss > 15
+for i, r in qc.iterrows():
+    ax.plot([r.callable, r.raw], [i, i],
+            color=RED if r.flag else GREY, lw=2, zorder=1)
+ax.scatter(qc.raw, list(y), color=GREY, s=55, zorder=2, label="raw mapping")
+ax.scatter(qc.callable, list(y),
+           color=[RED if f else GREEN for f in qc.flag], s=55, zorder=3,
+           label="callable after QC")
+ax.set_yticks(list(y)); ax.set_yticklabels(qc["sample"])
+ax.xaxis.set_major_formatter(mtick.PercentFormatter(100, decimals=0))
+ax.set_xlim(60, 100); ax.set_xlabel("genome callable")
+ax.set_title("Two samples lose too much to QC", fontweight="bold", color=INK, loc="left")
+ax.grid(axis="x", color=LINE, alpha=0.5, lw=0.6); ax.set_axisbelow(True)
+ax.spines[["top", "right", "left"]].set_visible(False); ax.tick_params(left=False)
+plt.show()
+```
+:::
+::::
+
+::: {.takeaway}
+[The bottom line]{.tl}
+A dumbbell turns "before vs after" into one readable picture. Sort by the value that matters, and let **one bold colour** carry the verdict.
+:::
+
+<!-- slide 61 -->
+## General-Purpose Libraries {.smaller}
+
+[The Python viz stack]{.eyebrow}
+
+### Matplotlib · Seaborn · Plotly
+
+```{python}
+#| echo: false
+#| fig-width: 10
+#| fig-height: 5
+
+import matplotlib.patches as mpatches
+
+fig, axes = plt.subplots(1, 3, figsize=(10, 5))
+
+# ── matplotlib ────────────────────────────────────────────────────────────────
+np.random.seed(42)
+x = np.linspace(0, 4 * np.pi, 200)
+axes[0].plot(x, np.sin(x), color=BRAND, linewidth=2.5, label='sin(x)')
+axes[0].plot(x, np.cos(x), color=ACCENT_PURP, linewidth=2.5, label='cos(x)')
+axes[0].fill_between(x, np.sin(x), alpha=0.15, color=BRAND)
+axes[0].set_title('Matplotlib\n(low-level control)', fontsize=11)
+axes[0].legend(fontsize=9)
+
+# ── seaborn ───────────────────────────────────────────────────────────────────
+rng = np.random.default_rng(42)
+df  = pd.DataFrame({'x': rng.normal(0, 1, 300), 'y': rng.normal(0, 1, 300),
+                    'group': rng.choice(['A','B','C'], 300)})
+for g, color in zip(['A','B','C'], [BRAND, ACCENT_YLW, ACCENT_PURP]):
+    sub = df[df['group'] == g]
+    axes[1].scatter(sub['x'], sub['y'], color=color, s=25, alpha=0.6, label=g)
+axes[1].set_title('Seaborn\n(statistical plots)', fontsize=11)
+axes[1].legend(fontsize=9)
+
+# ── plotly badge (static preview) ─────────────────────────────────────────────
+categories = ['Control', 'Treatment A', 'Treatment B', 'Treatment C']
+values     = [45, 78, 62, 91]
+bars = axes[2].barh(categories, values,
+                    color=[GRAY_DARK, BRAND, BRAND_LIGHT, ACCENT_YLW])
+axes[2].set_xlim(0, 110)
+for bar, val in zip(bars, values):
+    axes[2].text(val + 2, bar.get_y() + bar.get_height()/2,
+                 f'{val}', va='center', fontsize=9)
+axes[2].set_title('Plotly\n(interactive plots)', fontsize=11)
+
+plt.tight_layout()
+plt.show()
+```
+
+::: {.footer style="font-size: 0.55em; color: #808080; white-space: nowrap;"}
+All three libraries are installed with: `pip install matplotlib seaborn plotly`
+:::
+
+<!-- slide 62 -->
+## Genomics-Specific Libraries {.smaller}
+
+[The Python viz stack]{.eyebrow}
+
+### Two pillars of the genomics ecosystem
+
+```{python}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 5.5
+
+fig, ax = plt.subplots(figsize=(11, 5.5))
+ax.set_xlim(0, 10); ax.set_ylim(0, 10)
+ax.axis('off')
+
+libraries = [
+    # (x, y, name, description, color)
+    (1.2, 8.5, 'PyComplexHeatmap', 'Complex clustered heatmaps\nwith annotations', BRAND),
+    (1.2, 6.8, 'pyCirclize',       'Circos plots for genome-wide\nrelationships',   BRAND),
+    (1.2, 5.1, 'Toytree',          'Phylogenetic tree drawing\nand manipulation',   BRAND),
+    (1.2, 3.4, 'pyMSAviz',         'Multiple sequence alignment\nvisualization',    BRAND),
+    (1.2, 1.7, 'dna_features_viewer', 'Gene maps and genomic\nfeature diagrams',   BRAND),
+
+    (5.8, 8.5, 'DashBio (Plotly)', 'Interactive genomics widgets\n(volcano, Manhattan…)', ACCENT_PURP),
+    (5.8, 6.8, 'pyGenomeTracks',   'Genome browser-style\ntrack visualizations',   ACCENT_PURP),
+    (5.8, 5.1, 'UpSetPlot',        'Visualization of complex\nset intersections',   ACCENT_PURP),
+    (5.8, 3.4, 'PyWaffle',         'Waffle charts for\nproportions',               ACCENT_PURP),
+    (5.8, 1.7, 'gget',             'Gene / pathway enrichment\nqueries',            ACCENT_PURP),
+]
+
+for x, y, name, desc, color in libraries:
+    ax.add_patch(mpatches.FancyBboxPatch(
+        (x - 1.1, y - 0.6), 3.8, 1.1,
+        boxstyle='round,pad=0.1',
+        facecolor=color + '22', edgecolor=color, linewidth=1.5))
+    ax.text(x + 0.8, y + 0.1,  name, fontsize=9.5, fontweight='bold',
+            color=color, ha='center')
+    ax.text(x + 0.8, y - 0.28, desc, fontsize=7.5, color=GRAY_DARK,
+            ha='center')
+
+ax.text(2.7, 9.55, 'Genomics-specific', fontsize=11, fontweight='bold',
+        color=BRAND, ha='center')
+ax.text(7.3, 9.55, 'Interactive / Utility', fontsize=11, fontweight='bold',
+        color=ACCENT_PURP, ha='center')
+
+plt.tight_layout()
+plt.show()
+```
+
+<!-- slide 63 -->
+## Setting Up Your Environment {.smaller .scrollable}
+
+[The Python viz stack]{.eyebrow}
+
+### One command installs everything
+
+:::::: columns
+::: {.column width="52%"}
+```bash
+# 1. Clone the course repo
+git clone <course-repo-url> dataviz-genomicsdata
+cd dataviz-genomicsdata
+
+# 2. Fresh conda env (recommended)
+conda create -n genomeviz python=3.11 -y
+conda activate genomeviz
+
+# 3. Install the course package — this pulls
+#    EVERY dependency declared in
+#    genomics_course/pyproject.toml
+pip install -e genomics_course/
+
+# 4. Build the teaching datasets once
+#    (writes parquets under
+#     genomics_course/data/files/)
+python -m genomics_course.data._build
+```
+:::
+
+::: {.column width="48%"}
+::: fragment
+```python
+# Verify the install
+from genomics_course.theme import *
+from genomics_course.data import (
+    load_deseq2, load_admixture,
+    load_microbiome, load_expression,
+    load_pseudotime, load_wine,
+)
+
+print(load_deseq2().shape)      # (15000, 5)
+print(load_microbiome().shape)  # (96, 4)
+print(load_expression().shape)  # (40, 24)
+print(load_pseudotime().shape)  # (2000, 3)
+```
+:::
+
+::: fragment
+::: {.takeaway}
+A single `pip install -e genomics_course/`
+brings in matplotlib, seaborn, plotly, scipy,
+scikit-learn, scanpy, umap-learn,
+PyComplexHeatmap, pyCirclize, toytree,
+pywaffle, gget, biopython, adjustText,
+networkx, ternary-diagram, squarify,
+pypalettes — **no per-package pip install.**
+:::
+:::
+:::
+::::::
+
+
+<!-- slide 64 -->
+## Where to Run the Code {.smaller .scrollable}
+
+[The Python viz stack · pick your platform]{.eyebrow}
+
+### Three ways to use the course package
+
+:::::: columns
+::: {.column width="33%"}
+**Google Colab** — cloud, zero local setup
+
+```python
+# Run inside a Colab cell
+!git clone <course-repo-url>
+%cd dataviz-genomicsdata
+!pip install -e genomics_course/
+!python -m genomics_course.data._build
+```
+
+Open a fresh notebook at
+`colab.research.google.com`,
+paste the cell above, run once.
+Re-run on every new Colab session
+(VMs are ephemeral).
+:::
+
+::: {.column width="33%"}
+**JupyterLab** — local notebook
+
+```bash
+# In a terminal, once
+conda create -n genomeviz \
+  python=3.11 -y
+conda activate genomeviz
+pip install -e genomics_course/
+pip install jupyterlab
+python -m genomics_course.data._build
+
+# Launch
+jupyter lab
+```
+
+In JupyterLab, **Kernel →
+Change Kernel → genomeviz**
+so notebooks see the install.
+:::
+
+::: {.column width="33%"}
+**VS Code** — IDE + notebooks
+
+```bash
+# In a terminal, once
+conda create -n genomeviz \
+  python=3.11 -y
+conda activate genomeviz
+pip install -e genomics_course/
+python -m genomics_course.data._build
+
+# Open the repo
+code .
+```
+
+In VS Code: **⇧⌘P → Python:
+Select Interpreter → genomeviz**.
+For `.ipynb` files, also pick
+`genomeviz` from the kernel
+selector at the top right.
+:::
+::::::
+
+::: fragment
+::: {.takeaway}
+The install is **the same** everywhere — only the launcher differs.
+Colab clones in-notebook; Jupyter/VS Code assume a local clone.
+:::
+:::
+

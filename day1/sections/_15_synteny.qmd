@@ -1,0 +1,285 @@
+
+<!-- slide 205 -->
+# Synteny & Rearrangements {.divider}
+
+[Comparing whole genomes · plotsr]{.eyebrow}
+
+
+<!-- slide 206 -->
+## What plotsr Draws {.smaller}
+
+[plotsr · theory]{.eyebrow}
+
+### Synteny and structural rearrangements across assemblies
+
+[plotsr](https://github.com/schneebergerlab/plotsr) visualises how several chromosome-level assemblies line up: long **syntenic** blocks (same order, same strand) plus the **rearrangements** between them, inversions, translocations, duplications. Each genome is a horizontal track; ribbons connect homologous regions between adjacent genomes.
+
+It doesn't compute the comparison itself. It consumes the structural annotation from **SyRI**, so the pipeline is always: align the genomes, find rearrangements with SyRI, then plot with plotsr. Reach for it when you have two or more good assemblies and want to *show* their differences, not tabulate them.
+
+
+<!-- slide 207 -->
+## Step 0 — Install {.smaller}
+
+[plotsr · install]{.eyebrow}
+
+### Bioconda is the easy path
+
+:::: {.columns}
+::: {.column width="46%"}
+plotsr ships on bioconda, which pulls the pinned NumPy / pandas / matplotlib it needs. A fresh environment keeps it isolated.
+
+```bash {code-line-numbers="1-2|4"}
+# one clean environment
+conda create -n synteny -c bioconda plotsr
+conda activate synteny
+
+plotsr -h            # confirm it's on PATH
+```
+
+If you install from source instead, plotsr pins **Python < 3.12** and **NumPy < 2**, build the env accordingly.
+:::
+::: {.column width="54%"}
+```bash
+$ plotsr -h
+usage: plotsr --sr SR --genomes GENOMES -o OUT
+  --sr        SyRI output (repeat per pair)
+  --genomes   genomes information file
+  --tracks    feature tracks (genes, SNPs…)
+  --markers   labelled markers (BED)
+  --cfg       visual config
+  --reg / --chr   zoom to region / chrom
+  --itx       cross-genome (itx) mode
+```
+:::
+::::
+
+
+<!-- slide 208 -->
+## Where the Input Comes From {.smaller}
+
+[plotsr · upstream]{.eyebrow}
+
+### Align → SyRI → plotsr
+
+To compare genomes `A → B → C`, you align each adjacent pair and run SyRI on each. This is the data-generation step; plotsr only reads the result.
+
+```bash {code-line-numbers="1-4|6-8"}
+# 1) whole-genome alignment with minimap2 (asm5 for same-species)
+minimap2 -ax asm5 --eqx A.fa B.fa | samtools sort -O BAM - > A_B.bam
+samtools index A_B.bam
+
+# 2) structural annotation with SyRI  → A_Bsyri.out
+syri -c A_B.bam -r A.fa -q B.fa -F B --prefix A_B
+```
+
+Each `*syri.out` lists every syntenic block and rearrangement between one pair, exactly what plotsr stacks.
+
+
+<!-- slide 209 -->
+## Step 1 — The Example Data {.smaller}
+
+[plotsr · data]{.eyebrow}
+
+### Four *Arabidopsis* accessions, ready to plot
+
+The repo ships a complete example: Col-0, Ler, Cvi, Eri. Grab it and you have all inputs without running an alignment.
+
+:::: {.columns}
+::: {.column width="46%"}
+```bash {code-line-numbers="1-2|4-7"}
+git clone https://github.com/schneebergerlab/plotsr.git
+cd plotsr/example
+
+ls
+# genomes.txt
+# *.chrlen              (chrom lengths)
+# col_lersyri.filtered.out
+# ler_cvisyri.filtered.out
+# cvi_erisyri.filtered.out
+```
+:::
+::: {.column width="54%"}
+The three `*syri.filtered.out` files are the pairwise comparisons (Col↔Ler, Ler↔Cvi, Cvi↔Eri); the order of the genomes is the order they'll stack.
+:::
+::::
+
+
+<!-- slide 210 -->
+## Step 2 — `genomes.txt` {.smaller}
+
+[plotsr · data]{.eyebrow}
+
+### One line per genome, in stacking order
+
+:::: {.columns}
+::: {.column width="46%"}
+Each row is a genome: a length source, a display name, and style tags. `ft:cl` means the file is a **chromosome-length table** (faster than parsing a FASTA).
+
+```bash
+$ cat genomes.txt
+```
+:::
+::: {.column width="54%"}
+```text
+#file                  name   tags
+TAIR10_Filtered.chrlen col-0  ft:cl;lw:1.5
+ler.chrlen             ler    ft:cl;lw:1.5
+cvi.chrlen             cvi    ft:cl;lw:1.5
+eri.chrlen             eri    ft:cl;lw:1.5
+```
+
+A `.chrlen` is just two columns:
+```text
+Chr1   30427671
+Chr2   19698289
+Chr3   23459830
+```
+:::
+::::
+
+
+<!-- slide 211 -->
+## Step 3 — The SyRI Annotation {.smaller}
+
+[plotsr · data]{.eyebrow}
+
+### Each row is one block, tagged by type
+
+:::: {.columns}
+::: {.column width="46%"}
+The columns are reference coords, query coords, an ID, its parent block, and the **annotation type**. plotsr colours by that type.
+
+```bash
+$ head -5 col_lersyri.filtered.out
+```
+
+Types it draws: `SYN` (syntenic), `INV` (inversion), `TRANS` (translocation), `DUP` (duplication), `NOTAL` (not aligned).
+:::
+::: {.column width="54%"}
+```text
+Chr1  1       1084     - -  -     -        -       NOTAL1  -    NOTAL
+Chr1  1085    1771083  - -  Chr1  1        1773924 SYN1    -    SYN
+Chr1  1085    158550   - -  Chr1  1        157500  SYNAL1  SYN1 SYNAL
+Chr1  158551  158596   - -  Chr1  157501   157556  HDR1    SYN1 HDR
+Chr1  158597  270144   - -  Chr1  157557   269099  SYNAL2  SYN1 SYNAL
+```
+:::
+::::
+
+
+<!-- slide 212 -->
+## Step 4 — The Minimal Plot {.smaller}
+
+[plotsr · build]{.eyebrow}
+
+### Three comparisons, one genomes file
+
+:::: {.columns}
+::: {.column width="46%"}
+Pass one `--sr` per pairwise comparison, plus `--genomes`, and name an output. plotsr stacks the four accessions and draws every block.
+
+```bash {code-line-numbers="2-4|5-6"}
+plotsr \
+  --sr col_lersyri.filtered.out \
+  --sr ler_cvisyri.filtered.out \
+  --sr cvi_erisyri.filtered.out \
+  --genomes genomes.txt \
+  -o output_plot.png
+```
+
+Grey is syntenic; orange/green/blue mark the rearrangements.
+:::
+::: {.column width="54%"}
+![](images/plotsr_min.png){width="100%"}
+:::
+::::
+
+
+<!-- slide 213 -->
+## Step 5 — Add Feature Tracks {.smaller}
+
+[plotsr · build]{.eyebrow}
+
+### Layer gene density, SNPs, centromeres
+
+:::: {.columns}
+::: {.column width="46%"}
+`--tracks tracks.txt` adds annotation lanes above the genomes. Each line in the file is a GFF/BED/bedGraph with its own style tags (bin width, colours, label).
+
+```bash {code-line-numbers="6"}
+plotsr \
+  --sr col_lersyri.filtered.out \
+  --sr ler_cvisyri.filtered.out \
+  --sr cvi_erisyri.filtered.out \
+  --genomes genomes.txt \
+  --tracks tracks.txt \
+  -o output_plot.png
+```
+:::
+::: {.column width="54%"}
+```text
+$ cat tracks.txt
+TAIR10_GFF3_genes.gff  Genes  ft:gff;bw:10000;...
+1001genomes.snps.bed   SNPs   bw:10000;lc:sienna;...
+Giraut2011_cents.bed   Centromeres  bc:palegreen;...
+```
+:::
+::::
+
+
+<!-- slide 214 -->
+## Step 6 — Markers, Config, Sizing {.smaller}
+
+[plotsr · build]{.eyebrow}
+
+### The publication figure
+
+:::: {.columns}
+::: {.column width="46%"}
+`--markers` labels specific loci, `--cfg` tunes legend/colours, and `-S -W -H -f` set syntenic-ribbon spread, width, height, and font size.
+
+```bash {code-line-numbers="7-8|9"}
+plotsr \
+  --sr col_lersyri.filtered.out \
+  --sr ler_cvisyri.filtered.out \
+  --sr cvi_erisyri.filtered.out \
+  --genomes genomes.txt \
+  --tracks tracks.txt \
+  --markers markers.bed \
+  --cfg base.cfg \
+  -o output_plot.png -S 0.5 -W 7 -H 10 -f 8
+```
+:::
+::: {.column width="54%"}
+![](images/plotsr_full.png){width="100%"}
+:::
+::::
+
+::: {.takeaway}
+[The bottom line]{.tl}
+plotsr is a pipeline endpoint: **align → SyRI → plot**. Feed it one `--sr` per pair and a `genomes.txt`, then layer `--tracks` and `--markers` for the final figure. Grey is conserved order; colour is everything that moved.
+:::
+
+
+<!-- slide 215 -->
+## Exercise · Your Turn {.smaller}
+
+[plotsr · exercise]{.eyebrow}
+
+### Zoom and switch modes
+
+::: {.exercise}
+[Command-line exercise]{.xl}
+Starting from the full command, (1) zoom into the inversion-rich region of chromosome 3, then (2) redraw the whole thing in cross-genome (`--itx`) mode.
+
+```bash
+# 1) zoom a single region (note: --reg alone, not with --chr)
+plotsr ... --cfg base.cfg --reg col-0:Chr3:6600000-10000000 -o zoom.png
+
+# 2) itx mode — chromosomes drawn end-to-end across genomes
+plotsr ... --cfg base.cfg --itx -S 0.7 -o itx.png
+```
+
+Which mode makes the Chr4 inversion easier to see, and why?
+:::
+

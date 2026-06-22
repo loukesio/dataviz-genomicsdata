@@ -1,508 +1,933 @@
-<!-- slide 95 -->
-# Admixture Plots {.divider}
+<!-- slide 140 -->
+## Bar · The Data {.smaller}
 
-[Population structure · Day 01]{.eyebrow}
+[Bar charts]{.eyebrow}
 
-<!-- slide 96 -->
-## Admixture Plots: Theory {.smaller .scrollable}
+### BRCA1 expression across five tissues
 
-[Population structure]{.eyebrow}
-
-### Stacked ancestries, individual by individual
-
-:::::: columns
-::: {.column width="48%"}
-**What they show**
-
-- Each individual = one vertical bar
-- Bar segments = inferred ancestry proportions across **K** populations
-- Width-1 stacked bars with **no gaps** within a population
-- Populations separated by thin white lines
-
-::: fragment
-**Used in**
-
-- ADMIXTURE / STRUCTURE / fastSTRUCTURE output
-- Human population genetics (1000 Genomes, HGDP)
-- Conservation genetics, crop diversity
-- Hybrid-zone analysis
-:::
-:::
-
-::: {.column width="52%"}
-::: fragment
-**Style-guide rules**
-
-- `width=1.0`, `linewidth=0` for stacked bars
-- White separators between populations
-- Categorical palette (primary → secondary → tertiary → quaternary → quinary)
-- Population labels below, K legend on the right
-- Sort individuals **within each population** by dominant ancestry for clarity
-:::
-
-::: fragment
-```python
-# Conceptual data layout
-df = pd.DataFrame({
-    "individual" : [...],   # N rows
-    "population" : [...],   # e.g. CEU, YRI, CHB, JPT, MXL
-    "K1": [...], "K2": [...], "K3": [...], "K4": [...], "K5": [...],
-})  # K1..K5 sum to 1.0 per row
-```
-:::
-:::
-::::::
-
-<!-- slide 97 -->
-## Admixture — Pipeline {.smaller background-color="#f6f4ee"}
-
-[Population structure]{.eyebrow}
-
-### Pipeline
-
-```{python}
-#| echo: false
-pipeline_flowchart([
-    "Genotype matrix",
-    "Run ADMIXTURE for each K",
-    "Q-matrix ancestries",
-    "Sort within population",
-    "Stacked bars",
-    "White separators",
-])
-plt.show()
-```
-
-<!-- slide 98 -->
-## Admixture: Code Walkthrough {.smaller .scrollable}
-
-[Population structure]{.eyebrow}
-
-### Q-matrix to stacked bars
+`load_tissue_expression()` returns one value per tissue: BRCA1 in transcripts per million. Heart is highest, the fact we want the chart to say.
 
 ```{python}
 #| echo: true
-#| eval: false
+#| output-location: column
+from genomics_course.data import load_tissue_expression   # course loader, real values
 
-from genomics_course.data import load_admixture
-import numpy as np
-import matplotlib.pyplot as plt
-
-# Step 1: Load admixture Q-matrix (K=5)
-adm = load_admixture(K=5)
-pops    = ["CEU", "YRI", "CHB", "MXL", "ASW"]
-anc_pal = [COLORS["primary"], COLORS["secondary"], COLORS["tertiary"],
-           COLORS["quaternary"], COLORS["quinary"]]
-
-# Step 2: Sort within each population by dominant ancestry
-sorted_parts, n_each = [], []
-for pop in pops:
-    block = adm[adm["population"] == pop].copy()
-    dom   = block[["K1","K2","K3","K4","K5"]].mean().idxmax()
-    sorted_parts.append(block.sort_values(dom, ascending=False))
-    n_each.append(len(block))
-adm = pd.concat(sorted_parts, ignore_index=True)
-
-# Step 3: Build stacked bar plot
-fig, ax = plt.subplots(figsize=(13, 4.5), facecolor="white")
-ax.set_facecolor("white")
-
-x = np.arange(len(adm))
-bottom = np.zeros(len(adm))
-for k, col in enumerate(["K1","K2","K3","K4","K5"]):
-    ax.bar(x, adm[col], bottom=bottom,
-           color=anc_pal[k], width=1.0, linewidth=0,
-           label=f"K{k+1}")
-    bottom += adm[col].values
-
-# Step 4: White separators between populations
-boundaries = np.cumsum(n_each)[:-1]
-for b in boundaries:
-    ax.axvline(b - 0.5, color="white", linewidth=2.5)
-
-# Step 5: Population labels below
-centers = np.cumsum([0] + n_each)[:-1] + np.array(n_each) / 2
-ax.set_xticks(centers)
-ax.set_xticklabels(pops, fontsize=11, fontweight="bold")
-ax.set_xlim(-0.5, len(adm) - 0.5)
-ax.set_ylim(0, 1)
-ax.set_ylabel("Ancestry proportion")
-ax.set_yticks([0, 0.5, 1.0])
-ax.set_title("ADMIXTURE — K=5 ANCESTRY COMPONENTS",
-             fontweight="bold", fontsize=13, loc="left")
-ax.legend(title="K", bbox_to_anchor=(1.01, 1), loc="upper left",
-          frameon=False, fontsize=9)
-plt.tight_layout()
-plt.show()
+te = load_tissue_expression()                             # columns: tissue, tpm
+te
 ```
 
-<!-- slide 99 -->
-## Admixture: Code Walkthrough — Result {.plot-slide background-color="#f6f4ee"}
 
-[Population structure]{.eyebrow}
+<!-- slide 141 -->
+## Bar · Step 1 — Plain Bars {.smaller}
 
-### K=5 ancestries across populations
+[Bar charts · build]{.eyebrow}
 
-```{python}
-#| echo: false
-#| eval: true
-#| fig-width: 13
-#| fig-height: 5
+### 1 · Default matplotlib
 
-import numpy as np, pandas as pd
-import matplotlib.pyplot as plt
+Sort low-to-high so the largest bar ends on top, then draw. Functional, but every bar shouts equally and the frame is noisy.
 
-np.random.seed(42)
-K = 5
-pops    = ["CEU", "YRI", "CHB", "MXL", "ASW"]
-n_each  = [40, 50, 35, 30, 25]
-anc_pal = [COLORS["primary"], COLORS["secondary"], COLORS["tertiary"],
-           COLORS["quaternary"], COLORS["quinary"]]
-
-records = []
-for pop_idx, (pop, n) in enumerate(zip(pops, n_each)):
-    base = np.full(K, 0.05)
-    base[pop_idx] = 0.75
-    for ind in range(n):
-        props = np.random.dirichlet(base * 20)
-        records.append([f"{pop}_{ind:03d}", pop, *props])
-
-adm = pd.DataFrame(records, columns=["individual", "population",
-                                     "K1","K2","K3","K4","K5"])
-
-sorted_parts = []
-for pop in pops:
-    block = adm[adm["population"] == pop].copy()
-    dom   = block[["K1","K2","K3","K4","K5"]].mean().idxmax()
-    sorted_parts.append(block.sort_values(dom, ascending=False))
-adm = pd.concat(sorted_parts, ignore_index=True)
-
-fig, ax = plt.subplots(figsize=(13, 4.5), facecolor="white")
-ax.set_facecolor("white")
-
-x = np.arange(len(adm))
-bottom = np.zeros(len(adm))
-for k, col in enumerate(["K1","K2","K3","K4","K5"]):
-    ax.bar(x, adm[col], bottom=bottom,
-           color=anc_pal[k], width=1.0, linewidth=0,
-           label=f"K{k+1}")
-    bottom += adm[col].values
-
-boundaries = np.cumsum(n_each)[:-1]
-for b in boundaries:
-    ax.axvline(b - 0.5, color="white", linewidth=2.5)
-
-centers = np.cumsum([0] + n_each)[:-1] + np.array(n_each) / 2
-ax.set_xticks(centers)
-ax.set_xticklabels(pops, fontsize=11, fontweight="bold")
-ax.set_xlim(-0.5, len(adm) - 0.5)
-ax.set_ylim(0, 1)
-ax.set_ylabel("Ancestry proportion")
-ax.set_yticks([0, 0.5, 1.0])
-ax.set_title("ADMIXTURE — K=5 ANCESTRY COMPONENTS",
-             fontweight="bold", fontsize=13, loc="left")
-ax.legend(title="K", bbox_to_anchor=(1.01, 1), loc="upper left",
-          frameon=False, fontsize=9)
-
-ax.text(0.0, -0.18,
-        "Each bar = one individual. Populations separated by white lines, "
-        "sorted by dominant ancestry within each group.",
-        transform=ax.transAxes, fontsize=8.5,
-        style="italic", color=COLORS["text_light"])
-
-plt.tight_layout()
-plt.show()
-```
-
-<!-- slide 100 -->
-## Exercise: Admixture Plot {.smaller .scrollable}
-
-[Population structure]{.eyebrow}
-
-### Hands-on practice
-
-::: {.exercise}
-**Coding Exercise — Admixture**
-
-Build a publication-quality admixture plot for 3 populations at **K=4**, with within-population sorting, white separators, and a clean ancestry legend.
-
-::: {.sandbox}
 ```{python}
 #| echo: true
-#| eval: false
+#| code-line-numbers: "6"
+#| output-location: column
+#| fig-width: 6.2
+#| fig-height: 4.4
+from genomics_course.data import load_tissue_expression
 
-from genomics_course.data import load_admixture
+te = load_tissue_expression().sort_values("tpm")   # sort so the biggest bar ends on top
 
-# Real Q-matrix at K=4: columns = individual, population, K1, K2, K3, K4
-adm = load_admixture(K=4)
-
-# Your tasks:
-# 1. Sort individuals within each population by their dominant K column
-# 2. Build a stacked bar plot with width=1.0 and linewidth=0
-# 3. Use the COURSE_PAL / COLORS dict for the K colors
-# 4. Add white separator lines between populations
-# 5. Label populations below the x-axis, add a K legend to the right
-# 6. Title: ALL CAPS, italic footnote describing the plot
-
-# Bonus: Compute and annotate the average ancestry composition per population
-```
-:::
-
-<details>
-<summary>Show solution</summary>
-
-```{python}
-#| echo: false
-#| eval: true
-
-import numpy as np, pandas as pd
-import matplotlib.pyplot as plt
-from genomics_course.data import load_admixture
-
-adm     = load_admixture(K=4).copy()
-pops    = list(adm["population"].drop_duplicates())
-K_cols  = ["K1","K2","K3","K4"]
-anc_pal = [COLORS["primary"], COLORS["secondary"],
-           COLORS["tertiary"], COLORS["quaternary"]]
-
-sorted_parts, n_each = [], []
-for pop in pops:
-    block = adm[adm["population"] == pop].copy()
-    dom   = block[K_cols].mean().idxmax()
-    sorted_parts.append(block.sort_values(dom, ascending=False))
-    n_each.append(len(block))
-adm = pd.concat(sorted_parts, ignore_index=True)
-
-fig, ax = plt.subplots(figsize=(13, 4.5), facecolor="white")
-ax.set_facecolor("white")
-
-x = np.arange(len(adm))
-bottom = np.zeros(len(adm))
-for k, col in enumerate(K_cols):
-    ax.bar(x, adm[col], bottom=bottom,
-           color=anc_pal[k], width=1.0, linewidth=0, label=col)
-    bottom += adm[col].values
-
-boundaries = np.cumsum(n_each)[:-1]
-for b in boundaries:
-    ax.axvline(b - 0.5, color="white", linewidth=2.5)
-
-centers = np.cumsum([0] + n_each)[:-1] + np.array(n_each) / 2
-ax.set_xticks(centers)
-ax.set_xticklabels(pops, fontsize=11, fontweight="bold")
-ax.set_xlim(-0.5, len(adm) - 0.5)
-ax.set_ylim(0, 1)
-ax.set_yticks([0, 0.5, 1.0])
-ax.set_ylabel("Ancestry proportion")
-ax.set_title("ADMIXTURE — K=4 ANCESTRY COMPONENTS",
-             fontweight="bold", fontsize=13, loc="left")
-ax.legend(title="K", bbox_to_anchor=(1.01, 1), loc="upper left",
-          frameon=False, fontsize=9)
-
-# Bonus: per-population average ancestry
-means = adm.groupby("population")[K_cols].mean().round(2)
-print(means)
-
-ax.text(0.0, -0.18,
-        "Each bar = one individual. White separators delimit populations; "
-        "individuals sorted by dominant ancestry within each population.",
-        transform=ax.transAxes, fontsize=8.5,
-        style="italic", color=COLORS["text_light"])
-
-plt.tight_layout()
+fig, ax = plt.subplots(figsize=(6.2, 4.4))         # one panel
+ax.barh(te.tissue, te.tpm)                          # horizontal bars, default colour
+ax.set_xlim(0, 100)                                 # start at 0 so bar length == value
 plt.show()
 ```
 
-</details>
-:::
 
+<!-- slide 142 -->
+## Bar · Step 2 — Colour Carries the Story {.smaller}
 
+[Bar charts · build]{.eyebrow}
 
-<!-- ════════════════════════════════════════════════════════════════ -->
-<!-- STACKED AREA · load_lineages — proportions over time              -->
-<!-- ════════════════════════════════════════════════════════════════ -->
+### 2 · One bold, the rest quiet
 
-<!-- slide 101 -->
-## Stacked Area · the data {.smaller}
+Build a colour list: red for Heart, grey for everything else. The eye lands on the one bar that matters before reading a single label.
 
-[Proportions · barcode lineages]{.eyebrow}
-
-### Many tiny components that sum to 1 at every time point
-
-:::: {.columns}
-::: {.column width="46%"}
-`load_lineages()` returns 150 barcode lineages tracked across 21 days, in tidy
-long form. Every day's frequencies sum to 1, so the whole height is the
-population — perfect for a stacked area.
-
-```python {code-line-numbers="1-3"}
-lin = load_lineages()
-lin.head(3)
-# →   lineage  day      freq
-```
-:::
-::: {.column width="54%"}
 ```{python}
-#| echo: false
-lin = load_lineages()
-lin.head(3)
-```
-:::
-::::
+#| echo: true
+#| code-line-numbers: "4,7"
+#| output-location: column
+#| fig-width: 6.2
+#| fig-height: 4.4
+from genomics_course.data import load_tissue_expression
 
+te = load_tissue_expression().sort_values("tpm")              # tissue, tpm; sorted
+colors = [RED if t == "Heart" else GREY for t in te.tissue]   # one bold colour, rest grey
 
-<!-- slide 102 -->
-## Stacked Area · Step 1: top lineages, a few bands {.smaller}
-
-[Proportions · stacked-area build]{.eyebrow}
-
-### Start with the handful of dominant lineages
-
-:::: {.columns}
-::: {.column width="46%"}
-A stacked area is a stacked bar with a continuous x-axis. Pivot long → wide,
-take the top six lineages by abundance, draw them stacked.
-
-```python {code-line-numbers="1-10"}
-lin = load_lineages()
-wide = lin.pivot(index="day", columns="lineage",
-                 values="freq").fillna(0)
-
-# top 6 by overall abundance
-top = wide.sum(axis=0).nlargest(6).index
-days = wide.index.values
-freq = wide[top].values.T
-
-cols = [econ_spectrum(i / 5) for i in range(6)]
-ax.stackplot(days, freq, colors=cols)
-```
-:::
-::: {.column width="54%"}
-```{python}
-#| echo: false
-#| out-width: "100%"
-#| fig-width: 6.4
-#| fig-height: 4.7
-lin = load_lineages()
-wide = lin.pivot(index="day", columns="lineage", values="freq").fillna(0)
-top = wide.sum(axis=0).nlargest(6).index
-days = wide.index.values
-freq = wide[top].values.T
-cols = [econ_spectrum(i / 5) for i in range(6)]
-fig, ax = plt.subplots(figsize=(6.4, 4.7))
-ax.stackplot(days, freq, colors=cols, edgecolor=CREAM, lw=0.4)
-ax.set_xlim(days.min(), days.max())
-ax.set_xlabel("Time (days)"); ax.set_ylabel("Frequency")
-ax.set_title("STEP 1: TOP 6 LINEAGES", fontsize=12, fontweight="bold", color=INK, pad=10)
-for s in ["top", "right"]: ax.spines[s].set_visible(False)
+fig, ax = plt.subplots(figsize=(6.2, 4.4))                    # one panel
+ax.barh(te.tissue, te.tpm, color=colors)                      # apply the per-bar colours
+ax.set_xlim(0, 100)                                           # zero baseline
 plt.show()
 ```
-:::
-::::
 
 
-<!-- slide 103 -->
-## Stacked Area · Step 2: all 150, coloured by stack position {.smaller}
+<!-- slide 143 -->
+## Bar · Step 3 — Drop the Frame {.smaller}
 
-[Proportions · stacked-area build]{.eyebrow}
+[Bar charts · build]{.eyebrow}
 
-### Spread the full ramp across the whole height
+### 3 · Less ink
 
-:::: {.columns}
-::: {.column width="46%"}
-With 150 lineages, the trick is **colour by where each band sits in the stack**,
-not by rank. The full blue → red ramp spans the whole y-axis, so every band
-gets its own colour.
+Hide the left, right, and top spines and the y-ticks, then add a faint grid on the x-axis only. Only the scale that matters survives.
 
-```python {code-line-numbers="1-10"}
-order = wide.sum(axis=0).sort_values(
-    ascending=False).index             # large at bottom
-freq = wide[order].values.T
-
-mean_ab = freq.mean(axis=1)            # mean height per band
-cum     = np.cumsum(mean_ab)
-centre  = (cum - mean_ab/2) / cum[-1]  # 0 → 1 up the stack
-
-cols = [econ_spectrum(c) for c in centre]
-ax.stackplot(days, freq, colors=cols, edgecolor="none")
-```
-:::
-::: {.column width="54%"}
 ```{python}
-#| echo: false
-#| out-width: "100%"
-#| fig-width: 6.4
-#| fig-height: 4.7
-lin = load_lineages()
-wide = lin.pivot(index="day", columns="lineage", values="freq").fillna(0)
-days = wide.index.values
-order = wide.sum(axis=0).sort_values(ascending=False).index
-freq = wide[order].values.T
-mean_ab = freq.mean(axis=1)
-cum     = np.cumsum(mean_ab)
-centre  = (cum - mean_ab / 2) / cum[-1]
-cols = [econ_spectrum(c) for c in centre]
-fig, ax = plt.subplots(figsize=(6.4, 4.7))
-ax.stackplot(days, freq, colors=cols, edgecolor="none")
-ax.set_xlim(days.min(), days.max()); ax.set_ylim(0, 1)
-ax.set_xlabel("Time (days)"); ax.set_ylabel("Frequency")
-ax.set_title("STEP 2: ALL 150, FULL SPECTRUM", fontsize=12, fontweight="bold", color=GREEN, pad=10)
-for s in ["top", "right"]: ax.spines[s].set_visible(False)
+#| echo: true
+#| code-line-numbers: "8-11"
+#| output-location: column
+#| fig-width: 6.2
+#| fig-height: 4.4
+from genomics_course.data import load_tissue_expression
+
+te = load_tissue_expression().sort_values("tpm")              # tissue, tpm; sorted
+colors = [RED if t == "Heart" else GREY for t in te.tissue]   # one bold, rest grey
+
+fig, ax = plt.subplots(figsize=(6.2, 4.4))                    # one panel
+ax.barh(te.tissue, te.tpm, color=colors)                      # coloured bars
+for s in ["left", "right", "top"]:                            # walk the three unwanted spines
+    ax.spines[s].set_visible(False)                           # remove each one
+ax.tick_params(left=False)                                    # drop the y-axis tick marks
+ax.grid(axis="x", alpha=.3, lw=.6); ax.set_axisbelow(True)    # faint x grid, behind the bars
+ax.set_xlim(0, 100)                                           # zero baseline
 plt.show()
 ```
-:::
-::::
 
 
-<!-- slide 104 -->
-## Stacked Area · Step 3: the message {.smaller}
+<!-- slide 144 -->
+## Bar · Step 4 — Label the Bars {.smaller}
 
-[Proportions · stacked-area build]{.eyebrow}
+[Bar charts · build]{.eyebrow}
 
-### Title the dynamic, label the axes, leave the ramp to do the rest
+### 4 · Values on the bars
 
-:::: {.columns}
-::: {.column width="46%"}
-The smooth blue → red gradient now shows each lineage as its own band; the eye
-can follow any band as it widens or fades. The title states the dynamic.
+`ax.bar_label` writes each value at the end of its bar. Now the reader gets the exact number without chasing a gridline.
 
-```python {code-line-numbers="1-4"}
-ax.set_xlabel("Time (days)")
-ax.set_ylabel("Barcode frequency")
-ax.set_title(
-    "A FEW LINEAGES SWEEP TO FIXATION")
-```
-
-Recipe: **few bands → all bands by stack-height → label.**
-:::
-::: {.column width="54%"}
 ```{python}
-#| echo: false
-#| out-width: "100%"
-#| fig-width: 6.8
-#| fig-height: 4.7
-lin = load_lineages()
-wide = lin.pivot(index="day", columns="lineage", values="freq").fillna(0)
-days = wide.index.values
-order = wide.sum(axis=0).sort_values(ascending=False).index
-freq = wide[order].values.T
-mean_ab = freq.mean(axis=1)
-cum     = np.cumsum(mean_ab)
-centre  = (cum - mean_ab / 2) / cum[-1]
-cols = [econ_spectrum(c) for c in centre]
-fig, ax = plt.subplots(figsize=(6.8, 4.7))
-ax.stackplot(days, freq, colors=cols, edgecolor="none")
-ax.set_xlim(days.min(), days.max()); ax.set_ylim(0, 1)
-ax.set_xlabel("Time (days)"); ax.set_ylabel("Barcode frequency")
-ax.set_title("A FEW LINEAGES SWEEP TO FIXATION",
-             fontsize=12, fontweight="bold", color=GREEN, pad=10)
-for s in ["top", "right"]: ax.spines[s].set_visible(False)
+#| echo: true
+#| code-line-numbers: "12"
+#| output-location: column
+#| fig-width: 6.2
+#| fig-height: 4.4
+from genomics_course.data import load_tissue_expression
+
+te = load_tissue_expression().sort_values("tpm")              # tissue, tpm; sorted
+colors = [RED if t == "Heart" else GREY for t in te.tissue]   # one bold, rest grey
+
+fig, ax = plt.subplots(figsize=(6.2, 4.4))                    # one panel
+ax.barh(te.tissue, te.tpm, color=colors)                      # coloured bars
+for s in ["left", "right", "top"]:                            # remove unwanted spines
+    ax.spines[s].set_visible(False)
+ax.tick_params(left=False)                                    # no y ticks
+ax.grid(axis="x", alpha=.3, lw=.6); ax.set_axisbelow(True)    # faint x grid behind bars
+ax.bar_label(ax.containers[0], padding=6, color=INK, fontsize=10)  # value at the end of each bar
+ax.set_xlim(0, 100)                                           # zero baseline
 plt.show()
 ```
-:::
-::::
+
+
+<!-- slide 145 -->
+## Bar · Step 5 — Say What It Shows {.smaller}
+
+[Bar charts · build]{.eyebrow}
+
+### 5 · A descriptive title
+
+A title that states the finding, not the variables. "BRCA1 is highest in heart tissue" does the interpreting for the reader; a subtitle gives the units.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "14-16"
+#| output-location: column
+#| fig-width: 6.2
+#| fig-height: 4.4
+from genomics_course.data import load_tissue_expression
+
+te = load_tissue_expression().sort_values("tpm")              # tissue, tpm; sorted
+colors = [RED if t == "Heart" else GREY for t in te.tissue]   # one bold, rest grey
+
+fig, ax = plt.subplots(figsize=(6.2, 4.4))                    # one panel
+ax.barh(te.tissue, te.tpm, color=colors)                      # coloured bars
+for s in ["left", "right", "top"]:                            # remove unwanted spines
+    ax.spines[s].set_visible(False)
+ax.tick_params(left=False)                                    # no y ticks
+ax.grid(axis="x", alpha=.3, lw=.6); ax.set_axisbelow(True)    # faint x grid behind bars
+ax.bar_label(ax.containers[0], padding=6, color=INK, fontsize=10)  # value labels
+ax.set_xlim(0, 100)                                           # zero baseline
+fig.suptitle("BRCA1 is highest in heart tissue", fontsize=13, fontweight="bold",   # finding, not variables
+             color=INK, x=.04, ha="left", y=.98)              # pin it left, near the top
+fig.text(.04, .90, "Expression across five tissues (TPM)", fontsize=10, color=MUTED)  # subtitle = units
+plt.tight_layout(rect=[0, 0, 1, .88])                         # leave headroom for the two-line header
+plt.show()
+```
 
 ::: {.takeaway}
-Many components, one continuous ramp keyed to vertical position. Every band is
-its own colour and the eye can still track a lineage as it grows or fades.
+[The bottom line]{.tl}
+**Colour carries the story.** Spend the loud colour on the row that matters; frame, ticks, and legend disappear. The recipe: **sort → one bold colour → drop the frame → label the bars → title the finding.**
+:::
+
+
+<!-- slide 146 -->
+## Exercise · Your Turn {.smaller}
+
+[Bar charts · exercise]{.eyebrow}
+
+### Highlight the under-sequenced sample
+
+::: {.exercise}
+[Coding exercise]{.xl}
+`load_reads_per_sample()` gives reads (millions) for five samples. Build a publication-ready bar chart that makes the **lowest-depth sample** the story: bold it, grey the rest, label the bars, and title the finding.
+
+```{python}
+#| echo: true
+#| eval: false
+from genomics_course.data import load_reads_per_sample
+
+rps = load_reads_per_sample().sort_values("reads")   # sample, reads; smallest first
+low = rps.sample.iloc[0]                              # the under-sequenced sample
+
+# 1. colours: RED for `low`, GREY for the rest
+# 2. ax.barh, drop left/right/top spines, quiet x-grid
+# 3. ax.bar_label the bars
+# 4. title that names the finding, e.g. "S05 is under-sequenced"
+```
+:::
+
+<!-- slide 147 -->
+## Stacked Bars · Composition Over Time {.smaller}
+
+[Metagenomics · theory]{.eyebrow}
+
+### Watch the whole shift, day by day
+
+A stacked bar shows **composition**: each bar is a whole (one sample) split into parts (taxa) that sum to 1. Line the bars up **along time** and you don't just compare samples, you watch the community change: a perturbation hits, one taxon blooms, the rest recover.
+
+Two rules keep it readable: keep the **taxon order and colours identical** across every bar, so a band means the same thing on day 1 and day 16, and mark the **event** (here, antibiotics) so the cause sits next to the effect. Microbiome tables arrive tidy/long, so the first move is a pivot to wide.
+
+
+<!-- slide 148 -->
+## Stacked Bars · The Data {.smaller}
+
+[Metagenomics]{.eyebrow}
+
+### Daily phylum abundance across an antibiotic course
+
+`load_microbiome()` returns tidy long form: one row per day-taxon, abundances summing to 1 each day, with a `phase` label (baseline / antibiotic / recovery).
+
+```{python}
+#| echo: true
+#| output-location: column
+from genomics_course.data import load_microbiome
+
+mb = load_microbiome()           # day, phase, taxon, abundance
+mb.head(4)
+```
+
+
+<!-- slide 149 -->
+## Stacked Bars · Step 1 — Pivot & Stack {.smaller}
+
+[Metagenomics · build]{.eyebrow}
+
+### 1 · Long to wide, stacked along time
+
+Pivot to one row per day, one column per taxon, then stack the taxa with a running `bottom`. The x-axis is time, so the bloom is already visible mid-course.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "4,14-17"
+#| output-location: column
+#| fig-width: 6.8
+#| fig-height: 4.4
+from genomics_course.data import load_microbiome
+
+mb = load_microbiome()                                            # long: day, phase, taxon, abundance
+wide = mb.pivot(index="day", columns="taxon", values="abundance") # rows = days, columns = taxa
+taxa = ["Firmicutes", "Bacteroidetes", "Proteobacteria",         # fixed taxon order for now
+        "Actinobacteria", "Verrucomicrobia", "Other"]
+tax_pal = {"Firmicutes": GREEN, "Bacteroidetes": BLUE,           # one fixed colour per taxon
+           "Proteobacteria": RED, "Actinobacteria": AMBER,
+           "Verrucomicrobia": PURPLE, "Other": GREY}
+days = wide.index.values                                         # x positions = the days
+
+fig, ax = plt.subplots(figsize=(6.8, 4.4))                       # one panel
+bottom = np.zeros(len(wide))                                     # running base height of the stack
+for t in taxa:                                                   # add one taxon layer at a time
+    ax.bar(days, wide[t], bottom=bottom, color=tax_pal[t],       # this taxon's slice of each day
+           width=1.0, linewidth=0, label=t)                      # width 1 so days touch into a band
+    bottom += wide[t].values                                     # raise base for the next layer
+ax.set_xlim(days.min() - 0.5, days.max() + 0.5)                  # tight x range
+ax.set_ylim(0, 1)                                                # composition fills 0–1
+ax.set_xlabel("day"); ax.set_ylabel("relative abundance")
+plt.show()
+```
+
+
+<!-- slide 150 -->
+## Stacked Bars · Step 2 — Order by Abundance {.smaller}
+
+[Metagenomics · build]{.eyebrow}
+
+### 2 · Most abundant at the bottom
+
+Replace the fixed taxon list with one sorted by mean abundance. The dominant phyla anchor the base of every bar; rare ones ride on top, the convention that makes the stack legible.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "5-6"
+#| output-location: column
+#| fig-width: 6.8
+#| fig-height: 4.4
+from genomics_course.data import load_microbiome
+
+mb = load_microbiome()                                           # long form
+wide = mb.pivot(index="day", columns="taxon", values="abundance")  # days × taxa
+taxa = (mb.groupby("taxon").abundance.mean()                     # mean abundance of each taxon...
+          .sort_values(ascending=False).index)                  # ...most abundant first → stack bottom
+tax_pal = {"Firmicutes": GREEN, "Bacteroidetes": BLUE,          # fixed colour per taxon
+           "Proteobacteria": RED, "Actinobacteria": AMBER,
+           "Verrucomicrobia": PURPLE, "Other": GREY}
+days = wide.index.values                                         # days on x
+
+fig, ax = plt.subplots(figsize=(6.8, 4.4))                       # one panel
+bottom = np.zeros(len(wide))                                     # running base
+for t in taxa:                                                  # layer in abundance order now
+    ax.bar(days, wide[t], bottom=bottom, color=tax_pal[t],
+           width=1.0, linewidth=0, label=t)
+    bottom += wide[t].values                                     # raise base
+ax.set_xlim(days.min() - 0.5, days.max() + 0.5)
+ax.set_ylim(0, 1)
+ax.set_xlabel("day"); ax.set_ylabel("relative abundance")
+plt.show()
+```
+
+
+<!-- slide 151 -->
+## Stacked Bars · Step 3 — Mark the Event {.smaller}
+
+[Metagenomics · build]{.eyebrow}
+
+### 3 · Put the cause next to the effect
+
+Shade the antibiotic window and label it. Now the Proteobacteria swell sits directly under its trigger, the bloom reads as a *consequence*, not a coincidence.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "18-19"
+#| output-location: column
+#| fig-width: 6.8
+#| fig-height: 4.4
+from genomics_course.data import load_microbiome
+
+mb = load_microbiome()                                           # long form
+wide = mb.pivot(index="day", columns="taxon", values="abundance")  # days × taxa
+taxa = (mb.groupby("taxon").abundance.mean()                     # taxa, most abundant first
+          .sort_values(ascending=False).index)
+tax_pal = {"Firmicutes": GREEN, "Bacteroidetes": BLUE,          # fixed colour per taxon
+           "Proteobacteria": RED, "Actinobacteria": AMBER,
+           "Verrucomicrobia": PURPLE, "Other": GREY}
+days = wide.index.values
+
+fig, ax = plt.subplots(figsize=(6.8, 4.4))
+bottom = np.zeros(len(wide))
+for t in taxa:                                                  # stack the taxa
+    ax.bar(days, wide[t], bottom=bottom, color=tax_pal[t],
+           width=1.0, linewidth=0, label=t)
+    bottom += wide[t].values
+ax.axvspan(4.5, 7.5, color=INK, alpha=.06)                       # shade the antibiotic window (days 5–7)
+ax.text(6, 0.94, "antibiotics", ha="center", color=INK, fontsize=9)  # name the perturbation
+ax.set_xlim(days.min() - 0.5, days.max() + 0.5)
+ax.set_ylim(0, 1)
+ax.set_xlabel("day"); ax.set_ylabel("relative abundance")
+plt.show()
+```
+
+
+<!-- slide 152 -->
+## Stacked Bars · Step 4 — Percent Axis & Finding {.smaller}
+
+[Metagenomics · build]{.eyebrow}
+
+### 4 · Name the result
+
+Add the taxon legend, a percent y-axis, and a title that states the biology. The story reads in one glance: bloom under antibiotics, recovery after.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "1,22-23,25-28"
+#| output-location: column
+#| fig-width: 6.8
+#| fig-height: 4.4
+import matplotlib.ticker as mtick                                # percent-axis formatter
+from genomics_course.data import load_microbiome
+
+mb = load_microbiome()                                           # long form
+wide = mb.pivot(index="day", columns="taxon", values="abundance")  # days × taxa
+taxa = (mb.groupby("taxon").abundance.mean()                     # taxa, most abundant first
+          .sort_values(ascending=False).index)
+tax_pal = {"Firmicutes": GREEN, "Bacteroidetes": BLUE,          # fixed colour per taxon
+           "Proteobacteria": RED, "Actinobacteria": AMBER,
+           "Verrucomicrobia": PURPLE, "Other": GREY}
+days = wide.index.values
+
+fig, ax = plt.subplots(figsize=(6.8, 4.4))
+bottom = np.zeros(len(wide))
+for t in taxa:                                                  # stack the taxa
+    ax.bar(days, wide[t], bottom=bottom, color=tax_pal[t],
+           width=1.0, linewidth=0, label=t)
+    bottom += wide[t].values
+ax.axvspan(4.5, 7.5, color=INK, alpha=.06)                       # antibiotic window
+ax.text(6, 0.94, "antibiotics", ha="center", color=INK, fontsize=9)
+ax.set_xlim(days.min() - 0.5, days.max() + 0.5)
+ax.set_ylim(0, 1); ax.set_yticks([0, .5, 1])                    # clean 0 / 50 / 100 ticks
+ax.yaxis.set_major_formatter(mtick.PercentFormatter(1, decimals=0))  # render 0–1 as 0–100%
+ax.set_xlabel("day"); ax.set_ylabel("relative abundance")
+ax.set_title("ANTIBIOTICS TRIGGER A PROTEOBACTERIA BLOOM",       # title = the finding
+             color="#333333", fontweight="bold", loc="left")
+ax.legend(bbox_to_anchor=(1.01, 1), loc="upper left",            # taxon key, outside right
+          frameon=False, fontsize=8)
+plt.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Along time, a stacked bar shows the community *moving*: **pivot to days×taxa → order taxa by abundance → mark the event → percent axis + finding**. Fixed colours and band order let the eye track one taxon across the whole course, the Proteobacteria bloom rises under antibiotics and fades in recovery.
+:::
+
+
+<!-- slide 153 -->
+## Exercise · Your Turn {.smaller}
+
+[Metagenomics · exercise]{.eyebrow}
+
+### Measure the bloom
+
+::: {.exercise}
+[Coding exercise]{.xl}
+The eye sees the bloom; now quantify it. Find Proteobacteria's baseline vs peak abundance and the day it peaks.
+
+```{python}
+#| echo: true
+#| eval: false
+from genomics_course.data import load_microbiome
+
+mb = load_microbiome()
+
+# 1. proteo = mb[mb.taxon == "Proteobacteria"]
+# 2. baseline mean = proteo[proteo.phase == "baseline"].abundance.mean()
+# 3. peak day    = proteo.loc[proteo.abundance.idxmax(), "day"]
+# 4. report fold-change peak / baseline, and annotate the peak day on the stacked bar
+```
+:::
+
+<!-- slide 154 -->
+## Treemap · The Data {.smaller}
+
+[Composition · treemap]{.eyebrow}
+
+### Collapse time to one community
+
+The stacked bar showed every day. Average across them and you get the whole community as one set of parts, exactly what a treemap wants.
+
+```{python}
+#| echo: true
+#| output-location: column
+from genomics_course.data import load_microbiome
+
+mb = load_microbiome()                                          # day, phase, taxon, abundance
+comm = (mb.groupby("taxon").abundance.mean()                    # mean abundance across all days
+          .sort_values(ascending=False).reset_index())         # biggest first
+comm["pct"] = comm.abundance * 100                             # as a percentage for labels
+comm
+```
+
+
+<!-- slide 155 -->
+## Treemap · Step 1 — Tile by Value {.smaller}
+
+[Composition · build]{.eyebrow}
+
+### 1 · squarify
+
+`squarify.plot` takes sizes and labels and tiles them largest-first. `pad=True` leaves thin gaps so tiles read as separate. Turn the axis off, it's a canvas, not a plot.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "5,10-11"
+#| output-location: column
+#| fig-width: 6.2
+#| fig-height: 5.0
+import squarify                                                  # the treemap layout library
+from genomics_course.data import load_microbiome
+
+mb = load_microbiome()                                           # long form
+comm = (mb.groupby("taxon").abundance.mean()                     # community = mean over all days
+          .sort_values(ascending=False).reset_index())          # biggest first (squarify expects sorted)
+comm["pct"] = comm.abundance * 100                              # percentages for the labels
+labels = [f"{t}\n{p:.0f}%" for t, p in zip(comm.taxon, comm.pct)]  # "Firmicutes\n33%" per tile
+
+fig, ax = plt.subplots(figsize=(6.2, 5.0)); ax.set_axis_off()   # blank canvas, no axes
+squarify.plot(sizes=comm.abundance, label=labels, pad=True,     # tile area == abundance
+              color=[GREEN, BLUE, RED, AMBER, PURPLE, GREY], ax=ax)  # explicit taxon colours
+plt.show()
+```
+
+
+<!-- slide 156 -->
+## Treemap · Step 2 — Palette from pypalettes {.smaller}
+
+[Composition · build]{.eyebrow}
+
+### 2 · Borrow a curated palette
+
+`pypalettes` ships hundreds of named palettes. `load_cmap` fetches one; `pd.factorize` turns the category column into colour indices, so each taxon gets its own swatch. White label text reads cleanly on the darker tiles.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "2,10-12,16"
+#| output-location: column
+#| fig-width: 6.2
+#| fig-height: 5.0
+import squarify
+from pypalettes import load_cmap                                 # curated palette library
+from genomics_course.data import load_microbiome
+
+mb = load_microbiome()                                           # long form
+comm = (mb.groupby("taxon").abundance.mean()                     # community mean over days
+          .sort_values(ascending=False).reset_index())
+comm["pct"] = comm.abundance * 100                              # percentages
+labels = [f"{t}\n{p:.0f}%" for t, p in zip(comm.taxon, comm.pct)]  # tile labels
+
+cmap = load_cmap("Acadia")                                       # any named palette (discrete cmap)
+codes, _ = pd.factorize(comm.taxon)                              # taxon → integer index 0,1,2,...
+colors = [cmap(c) for c in codes]                                # one palette colour per taxon
+
+fig, ax = plt.subplots(figsize=(6.2, 5.0)); ax.set_axis_off()   # blank canvas
+squarify.plot(sizes=comm.abundance, label=labels, color=colors, pad=True,  # tiles in palette colours
+              text_kwargs={"color": "white", "fontsize": 10}, ax=ax)       # white labels on the tiles
+plt.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+A treemap shows part-to-whole when there are too many parts for a bar or pie. **squarify** tiles a flat set, sized by value; style it with any **pypalettes** colormap. Label the tiles, areas are read approximately, not precisely.
+:::
+
+
+<!-- slide 157 -->
+## Exercise · Your Turn {.smaller}
+
+[Composition · exercise]{.eyebrow}
+
+### Treemap the assay catalogue
+
+::: {.exercise}
+[Coding exercise]{.xl}
+`load_assay_counts()` lists how many public datasets exist per assay type. Build a labelled treemap with a `pypalettes` palette of your choice, and title it after the leading assay.
+
+```{python}
+#| echo: true
+#| eval: false
+import squarify
+from pypalettes import load_cmap
+from genomics_course.data import load_assay_counts
+
+ac = load_assay_counts().sort_values("n_datasets", ascending=False)   # assay, n_datasets
+
+# 1. labels like "RNA-seq\n342"
+# 2. cmap = load_cmap("<pick one>"); codes, _ = pd.factorize(ac.assay)
+# 3. squarify.plot(sizes=ac.n_datasets, ..., pad=True, text_kwargs={"color": "white"})
+# 4. title that names the leader
+```
+:::
+
+<!-- slide 158 -->
+## Admixture · The Data {.smaller}
+
+[Population structure]{.eyebrow}
+
+### One row per individual, ancestry split across K populations
+
+`load_admixture()` returns each individual's inferred ancestry across five source populations (`K1`–`K5`, summing to 1) plus its assigned population. An admixture plot turns each row into one stacked bar.
+
+```{python}
+#| echo: true
+#| output-location: column
+from genomics_course.data import load_admixture
+
+adm = load_admixture()   # individual, population, K1..K5
+adm.head(4)
+```
+
+
+<!-- slide 159 -->
+## Admixture · Step 1 — Stack the Components {.smaller}
+
+[Population structure · build]{.eyebrow}
+
+### 1 · Stacked bars
+
+One bar per individual, each K segment stacked on the last via a running `bottom`. With `width=1.0` and `linewidth=0` the bars touch into a solid block. Within each population the order is still random, so it looks noisy.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "9-12"
+#| output-location: column
+#| fig-width: 6.0
+#| fig-height: 4.4
+from genomics_course.data import load_admixture
+
+adm = load_admixture()                                            # individual, population, K1..K5
+adm = adm.sample(frac=1, random_state=1).sort_values("population", kind="stable").reset_index(drop=True)  # shuffle within pops so sorting later has an effect
+Kc = ["K1", "K2", "K3", "K4", "K5"]                               # the five ancestry columns
+pal = [GREEN, BLUE, AMBER, RED, PURPLE]                           # one colour per ancestry
+
+fig, ax = plt.subplots(figsize=(6.0, 4.4))                        # one panel
+x = np.arange(len(adm)); bottom = np.zeros(len(adm))             # x = individuals, running stack base
+for k, col in enumerate(Kc):                                      # stack one K component at a time
+    ax.bar(x, adm[col], bottom=bottom, color=pal[k], width=1.0, linewidth=0, label=col)  # this K's slice
+    bottom += adm[col].values                                     # raise base for the next K
+ax.set_xlim(-0.5, len(adm) - 0.5); ax.set_ylim(0, 1)             # tight x, full 0–1 height
+ax.set_ylabel("ancestry proportion")
+plt.show()
+```
+
+
+<!-- slide 160 -->
+## Admixture · Step 2 — Sort Within Population {.smaller}
+
+[Population structure · build]{.eyebrow}
+
+### 2 · Order
+
+For each population, find its dominant ancestry and sort its individuals by that column. The noise resolves into a clean gradient, the single most important step for a readable admixture plot.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "8-13"
+#| output-location: column
+#| fig-width: 6.0
+#| fig-height: 4.4
+from genomics_course.data import load_admixture
+
+adm = load_admixture()                                            # individual, population, K1..K5
+adm = adm.sample(frac=1, random_state=1).sort_values("population", kind="stable").reset_index(drop=True)  # grouped by pop, shuffled within
+Kc = ["K1", "K2", "K3", "K4", "K5"]                               # ancestry columns
+pal = [GREEN, BLUE, AMBER, RED, PURPLE]                           # ancestry colours
+
+parts = []                                                        # collect each sorted population block
+for p in adm.population.drop_duplicates():                        # for each population, in order
+    block = adm[adm.population == p]                              # just that population's individuals
+    dom = block[Kc].mean().idxmax()                              # its dominant ancestry column
+    parts.append(block.sort_values(dom, ascending=False))        # sort individuals by that ancestry
+adm = pd.concat(parts, ignore_index=True)                        # stitch the sorted blocks back together
+
+fig, ax = plt.subplots(figsize=(6.0, 4.4))                        # one panel
+x = np.arange(len(adm)); bottom = np.zeros(len(adm))             # x = individuals, stack base
+for k, col in enumerate(Kc):                                      # stack the K components
+    ax.bar(x, adm[col], bottom=bottom, color=pal[k], width=1.0, linewidth=0, label=col)
+    bottom += adm[col].values                                     # raise base
+ax.set_xlim(-0.5, len(adm) - 0.5); ax.set_ylim(0, 1)
+ax.set_ylabel("ancestry proportion")
+plt.show()
+```
+
+
+<!-- slide 161 -->
+## Admixture · Step 3 — Separate the Populations {.smaller}
+
+[Population structure · build]{.eyebrow}
+
+### 3 · White lines
+
+Find where one population ends and the next begins (cumulative group sizes) and draw a thin white line at each boundary. Now the five groups read as distinct blocks.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "15-17,24-25"
+#| output-location: column
+#| fig-width: 6.0
+#| fig-height: 4.4
+from genomics_course.data import load_admixture
+
+adm = load_admixture()                                            # individual, population, K1..K5
+adm = adm.sample(frac=1, random_state=1).sort_values("population", kind="stable").reset_index(drop=True)
+Kc = ["K1", "K2", "K3", "K4", "K5"]                               # ancestry columns
+pal = [GREEN, BLUE, AMBER, RED, PURPLE]                           # ancestry colours
+
+parts = []                                                        # sort within each population (as Step 2)
+for p in adm.population.drop_duplicates():
+    block = adm[adm.population == p]
+    dom = block[Kc].mean().idxmax()
+    parts.append(block.sort_values(dom, ascending=False))
+adm = pd.concat(parts, ignore_index=True)
+
+pops = adm.population.drop_duplicates().tolist()                  # populations in plotted order
+sizes = adm.population.value_counts()[pops].values               # how many individuals in each
+bounds = np.cumsum(sizes)                                         # cumulative edges between populations
+
+fig, ax = plt.subplots(figsize=(6.0, 4.4))                        # one panel
+x = np.arange(len(adm)); bottom = np.zeros(len(adm))
+for k, col in enumerate(Kc):                                      # stack the K components
+    ax.bar(x, adm[col], bottom=bottom, color=pal[k], width=1.0, linewidth=0, label=col)
+    bottom += adm[col].values
+for b in bounds[:-1]:                                             # at every internal boundary...
+    ax.axvline(b - 0.5, color="white", lw=2.2)                   # ...draw a white separator
+ax.set_xlim(-0.5, len(adm) - 0.5); ax.set_ylim(0, 1)
+ax.set_ylabel("ancestry proportion")
+plt.show()
+```
+
+
+<!-- slide 162 -->
+## Admixture · Step 4 — Label & Polish {.smaller}
+
+[Population structure · build]{.eyebrow}
+
+### 4 · Read it
+
+Put one tick at the centre of each population block, label it, add the K legend and a title. The figure now reads itself: who is mostly one ancestry, who is admixed.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "26-27,30-31"
+#| output-location: column
+#| fig-width: 6.0
+#| fig-height: 4.4
+from genomics_course.data import load_admixture
+
+adm = load_admixture()                                            # individual, population, K1..K5
+adm = adm.sample(frac=1, random_state=1).sort_values("population", kind="stable").reset_index(drop=True)
+Kc = ["K1", "K2", "K3", "K4", "K5"]                               # ancestry columns
+pal = [GREEN, BLUE, AMBER, RED, PURPLE]                           # ancestry colours
+
+parts = []                                                        # sort within each population
+for p in adm.population.drop_duplicates():
+    block = adm[adm.population == p]
+    dom = block[Kc].mean().idxmax()
+    parts.append(block.sort_values(dom, ascending=False))
+adm = pd.concat(parts, ignore_index=True)
+
+pops = adm.population.drop_duplicates().tolist()                  # population order
+sizes = adm.population.value_counts()[pops].values               # block sizes
+bounds = np.cumsum(sizes)                                         # cumulative boundaries
+
+fig, ax = plt.subplots(figsize=(6.0, 4.4))                        # one panel
+x = np.arange(len(adm)); bottom = np.zeros(len(adm))
+for k, col in enumerate(Kc):                                      # stack the K components
+    ax.bar(x, adm[col], bottom=bottom, color=pal[k], width=1.0, linewidth=0, label=col)
+    bottom += adm[col].values
+for b in bounds[:-1]:                                             # white separators between populations
+    ax.axvline(b - 0.5, color="white", lw=2.2)
+ax.set_xticks(bounds - sizes / 2)                                # one tick at each block's centre
+ax.set_xticklabels(pops, fontweight="bold", fontsize=9)          # label it with the population name
+ax.set_xlim(-0.5, len(adm) - 0.5); ax.set_ylim(0, 1); ax.set_yticks([0, .5, 1])
+ax.set_ylabel("ancestry proportion")
+ax.set_title("ADMIXTURE — K=5 ancestry components", color="#333333", fontweight="bold", loc="left")  # title
+ax.legend(title="K", bbox_to_anchor=(1.01, 1), loc="upper left", frameon=False, fontsize=8)  # K colour key
+plt.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Each bar is one individual, each segment an ancestry fraction. The recipe: **stack → sort within population → separate with white lines → label**. Sorting is what turns noise into structure, AMR shows the most admixture, the rest are largely single-ancestry.
+:::
+
+<!-- slide 163 -->
+## Admixture · The Data {.smaller}
+
+[Population structure]{.eyebrow}
+
+### One row per individual, ancestry split across K populations
+
+`load_admixture()` returns each individual's inferred ancestry across five source populations (`K1`–`K5`, summing to 1) plus its assigned population. An admixture plot turns each row into one stacked bar.
+
+```{python}
+#| echo: true
+#| output-location: column
+from genomics_course.data import load_admixture
+
+adm = load_admixture()   # individual, population, K1..K5
+adm.head(4)
+```
+
+
+<!-- slide 164 -->
+## Admixture · Step 1 — Stack the Components {.smaller}
+
+[Population structure · build]{.eyebrow}
+
+### 1 · Stacked bars
+
+One bar per individual, each K segment stacked on the last via a running `bottom`. With `width=1.0` and `linewidth=0` the bars touch into a solid block. Within each population the order is still random, so it looks noisy.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "9-12"
+#| output-location: column
+#| fig-width: 6.0
+#| fig-height: 4.4
+from genomics_course.data import load_admixture
+
+adm = load_admixture()                                            # individual, population, K1..K5
+adm = adm.sample(frac=1, random_state=1).sort_values("population", kind="stable").reset_index(drop=True)  # shuffle within pops so sorting later has an effect
+Kc = ["K1", "K2", "K3", "K4", "K5"]                               # the five ancestry columns
+pal = [GREEN, BLUE, AMBER, RED, PURPLE]                           # one colour per ancestry
+
+fig, ax = plt.subplots(figsize=(6.0, 4.4))                        # one panel
+x = np.arange(len(adm)); bottom = np.zeros(len(adm))             # x = individuals, running stack base
+for k, col in enumerate(Kc):                                      # stack one K component at a time
+    ax.bar(x, adm[col], bottom=bottom, color=pal[k], width=1.0, linewidth=0, label=col)  # this K's slice
+    bottom += adm[col].values                                     # raise base for the next K
+ax.set_xlim(-0.5, len(adm) - 0.5); ax.set_ylim(0, 1)             # tight x, full 0–1 height
+ax.set_ylabel("ancestry proportion")
+plt.show()
+```
+
+
+<!-- slide 165 -->
+## Admixture · Step 2 — Sort Within Population {.smaller}
+
+[Population structure · build]{.eyebrow}
+
+### 2 · Order
+
+For each population, find its dominant ancestry and sort its individuals by that column. The noise resolves into a clean gradient, the single most important step for a readable admixture plot.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "8-13"
+#| output-location: column
+#| fig-width: 6.0
+#| fig-height: 4.4
+from genomics_course.data import load_admixture
+
+adm = load_admixture()                                            # individual, population, K1..K5
+adm = adm.sample(frac=1, random_state=1).sort_values("population", kind="stable").reset_index(drop=True)  # grouped by pop, shuffled within
+Kc = ["K1", "K2", "K3", "K4", "K5"]                               # ancestry columns
+pal = [GREEN, BLUE, AMBER, RED, PURPLE]                           # ancestry colours
+
+parts = []                                                        # collect each sorted population block
+for p in adm.population.drop_duplicates():                        # for each population, in order
+    block = adm[adm.population == p]                              # just that population's individuals
+    dom = block[Kc].mean().idxmax()                              # its dominant ancestry column
+    parts.append(block.sort_values(dom, ascending=False))        # sort individuals by that ancestry
+adm = pd.concat(parts, ignore_index=True)                        # stitch the sorted blocks back together
+
+fig, ax = plt.subplots(figsize=(6.0, 4.4))                        # one panel
+x = np.arange(len(adm)); bottom = np.zeros(len(adm))             # x = individuals, stack base
+for k, col in enumerate(Kc):                                      # stack the K components
+    ax.bar(x, adm[col], bottom=bottom, color=pal[k], width=1.0, linewidth=0, label=col)
+    bottom += adm[col].values                                     # raise base
+ax.set_xlim(-0.5, len(adm) - 0.5); ax.set_ylim(0, 1)
+ax.set_ylabel("ancestry proportion")
+plt.show()
+```
+
+
+<!-- slide 166 -->
+## Admixture · Step 3 — Separate the Populations {.smaller}
+
+[Population structure · build]{.eyebrow}
+
+### 3 · White lines
+
+Find where one population ends and the next begins (cumulative group sizes) and draw a thin white line at each boundary. Now the five groups read as distinct blocks.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "15-17,24-25"
+#| output-location: column
+#| fig-width: 6.0
+#| fig-height: 4.4
+from genomics_course.data import load_admixture
+
+adm = load_admixture()                                            # individual, population, K1..K5
+adm = adm.sample(frac=1, random_state=1).sort_values("population", kind="stable").reset_index(drop=True)
+Kc = ["K1", "K2", "K3", "K4", "K5"]                               # ancestry columns
+pal = [GREEN, BLUE, AMBER, RED, PURPLE]                           # ancestry colours
+
+parts = []                                                        # sort within each population (as Step 2)
+for p in adm.population.drop_duplicates():
+    block = adm[adm.population == p]
+    dom = block[Kc].mean().idxmax()
+    parts.append(block.sort_values(dom, ascending=False))
+adm = pd.concat(parts, ignore_index=True)
+
+pops = adm.population.drop_duplicates().tolist()                  # populations in plotted order
+sizes = adm.population.value_counts()[pops].values               # how many individuals in each
+bounds = np.cumsum(sizes)                                         # cumulative edges between populations
+
+fig, ax = plt.subplots(figsize=(6.0, 4.4))                        # one panel
+x = np.arange(len(adm)); bottom = np.zeros(len(adm))
+for k, col in enumerate(Kc):                                      # stack the K components
+    ax.bar(x, adm[col], bottom=bottom, color=pal[k], width=1.0, linewidth=0, label=col)
+    bottom += adm[col].values
+for b in bounds[:-1]:                                             # at every internal boundary...
+    ax.axvline(b - 0.5, color="white", lw=2.2)                   # ...draw a white separator
+ax.set_xlim(-0.5, len(adm) - 0.5); ax.set_ylim(0, 1)
+ax.set_ylabel("ancestry proportion")
+plt.show()
+```
+
+
+<!-- slide 167 -->
+## Admixture · Step 4 — Label & Polish {.smaller}
+
+[Population structure · build]{.eyebrow}
+
+### 4 · Read it
+
+Put one tick at the centre of each population block, label it, add the K legend and a title. The figure now reads itself: who is mostly one ancestry, who is admixed.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "26-27,30-31"
+#| output-location: column
+#| fig-width: 6.0
+#| fig-height: 4.4
+from genomics_course.data import load_admixture
+
+adm = load_admixture()                                            # individual, population, K1..K5
+adm = adm.sample(frac=1, random_state=1).sort_values("population", kind="stable").reset_index(drop=True)
+Kc = ["K1", "K2", "K3", "K4", "K5"]                               # ancestry columns
+pal = [GREEN, BLUE, AMBER, RED, PURPLE]                           # ancestry colours
+
+parts = []                                                        # sort within each population
+for p in adm.population.drop_duplicates():
+    block = adm[adm.population == p]
+    dom = block[Kc].mean().idxmax()
+    parts.append(block.sort_values(dom, ascending=False))
+adm = pd.concat(parts, ignore_index=True)
+
+pops = adm.population.drop_duplicates().tolist()                  # population order
+sizes = adm.population.value_counts()[pops].values               # block sizes
+bounds = np.cumsum(sizes)                                         # cumulative boundaries
+
+fig, ax = plt.subplots(figsize=(6.0, 4.4))                        # one panel
+x = np.arange(len(adm)); bottom = np.zeros(len(adm))
+for k, col in enumerate(Kc):                                      # stack the K components
+    ax.bar(x, adm[col], bottom=bottom, color=pal[k], width=1.0, linewidth=0, label=col)
+    bottom += adm[col].values
+for b in bounds[:-1]:                                             # white separators between populations
+    ax.axvline(b - 0.5, color="white", lw=2.2)
+ax.set_xticks(bounds - sizes / 2)                                # one tick at each block's centre
+ax.set_xticklabels(pops, fontweight="bold", fontsize=9)          # label it with the population name
+ax.set_xlim(-0.5, len(adm) - 0.5); ax.set_ylim(0, 1); ax.set_yticks([0, .5, 1])
+ax.set_ylabel("ancestry proportion")
+ax.set_title("ADMIXTURE — K=5 ancestry components", color="#333333", fontweight="bold", loc="left")  # title
+ax.legend(title="K", bbox_to_anchor=(1.01, 1), loc="upper left", frameon=False, fontsize=8)  # K colour key
+plt.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Each bar is one individual, each segment an ancestry fraction. The recipe: **stack → sort within population → separate with white lines → label**. Sorting is what turns noise into structure, AMR shows the most admixture, the rest are largely single-ancestry.
 :::

@@ -1,9 +1,9 @@
-<!-- slide 123 -->
+<!-- slide 188 -->
 # Peak Visualization {.divider}
 
 [ChIP / ATAC peaks · Day 01]{.eyebrow}
 
-<!-- slide 124 -->
+<!-- slide 189 -->
 ## What Are Genomic Peaks? {.smaller .scrollable}
 
 [ChIP / ATAC peaks]{.eyebrow}
@@ -85,7 +85,7 @@ plt.show()
 :::
 ::::::
 
-<!-- slide 125 -->
+<!-- slide 190 -->
 ## pyGenomeTracks: Configuration {.smaller .scrollable}
 
 [ChIP / ATAC peaks]{.eyebrow}
@@ -144,7 +144,7 @@ subprocess.run([
 pyGenomeTracks is particularly powerful when overlaying multiple epigenomic datasets. See the [documentation](https://pygenometracks.readthedocs.io) for all track types.
 :::
 
-<!-- slide 126 -->
+<!-- slide 191 -->
 ## Peak Visualization — Pipeline {.smaller background-color="#f6f4ee"}
 
 [ChIP / ATAC peaks]{.eyebrow}
@@ -163,7 +163,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
-<!-- slide 127 -->
+<!-- slide 192 -->
 ## Custom Peak Plot with Matplotlib {.smaller .scrollable}
 
 [ChIP / ATAC peaks]{.eyebrow}
@@ -215,7 +215,7 @@ fig.suptitle('Epigenomic Signal Tracks — chr1:0-10 kb', fontsize=11, fontweigh
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 128 -->
+<!-- slide 193 -->
 ## Custom Peak Plot — Result {.plot-slide background-color="#f6f4ee"}
 
 [ChIP / ATAC peaks]{.eyebrow}
@@ -268,7 +268,7 @@ fig.suptitle('Epigenomic Signal Tracks — chr1:0-10 kb', fontsize=11, fontweigh
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 129 -->
+<!-- slide 194 -->
 ## Exercise: Peak Visualization {.smaller .scrollable}
 
 [ChIP / ATAC peaks]{.eyebrow}

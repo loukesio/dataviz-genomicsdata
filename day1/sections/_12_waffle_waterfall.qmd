@@ -1,9 +1,9 @@
-<!-- slide 113 -->
+<!-- slide 178 -->
 # Waffle & Waterfall Plots {.divider}
 
 [Cohort summaries · Day 01]{.eyebrow}
 
-<!-- slide 114 -->
+<!-- slide 179 -->
 ## Waffle Charts: Proportions at a Glance {.smaller}
 
 [Cohort summaries]{.eyebrow}
@@ -21,7 +21,7 @@
 
 **Library:** `PyWaffle` — `pip install pywaffle`
 
-<!-- slide 115 -->
+<!-- slide 180 -->
 ## Waffle Charts — Result {.plot-slide background-color="#f6f4ee"}
 
 [Cohort summaries]{.eyebrow}
@@ -59,7 +59,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-<!-- slide 116 -->
+<!-- slide 181 -->
 ## Waffle Chart — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Cohort summaries]{.eyebrow}
@@ -78,7 +78,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
-<!-- slide 117 -->
+<!-- slide 182 -->
 ## Waffle Chart: Code Walkthrough {.smaller .scrollable}
 
 [Cohort summaries]{.eyebrow}
@@ -124,7 +124,7 @@ plt.savefig('waffle_pbmc.pdf', bbox_inches='tight')
 plt.show()
 ```
 
-<!-- slide 118 -->
+<!-- slide 183 -->
 ## Waterfall Plots: Mutation Landscapes {.smaller}
 
 [Cohort summaries]{.eyebrow}
@@ -140,7 +140,7 @@ plt.show()
 - Color can encode cancer subtype, treatment response, or driver mutation
 - Often paired with an **OncoPrint** (mutation matrix below)
 
-<!-- slide 119 -->
+<!-- slide 184 -->
 ## Waterfall Plot — Result {.plot-slide background-color="#f6f4ee"}
 
 [Cohort summaries]{.eyebrow}
@@ -176,7 +176,7 @@ ax.legend(handles=legend_elements, fontsize=8, frameon=False,
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 120 -->
+<!-- slide 185 -->
 ## Waterfall Plot — Pipeline {.smaller background-color="#f6f4ee"}
 
 [Cohort summaries]{.eyebrow}
@@ -195,7 +195,7 @@ pipeline_flowchart([
 plt.show()
 ```
 
-<!-- slide 121 -->
+<!-- slide 186 -->
 ## Waterfall Plot: Code {.smaller .scrollable}
 
 [Cohort summaries]{.eyebrow}
@@ -243,7 +243,7 @@ ax.legend(handles=legend_elements, frameon=False, loc='upper right')
 plt.tight_layout(); plt.show()
 ```
 
-<!-- slide 122 -->
+<!-- slide 187 -->
 ## Exercise: Waffle & Waterfall {.smaller .scrollable}
 
 [Cohort summaries]{.eyebrow}

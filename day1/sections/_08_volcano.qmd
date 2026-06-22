@@ -1,0 +1,376 @@
+<!-- slide 115 -->
+# Volcano Plots {.divider}
+
+[Differential expression · Day 01]{.eyebrow}
+
+
+<!-- slide 116 -->
+## What Is a Volcano Plot? {.smaller}
+
+[Differential expression · theory]{.eyebrow}
+
+### Effect size meets significance
+
+A volcano plot answers two questions at once for every gene: **how much did it change**, and **how sure are we**. Each dot is one gene.
+
+The x-axis is **log2 fold change**, the size and direction of the change. The y-axis is **−log10(p-value)**, so higher means more significant. Genes pile up along the bottom (no change, not significant) and the interesting ones rise into the top corners.
+
+Two thresholds carve out the hits: a fold-change cutoff (typically |log2FC| > 1, a two-fold change) and a significance cutoff (p < 0.05, i.e. −log10 p > 1.3). Top-right is **up-regulated and significant**, top-left is **down-regulated and significant**, everything else is background.
+
+
+<!-- slide 117 -->
+## Anatomy of a Volcano {.smaller}
+
+[Differential expression · theory]{.eyebrow}
+
+### The three regions, before any data
+
+```{python}
+#| echo: false
+#| fig-width: 6.2
+#| fig-height: 4.6
+fig, ax = plt.subplots(figsize=(6.2, 4.6))
+ax.axhline(1.3, color=INK, lw=.9, ls="--")
+ax.axvline( 1, color=INK, lw=.9, ls="--")
+ax.axvline(-1, color=INK, lw=.9, ls="--")
+ax.axvspan( 1, 6, 1.3/5, 1, alpha=.08, color=RED)
+ax.axvspan(-6, -1, 1.3/5, 1, alpha=.08, color=GREEN)
+ax.text( 3.2, 4.2, "up\nsignificant",   ha="center", color=RED,   fontweight="bold", fontsize=11)
+ax.text(-3.2, 4.2, "down\nsignificant", ha="center", color=GREEN, fontweight="bold", fontsize=11)
+ax.text(0, 0.45, "not significant", ha="center", color=MUTED, fontsize=11)
+ax.set_xlim(-6, 6); ax.set_ylim(0, 5)
+ax.set_xlabel("log2 fold change   (effect size)")
+ax.set_ylabel("-log10(p)   (significance)")
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+
+
+<!-- slide 118 -->
+## Volcano · The Data {.smaller}
+
+[Differential expression]{.eyebrow}
+
+### Real DESeq2 output, not simulated
+
+`load_deseq2()` returns one row per gene from a drought-vs-control contrast: effect size (`log2FoldChange`), raw and adjusted p-values (`pvalue`, `padj`), and mean expression (`baseMean`).
+
+```{python}
+#| echo: true
+#| output-location: column
+from genomics_course.data import load_deseq2
+
+de = load_deseq2(contrast="drought")   # gene, baseMean, log2FoldChange, pvalue, padj
+de.head(4)
+```
+
+
+<!-- slide 119 -->
+## Volcano · Step 1 — Effect vs Significance {.smaller}
+
+[Differential expression]{.eyebrow}
+
+### 1 · The cloud
+
+Derive the significance axis (`−log10` of the p-value) and scatter every gene. The volcano shape appears: a wide base of unchanged genes, two rising arms.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "1,3,4,7"
+#| output-location: column
+#| fig-width: 5.8
+#| fig-height: 4.8
+from genomics_course.data import load_deseq2
+
+de = load_deseq2(contrast="drought")              # one row per gene
+de["neg_log10_p"] = -np.log10(de.pvalue)          # significance axis
+
+fig, ax = plt.subplots(figsize=(5.8, 4.8))
+ax.scatter(de.log2FoldChange, de.neg_log10_p, color=GREY, s=8, alpha=.4, linewidths=0)
+ax.set_xlabel("log2 fold change")
+ax.set_ylabel("-log10(p)")
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+
+
+<!-- slide 120 -->
+## Volcano · Step 2 — Classify & Colour {.smaller}
+
+[Differential expression]{.eyebrow}
+
+### 2 · Direction
+
+Label each gene up / down / ns from its fold change and adjusted p-value, then colour by that label. Red up, green down, grey for the background.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "5-6,8,10-13"
+#| output-location: column
+#| fig-width: 5.8
+#| fig-height: 4.8
+from genomics_course.data import load_deseq2
+
+de = load_deseq2(contrast="drought")
+de["neg_log10_p"] = -np.log10(de.pvalue)
+de["reg"] = np.where((de.log2FoldChange >  1) & (de.padj < 0.05), "up",     # classify
+            np.where((de.log2FoldChange < -1) & (de.padj < 0.05), "down", "ns"))
+
+cm = {"up": RED, "down": GREEN, "ns": GREY}        # red up, green down, grey ns
+fig, ax = plt.subplots(figsize=(5.8, 4.8))
+for st, grp in de.groupby("reg"):
+    ax.scatter(grp.log2FoldChange, grp.neg_log10_p, c=cm[st],
+               s=26 if st != "ns" else 7, alpha=.75 if st != "ns" else .3,
+               linewidths=0, zorder=3 if st != "ns" else 1)
+ax.set_xlabel("log2 fold change")
+ax.set_ylabel("-log10(p)")
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+
+
+<!-- slide 121 -->
+## Volcano · Step 3 — Threshold Lines {.smaller}
+
+[Differential expression]{.eyebrow}
+
+### 3 · Cutoffs
+
+Draw the cutoffs that define the call: a horizontal line at p = 0.05 and vertical lines at ±1 log2FC. Now the colour regions have visible borders.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "14-16"
+#| output-location: column
+#| fig-width: 5.8
+#| fig-height: 4.8
+from genomics_course.data import load_deseq2
+
+de = load_deseq2(contrast="drought")
+de["neg_log10_p"] = -np.log10(de.pvalue)
+de["reg"] = np.where((de.log2FoldChange >  1) & (de.padj < 0.05), "up",
+            np.where((de.log2FoldChange < -1) & (de.padj < 0.05), "down", "ns"))
+
+cm = {"up": RED, "down": GREEN, "ns": GREY}
+fig, ax = plt.subplots(figsize=(5.8, 4.8))
+for st, grp in de.groupby("reg"):
+    ax.scatter(grp.log2FoldChange, grp.neg_log10_p, c=cm[st],
+               s=26 if st != "ns" else 7, alpha=.75 if st != "ns" else .3,
+               linewidths=0, zorder=3 if st != "ns" else 1)
+ax.axhline(-np.log10(0.05), color=INK, lw=.8, ls="--")   # significance cutoff p=0.05
+ax.axvline( 1, color=INK, lw=.8, ls="--")                # fold-change cutoffs
+ax.axvline(-1, color=INK, lw=.8, ls="--")
+ax.set_xlabel("log2 fold change")
+ax.set_ylabel("-log10(p)")
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+
+
+<!-- slide 122 -->
+## Volcano · Step 4 — Label the Top Genes {.smaller}
+
+[Differential expression]{.eyebrow}
+
+### 4 · Annotate
+
+Take the most significant hits, label them, and let `adjustText` nudge the labels apart so they don't overlap. The title states the count.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "2,18-21,24"
+#| output-location: column
+#| fig-width: 5.8
+#| fig-height: 4.8
+from genomics_course.data import load_deseq2
+from adjustText import adjust_text            # nudges labels apart
+
+de = load_deseq2(contrast="drought")
+de["neg_log10_p"] = -np.log10(de.pvalue)
+de["reg"] = np.where((de.log2FoldChange >  1) & (de.padj < 0.05), "up",
+            np.where((de.log2FoldChange < -1) & (de.padj < 0.05), "down", "ns"))
+
+cm = {"up": RED, "down": GREEN, "ns": GREY}
+fig, ax = plt.subplots(figsize=(5.8, 4.8))
+for st, grp in de.groupby("reg"):
+    ax.scatter(grp.log2FoldChange, grp.neg_log10_p, c=cm[st],
+               s=26 if st != "ns" else 7, alpha=.75 if st != "ns" else .3,
+               linewidths=0, zorder=3 if st != "ns" else 1)
+ax.axhline(-np.log10(0.05), color=INK, lw=.8, ls="--")
+ax.axvline( 1, color=INK, lw=.8, ls="--")
+ax.axvline(-1, color=INK, lw=.8, ls="--")
+top = de[de.reg != "ns"].nsmallest(8, "pvalue")        # 8 most significant
+texts = [ax.text(r.log2FoldChange, r.neg_log10_p, r.gene, fontsize=6, fontweight="bold")
+         for _, r in top.iterrows()]
+adjust_text(texts, ax=ax, arrowprops=dict(arrowstyle="->", color=GREY, lw=.6))   # de-overlap
+ax.set_xlabel("log2 fold change")
+ax.set_ylabel("-log10(p)")
+ax.set_title(f"Drought DE: {(de.reg=='up').sum()} up, {(de.reg=='down').sum()} down", color="#333333")
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+A volcano puts **effect size** (x) against **significance** (y). Classify, colour by direction (red up, green down, grey background), draw the threshold lines, and label the top hits. On the real drought contrast that's ~100 up and ~118 down.
+:::
+
+<!-- slide 123 -->
+# Interactive Volcano {.divider}
+
+[Differential expression · Plotly]{.eyebrow}
+
+
+<!-- slide 124 -->
+## From Static to Interactive {.smaller}
+
+[Differential expression · Plotly]{.eyebrow}
+
+### Same data, now you can hover and zoom
+
+The matplotlib volcano is perfect for print. For exploration you want **hover to read the gene**, zoom into a cluster, and toggle a class on and off. Plotly gives all three from the same DataFrame, and the figure embeds live in the slide.
+
+A note on **Dash**: Dash adds dropdowns, sliders, and callbacks, but it runs as its own web server and cannot live inside a slide. The interactive figure below is the part that embeds. The final slide shows the Dash wrapper for when you want the standalone app.
+
+
+<!-- slide 125 -->
+## Plotly · Step 1 — The Scatter {.smaller}
+
+[Differential expression · Plotly]{.eyebrow}
+
+### 1 · One call
+
+`px.scatter` builds the whole figure from the DataFrame. Reuse the `reg` and `neg_log10_p` columns from the matplotlib build, no new data work.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "1,8-10"
+#| output-location: column
+import plotly.express as px
+from genomics_course.data import load_deseq2
+
+de = load_deseq2(contrast="drought")
+de["neg_log10_p"] = -np.log10(de.pvalue)
+de["reg"] = np.where((de.log2FoldChange >  1) & (de.padj < 0.05), "up",
+            np.where((de.log2FoldChange < -1) & (de.padj < 0.05), "down", "ns"))
+
+fig = px.scatter(de, x="log2FoldChange", y="neg_log10_p",
+                 labels={"log2FoldChange": "log2 fold change",
+                         "neg_log10_p": "-log10(p)"})
+fig.show()
+```
+
+
+<!-- slide 126 -->
+## Plotly · Step 2 — Colour & Hover {.smaller}
+
+[Differential expression · Plotly]{.eyebrow}
+
+### 2 · Direction + identity
+
+Colour by `reg` with the same red/green/grey map, and set `hover_name` so pointing at any dot reveals the gene and its p-value. This is the payoff over a static image.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "9-12"
+#| output-location: column
+import plotly.express as px
+from genomics_course.data import load_deseq2
+
+de = load_deseq2(contrast="drought")
+de["neg_log10_p"] = -np.log10(de.pvalue)
+de["reg"] = np.where((de.log2FoldChange >  1) & (de.padj < 0.05), "up",
+            np.where((de.log2FoldChange < -1) & (de.padj < 0.05), "down", "ns"))
+
+fig = px.scatter(de, x="log2FoldChange", y="neg_log10_p", color="reg",
+                 color_discrete_map={"up": RED, "down": GREEN, "ns": GREY},
+                 category_orders={"reg": ["up", "down", "ns"]},
+                 hover_name="gene", hover_data={"pvalue": ":.1e", "reg": False},
+                 labels={"log2FoldChange": "log2 fold change", "neg_log10_p": "-log10(p)"})
+fig.show()
+```
+
+
+<!-- slide 127 -->
+## Plotly · Step 3 — Thresholds & Polish {.smaller}
+
+[Differential expression · Plotly]{.eyebrow}
+
+### 3 · Make it look nicer
+
+Add the cutoff lines, shrink the markers, drop a clean template, and let the cream slide show through with a transparent background. Now it matches the deck.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "14-22"
+#| output-location: column
+import plotly.express as px
+from genomics_course.data import load_deseq2
+
+de = load_deseq2(contrast="drought")
+de["neg_log10_p"] = -np.log10(de.pvalue)
+de["reg"] = np.where((de.log2FoldChange >  1) & (de.padj < 0.05), "up",
+            np.where((de.log2FoldChange < -1) & (de.padj < 0.05), "down", "ns"))
+
+fig = px.scatter(de, x="log2FoldChange", y="neg_log10_p", color="reg",
+                 color_discrete_map={"up": RED, "down": GREEN, "ns": GREY},
+                 category_orders={"reg": ["up", "down", "ns"]},
+                 hover_name="gene", hover_data={"pvalue": ":.1e", "reg": False},
+                 labels={"log2FoldChange": "log2 fold change", "neg_log10_p": "-log10(p)"})
+fig.add_hline(y=-np.log10(0.05), line_dash="dash", line_color=INK, line_width=1)
+fig.add_vline(x=1,  line_dash="dash", line_color=INK, line_width=1)
+fig.add_vline(x=-1, line_dash="dash", line_color=INK, line_width=1)
+fig.update_traces(marker=dict(size=5, opacity=0.6, line=dict(width=0)))
+fig.update_layout(template="simple_white", height=440,
+                  paper_bgcolor="rgba(0,0,0,0)",
+                  font=dict(family="Asap", color=INK, size=12),
+                  legend_title_text="", margin=dict(l=10, r=10, t=30, b=10))
+fig.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Plotly turns the same DataFrame into an **explorable** volcano: hover for the gene, zoom into a cluster, click the legend to isolate a class. One `px.scatter`, a colour map, threshold lines, and a transparent template to match the deck.
+:::
+
+
+<!-- slide 128 -->
+## Wrapping It in a Dash App {.smaller .scrollable}
+
+[Differential expression · Plotly]{.eyebrow}
+
+### For a standalone, deployable tool (runs as its own server)
+
+Dash adds controls and callbacks, a p-value slider that re-filters the volcano live. This can't run inside a slide; save it as `app.py` and run `python app.py`.
+
+```{python}
+#| echo: true
+#| eval: false
+from dash import Dash, dcc, html, Input, Output
+import plotly.express as px
+from genomics_course.data import load_deseq2
+
+de = load_deseq2(contrast="drought")
+de["neg_log10_p"] = -np.log10(de.pvalue)
+
+app = Dash(__name__)
+app.layout = html.Div([
+    html.H3("Volcano explorer"),
+    dcc.Slider(0, 5, 0.5, value=1.3, id="p-cut"),   # significance slider
+    dcc.Graph(id="volcano"),
+])
+
+@app.callback(Output("volcano", "figure"), Input("p-cut", "value"))
+def draw(p_cut):
+    d = de.copy()
+    d["reg"] = np.where((d.log2FoldChange >  1) & (d.neg_log10_p > p_cut), "up",
+               np.where((d.log2FoldChange < -1) & (d.neg_log10_p > p_cut), "down", "ns"))
+    fig = px.scatter(d, x="log2FoldChange", y="neg_log10_p", color="reg",
+                     color_discrete_map={"up": RED, "down": GREEN, "ns": GREY},
+                     hover_name="gene")
+    fig.add_hline(y=p_cut, line_dash="dash")
+    return fig
+
+if __name__ == "__main__":
+    app.run(debug=True)   # opens http://127.0.0.1:8050
+```

@@ -1,0 +1,339 @@
+<!-- slide 40 -->
+# Why Python for Genomics Visualization? {.divider}
+
+[Why we visualize · scale]{.eyebrow}
+
+<!-- slide 41 -->
+## Why Python for Genomics Visualization? {.smaller .scrollable}
+
+[The Python viz stack]{.eyebrow}
+
+### One language, full pipeline
+
+:::::: columns
+::: {.column width="55%"}
+**Python's strengths in bioinformatics:**
+
+::: fragment
+**Ecosystem breadth**
+
+- One language for the full pipeline: parsing → analysis → visualization
+- Direct integration with `scikit-learn`, `scanpy`, `biopython`
+- Reproducible notebooks with Jupyter / Quarto
+:::
+
+::: fragment
+**Interactivity out of the box**
+
+- Plotly, Bokeh, Panel for web-ready figures
+- DashBio for genomics-specific widgets
+:::
+
+::: fragment
+**Publication quality**
+
+- Matplotlib + Seaborn: journal-grade static figures
+- Fine-grained control over every visual element
+:::
+:::
+
+::: {.column width="45%"}
+::: fragment
+```{python}
+#| echo: true
+#| eval: false
+
+# The whole pipeline in one language
+import pandas as pd            # data wrangling
+import numpy as np             # numerics
+import matplotlib.pyplot as plt # static plots
+import seaborn as sns          # statistical plots
+import plotly.express as px    # interactive plots
+
+# Genomics-specific
+import scanpy as sc            # single-cell
+from Bio import SeqIO          # sequence parsing
+import pyCirclize              # circos plots
+import toytree                 # phylogenetics
+```
+:::
+:::
+::::::
+
+<!-- slide 42 -->
+## Where to Find More {.smaller}
+
+[Explore further]{.eyebrow}
+
+### A gallery of genome-visualization tools
+
+:::: {.columns}
+::: {.column width="42%"}
+Before we start building, a resource worth bookmarking: [**awesome-genome-visualization**](https://cmdcolin.github.io/awesome-genome-visualization/?latest=true).
+
+It's a curated, searchable catalogue of genome-visualization tools, each with a screenshot and a link to the paper and the code. When you need a plot for a specific kind of genomic data, chances are someone has built it, and you can see the repo behind it.
+
+A great place to find inspiration, and the study that produced each figure.
+:::
+
+::: {.column width="58%"}
+<video controls muted playsinline width="100%" style="border-radius:10px; border:1px solid var(--gv-line);" data-autoplay>
+  <source src="images/awesome_genome_visualization.mp4" type="video/mp4">
+  Your browser cannot play this video.
+</video>
+:::
+::::
+
+::: {.footer style="font-size: 0.58em; color: #666666; text-align: center;"}
+Catalogue maintained by Colin Diesh: cmdcolin.github.io/awesome-genome-visualization
+:::
+
+
+<!-- slide 43 -->
+## From ggplot2 to Python — The Mental Map {.smaller .scrollable}
+
+[From ggplot2 to Python]{.eyebrow}
+
+### Same grammar, different syntax
+
+:::::: columns
+::: {.column width="50%"}
+**ggplot2 (R)**
+Built on the Grammar of Graphics, the same ideas power Python's ecosystem.
+
+| ggplot2 | Python equivalent |
+|---------|------------------|
+| `aes(color=group)` | color kwarg / palette dict |
+| `geom_point()` | `ax.scatter()` |
+| `geom_line()` | `ax.plot()` |
+| `facet_wrap(~group)` | `fig, axes = plt.subplots()` |
+| `theme()` | `rcParams` + `ax.set_*()` |
+| `scale_color_manual()` | custom `palette` dict |
+| `labs()` | `ax.set_title/xlabel/ylabel()` |
+| `ggsave()` | `fig.savefig(..., dpi=300)` |
+
+:::
+
+::: {.column width="50%"}
+::: fragment
+**The key shift in mindset:**
+
+- ggplot2 maps data aesthetics **declaratively** — you describe *what* to show
+- matplotlib/seaborn are **imperative** — you describe *how* to draw it
+- seaborn bridges the gap with a high-level API closer to ggplot2
+- For exploratory work → seaborn; for full control → matplotlib
+:::
+
+::: fragment
+> Every ggplot2 figure you've made has a matplotlib equivalent.
+> The grammar is the same, only the syntax changes.
+:::
+:::
+::::::
+
+<!-- slide 44 -->
+## Same Plot, Three Syntaxes {.smaller}
+
+[From ggplot2 to Python]{.eyebrow}
+
+### First, meet the data
+
+Plotting packages ship example datasets. Load iris straight from seaborn, then peek at it:
+
+```{python}
+#| echo: true
+#| class-output: df-preview
+import seaborn as sns
+
+iris = sns.load_dataset("iris")   # bundled with the package
+print(iris.head())                # raw text, not a rendered table
+```
+
+::: {.fragment}
+Five columns: four measurements plus a `species` label, the column we will map to colour.
+:::
+
+<!-- slide 45 -->
+## Same Plot, Three Syntaxes {.smaller}
+
+[From ggplot2 to Python]{.eyebrow}
+
+### One scatterplot of iris, three ways
+
+:::::: columns
+::: {.column width="33%"}
+**matplotlib** · imperative
+
+```{.python code-line-numbers="1,3"}
+for sp, g in iris.groupby("species"):
+    plt.scatter(g.sepal_length,
+                g.sepal_width, label=sp)
+plt.legend()
+```
+
+You loop the species and add the legend yourself.
+:::
+
+::: {.column width="33%"}
+**seaborn** · in between
+
+```{.python code-line-numbers="4"}
+sns.scatterplot(data=iris,
+                x="sepal_length",
+                y="sepal_width",
+                hue="species")
+```
+
+One call. `hue` maps colour for you.
+:::
+
+::: {.column width="33%"}
+**ggplot2 (R)** · declarative
+
+```{.r code-line-numbers="3"}
+ggplot(iris, aes(sepal_length,
+                 sepal_width,
+                 colour = species)) +
+  geom_point()
+```
+
+You declare the mapping; R draws it.
+:::
+::::::
+
+::: {.fragment}
+::: {.takeaway}
+matplotlib makes you loop and build the legend. seaborn and ggplot2 just declare the colour mapping. Same grammar, different syntax.
+:::
+:::
+
+<!-- slide 46 -->
+## One Plot, Three Libraries {.smaller}
+
+[The Python ecosystem]{.eyebrow}
+
+### Same scatter, three tools, three trade-offs
+
+matplotlib gives control, seaborn gives speed, plotly gives interactivity. Pick by the job, not by habit.
+
+```{python}
+#| echo: false
+import seaborn as sns
+
+peng = sns.load_dataset("penguins").dropna(
+    subset=["bill_length_mm", "bill_depth_mm", "species"])
+PAL = {"Adelie": BLUE, "Chinstrap": "#C56B4E", "Gentoo": GREEN}
+```
+
+::: {.panel-tabset}
+
+### matplotlib
+
+:::: {.columns}
+::: {.column width="46%"}
+Full control. `plt.subplots()` hands you the figure (the frame) and `ax` (the canvas you draw on); you loop the groups and build the legend yourself.
+
+```{.python code-line-numbers="1|2,9"}
+fig, ax = plt.subplots()
+for sp, g in peng.groupby("species"):
+    ax.scatter(g.bill_length_mm,
+               g.bill_depth_mm,
+               color=PAL[sp],
+               label=sp, s=38)
+ax.set_xlabel("bill length (mm)")
+ax.set_ylabel("bill depth (mm)")
+ax.legend(frameon=False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6
+#| fig-height: 5
+fig, ax = plt.subplots(figsize=(6, 5), facecolor=CREAM)
+ax.set_facecolor(CREAM)
+for sp, g in peng.groupby("species"):
+    ax.scatter(g.bill_length_mm, g.bill_depth_mm,
+               color=PAL[sp], label=sp, s=38, alpha=0.85,
+               edgecolors="white", linewidths=0.5)
+ax.set_xlabel("bill length (mm)"); ax.set_ylabel("bill depth (mm)")
+ax.legend(frameon=False, title="species")
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+### seaborn
+
+:::: {.columns}
+::: {.column width="46%"}
+One call, statistical defaults baked in. `hue` maps colour for you. Best for fast exploration, and built on matplotlib so you can still tweak afterward.
+
+```{.python code-line-numbers="5"}
+sns.scatterplot(
+    data=peng,
+    x="bill_length_mm",
+    y="bill_depth_mm",
+    hue="species",
+    palette=PAL)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6
+#| fig-height: 5
+fig, ax = plt.subplots(figsize=(6, 5), facecolor=CREAM)
+ax.set_facecolor(CREAM)
+sns.scatterplot(data=peng, x="bill_length_mm", y="bill_depth_mm",
+                hue="species", palette=PAL, s=55, alpha=0.85, ax=ax)
+ax.set_xlabel("bill length (mm)"); ax.set_ylabel("bill depth (mm)")
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+### plotly
+
+:::: {.columns}
+::: {.column width="46%"}
+Interactive in the browser: hover for values, zoom, pan. `hover_data` adds fields to the tooltip. Best for dashboards and data you explore, not print.
+
+```{.python code-line-numbers="7-8"}
+px.scatter(
+    peng,
+    x="bill_length_mm",
+    y="bill_depth_mm",
+    color="species",
+    color_discrete_map=PAL,
+    hover_data=["island",
+                "body_mass_g"])
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+fig = px.scatter(peng, x="bill_length_mm", y="bill_depth_mm",
+                 color="species", color_discrete_map=PAL,
+                 hover_data=["island", "body_mass_g"],
+                 labels={"bill_length_mm": "bill length (mm)",
+                         "bill_depth_mm": "bill depth (mm)"})
+fig.update_traces(marker=dict(size=8, line=dict(width=0.5, color="white")),
+                  opacity=0.85)
+fig.update_layout(paper_bgcolor=CREAM, plot_bgcolor=CREAM,
+                  font=dict(family="IBM Plex Mono", color=INK, size=12),
+                  height=420, margin=dict(l=10, r=10, t=10, b=10))
+fig.update_xaxes(gridcolor=LINE, zeroline=False)
+fig.update_yaxes(gridcolor=LINE, zeroline=False)
+fig
+```
+:::
+::::
+
+:::
+
+::: {.footer style="font-size: 0.58em; color: #666666; text-align: center;"}
+Data: Palmer Penguins (Horst, Hill & Gorman, 2020), via seaborn.
+:::

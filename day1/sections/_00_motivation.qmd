@@ -4,121 +4,217 @@
 [Why we visualize · Day 01]{.eyebrow}
 
 <!-- slide 2 -->
+## Hello, I'm Loukas {.smaller}
+
+[Your host]{.eyebrow}
+
+### Welcome to Genomics Data Visualization with Python
+
+:::: {.columns}
+::: {.column width="58%"}
+I'm **Loukas Theodosiou**, a data scientist in genomics, machine learning, and data visualization.
+
+Happy to host you. We'll go from matplotlib basics to publication-ready genomics figures, and *when* to use each.
+
+::: {.takeaway}
+[Feedback]{.tl}
+I'd love your **feedback as we go**. I'll add small breaks so you can DM me, what's landing, what's not.
+:::
+
+Questions welcome throughout.
+:::
+
+::: {.column width="42%"}
+![](images/linkedin_profile.JPG){width="80%" fig-align="center"}
+:::
+::::
+
+<!-- slide 3 -->
 ## Anscombe's Quartet {.smaller}
 
 [Why we visualize]{.eyebrow}
 
 ### Same statistics, different shapes
 
-:::::::::::::::::::::::::::::::::::::: columns
-:::: {.column width="45%"}
-Four datasets with identical statistics:
+Four datasets with identical means, variance, correlation (0.816), and regression line. Summary statistics alone can hide the shape of your data, so plot first.
 
-- Same means
-- Same variance
-- Same correlation (0.816)
-- Same regression line
+::: {.panel-tabset}
 
-::: {.fragment .fade-in}
-**Why does this matter?**
+### Plot
 
-Anscombe's Quartet shows why plotting data is essential — summary statistics alone can hide crucial patterns.
-:::
-::::
-
-::: {.column width="55%"}
 ```{python}
 #| echo: false
-#| fig-width: 6
-#| fig-height: 5
+#| fig-width: 7
+#| fig-height: 4.6
+#| out-width: "78%"
+#| fig-align: center
+
+RED_LINE = "#D73A2B"   # one-off, sampled from reference (not theme palette)
+GOLD_PT  = "#DB9716"
 
 anscombe = load_anscombe()
 
-fig, axes = plt.subplots(2, 2, figsize=(6, 5), constrained_layout=True)
-for ax, (dataset, group) in zip(axes.flat, anscombe.groupby('dataset')):
-    ax.scatter(group['x'], group['y'], color=GREEN, s=60, alpha=0.75, zorder=3)
-    m, b = np.polyfit(group['x'], group['y'], 1)
-    xs = np.linspace(group['x'].min(), group['x'].max(), 100)
-    ax.plot(xs, m * xs + b, color=PURPLE, linewidth=1.8, zorder=2)
-    ax.set_title(f'Dataset {dataset}', fontsize=11)
-    ax.set_xlabel('x'); ax.set_ylabel('y')
-fig.suptitle("Anscombe's Quartet", fontsize=13, fontweight='bold')
+fig, axes = plt.subplots(2, 2, figsize=(7, 4.6),
+                         sharex=True, sharey=True, constrained_layout=True)
+for ax, (dataset, g) in zip(axes.flat, anscombe.groupby("dataset")):
+    m, b = np.polyfit(g["x"], g["y"], 1)
+    xs = np.linspace(2, 20, 50)
+    ax.plot(xs, m * xs + b, color=RED_LINE, lw=1.8, zorder=2)
+    ax.scatter(g["x"], g["y"], color=GOLD_PT, s=55, alpha=0.9,
+               edgecolors="white", linewidths=0.6, zorder=3)
+    ax.set_title(f"Dataset {dataset}", loc="left", fontsize=10)
+    ax.spines[["top", "right"]].set_visible(False)
+fig.supxlabel("x"); fig.supylabel("y")
 plt.show()
 ```
-:::
-::::::::::::::::::::::::::::::::::::::
 
-::: {.footer style="font-size: 0.55em; color: #808080; white-space: nowrap;"}
-Source: Anscombe, F. J. (1973). Graphs in Statistical Analysis. *The American Statistician*, 27(1), 17–21.
+### Code
+
+```python
+RED_LINE = "#D73A2B"   # regression line
+GOLD_PT  = "#DB9716"   # data points
+
+anscombe = load_anscombe()
+
+# CREATE one shared 2x2 canvas; sharex/sharey so panels line up
+fig, axes = plt.subplots(2, 2, figsize=(7, 4.6),
+                         sharex=True, sharey=True,
+                         constrained_layout=True)
+
+for ax, (dataset, g) in zip(axes.flat, anscombe.groupby("dataset")):
+    m, b = np.polyfit(g["x"], g["y"], 1)          # the identical fit
+    xs = np.linspace(2, 20, 50)
+    ax.plot(xs, m * xs + b, color=RED_LINE, lw=1.8)            # CALL: line
+    ax.scatter(g["x"], g["y"], color=GOLD_PT, s=55, alpha=0.9, # CALL: points
+               edgecolors="white", linewidths=0.6)
+    ax.set_title(f"Dataset {dataset}", loc="left", fontsize=10)
+    ax.spines[["top", "right"]].set_visible(False)
+
+fig.supxlabel("x"); fig.supylabel("y")
+plt.show()
+```
+
 :::
 
-<!-- slide 3 -->
+::: {.footer style="font-size: 0.58em; color: #666666; text-align: center;"}
+Source: Anscombe (1973), *The American Statistician* 27(1), 17–21.
+:::
+
+<!-- slide 4 -->
 ## The Datasaurus Dozen {.smaller}
 
 [Why we visualize]{.eyebrow}
 
 ### Identical stats, different shapes
 
-All 13 datasets have nearly identical summary statistics but vastly different shapes!
+All 13 datasets share almost the same summary statistics: x̄ ≈ 54.3, ȳ ≈ 47.8, σx ≈ 16.8, σy ≈ 26.9. Same numbers, wildly different pictures.
+
+::: {.panel-tabset}
+
+### Plot
 
 ```{python}
 #| echo: false
-#| fig-width: 13
-#| fig-height: 6
+#| fig-width: 12
+#| fig-height: 7.4
+#| fig-dpi: 150
+#| out-width: "80%"
 #| fig-align: center
 
-# Load the real Datasaurus Dozen from the course package — carefully
-# constructed datasets that share identical summary statistics but look
-# completely different.
+DOT = "#5B7C99"   # one-off slate (not theme palette)
+
 dd = load_datasaurus()
 
 order = ["dino", "away", "h_lines", "v_lines", "x_shape",
          "star", "high_lines", "dots", "circle", "bullseye",
          "slant_up", "slant_down", "wide_lines"]
 
-fig, axes = plt.subplots(3, 5, figsize=(13, 6.2),
-                         constrained_layout=True,
-                         facecolor="white")
-for ax, name in zip(axes.flat, order):
-    grp = dd[dd["dataset"] == name]
-    ax.scatter(grp["x"], grp["y"],
-               color=COLORS["primary"], s=10, alpha=0.75, linewidths=0)
-    ax.set_title(name, fontsize=9, fontweight="bold",
-                 color=COLORS["text_dark"])
-    ax.set_facecolor("white")
-    ax.set_xticks([]); ax.set_yticks([])
-    for spine in ax.spines.values():
-        spine.set_visible(False)
+# CREATE 3x5 canvas on the cream page colour
+fig, axes = plt.subplots(3, 5, figsize=(12, 7.4),
+                         constrained_layout=True, facecolor=CREAM)
 
-# We have 13 datasets in a 3×5 grid → hide the last two empty cells
+for ax, name in zip(axes.flat, order):
+    g = dd[dd["dataset"] == name]
+    ax.scatter(g["x"], g["y"], color=DOT, s=14, alpha=0.85, linewidths=0)  # CALL
+    ax.set_title(name, fontsize=9, fontweight="bold", color=INK)
+    ax.set_facecolor("white")
+    ax.set_box_aspect(1)                 # each panel a square tile
+    ax.set_xticks([]); ax.set_yticks([])
+    for sp in ax.spines.values():        # thin border per tile
+        sp.set_color(LINE); sp.set_linewidth(0.8)
+
+# 13 shapes, 15 cells: hide the two spares (stats now live in the text)
 axes.flat[13].set_visible(False)
 axes.flat[14].set_visible(False)
-
-# Add a summary-stats panel in the empty corner
-stats = (dd.groupby("dataset")
-           .agg(mean_x=("x","mean"), mean_y=("y","mean"),
-                sd_x=("x","std"),    sd_y=("y","std"))
-           .round(2))
-ax_text = fig.add_subplot(3, 5, 15)
-ax_text.axis("off")
-ax_text.text(0.0, 0.95,
-             "All 13 datasets share:",
-             fontsize=10, fontweight="bold", color=COLORS["text_dark"],
-             transform=ax_text.transAxes)
-ax_text.text(0.0, 0.70,
-             f"x̄ ≈ {stats['mean_x'].mean():.1f}\n"
-             f"ȳ ≈ {stats['mean_y'].mean():.1f}\n"
-             f"σx ≈ {stats['sd_x'].mean():.1f}\n"
-             f"σy ≈ {stats['sd_y'].mean():.1f}",
-             fontsize=10, color=COLORS["text_mid"], family="monospace",
-             transform=ax_text.transAxes, va="top")
-
-fig.suptitle("THE DATASAURUS DOZEN — IDENTICAL STATS, DIFFERENT SHAPES",
-             fontsize=13, fontweight="bold", color=COLORS["text_dark"])
 plt.show()
 ```
 
-::: {.footer style="font-size: 0.55em; color: #808080; white-space: nowrap;"}
-Source: Matejka & Fitzmaurice (2017). [Same Stats, Different Graphs](https://www.research.autodesk.com/publications/same-stats-different-graphs/). ACM CHI 2017.
+### Code
+
+```python
+DOT = "#5B7C99"   # one-off slate (not theme palette)
+
+dd = load_datasaurus()
+
+order = ["dino", "away", "h_lines", "v_lines", "x_shape",
+         "star", "high_lines", "dots", "circle", "bullseye",
+         "slant_up", "slant_down", "wide_lines"]
+
+# CREATE 3x5 canvas; each panel a square tile with a thin border
+fig, axes = plt.subplots(3, 5, figsize=(12, 7.4),
+                         constrained_layout=True, facecolor=CREAM)
+
+for ax, name in zip(axes.flat, order):
+    g = dd[dd["dataset"] == name]
+    ax.scatter(g["x"], g["y"], color=DOT, s=14, alpha=0.85, linewidths=0)  # CALL
+    ax.set_title(name, fontsize=9, fontweight="bold", color=INK)
+    ax.set_facecolor("white")
+    ax.set_box_aspect(1)
+    ax.set_xticks([]); ax.set_yticks([])
+    for sp in ax.spines.values():
+        sp.set_color(LINE); sp.set_linewidth(0.8)
+
+axes.flat[13].set_visible(False)
+axes.flat[14].set_visible(False)
+plt.show()
+```
+
 :::
 
+::: {.footer style="font-size: 0.58em; color: #666666; text-align: center;"}
+Source: Matejka & Fitzmaurice (2017), [Same Stats, Different Graphs](https://www.research.autodesk.com/publications/same-stats-different-graphs/), ACM CHI.
+:::
+
+<!-- slide 5 -->
+# Big data in biology {.divider}
+
+[Why we visualize · scale]{.eyebrow}
+
+<!-- slide 6 -->
+## The Genomics Data Explosion {.smaller}
+
+[Why we visualize]{.eyebrow}
+
+### Scale of the problem
+
+:::::: columns
+:::: {.column width="50%"}
+
+- <span style="color: var(--gv-muted);">**1 to 2 exabytes** of data produced on YouTube per year</span>
+
+- <span style="color: var(--gv-green); font-weight: 700;">220 million genomes</span> sequenced <span style="color: var(--gv-green); font-weight: 700;">per year</span>
+
+- Equivalent to <span style="color: var(--gv-muted); font-weight: 700;">40 exabytes</span> per year
+
+- That's more than <span style="color: var(--gv-green); font-weight: 700;">20 times</span> more than YouTube produces
+
+::: fragment
+For years we struggled to collect biological data, but now our biggest bottleneck is [analyzing and interpreting it]{.alt}
+:::
+
+::::
+
+::: {.column width="50%"}
+  ![](images/crop_again0.jpg){width="100%"}
+:::
+::::::

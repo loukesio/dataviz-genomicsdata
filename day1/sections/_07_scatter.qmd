@@ -1,0 +1,652 @@
+<!-- slide 96 -->
+# Building a Plot {.divider}
+
+[A scatter, step by step · Day 01]{.eyebrow}
+
+
+<!-- slide 97 -->
+## Building a Plot · The Data {.smaller}
+
+[The Python viz stack · what we're plotting]{.eyebrow}
+
+### How the data loads
+
+`load_coexpression()` returns one row per sample: two gene expression values plus the tissue it came from. Three tissues, Leaf / Root / Seed.
+
+```{python}
+#| echo: true
+#| output-location: column
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()        # sample, tissue, gene_x, gene_y
+co.head(3)
+```
+
+
+<!-- slide 98 -->
+## Building a Plot · Step 1 — The Canvas {.smaller}
+
+[The Python viz stack · building a figure]{.eyebrow}
+
+### 1 · Canvas
+
+We'll build a **scatter**: gene Y against gene X, one dot per sample. Start with a **figure** and an **axes**, then frame the axes before drawing anything.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "3-6"
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.8
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(5.6, 4.8))   # one figure, one axes
+ax.set_xlabel("gene X expression (TPM)")     # frame the axes before drawing
+ax.set_ylabel("gene Y expression (TPM)")
+ax.set_xlim(1, 11); ax.set_ylim(-1, 17)
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+
+
+<!-- slide 99 -->
+## Building a Plot · Step 2 — Load & Plot Data {.smaller}
+
+[The Python viz stack · building a figure]{.eyebrow}
+
+### 2 · Data
+
+Load the samples and drop them onto the canvas with `ax.scatter()`. One dot per sample, default colour for now.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "2,4,10"
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.8
+import matplotlib.pyplot as plt
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()                     # sample, tissue, gene_x, gene_y
+
+fig, ax = plt.subplots(figsize=(5.6, 4.8))
+ax.set_xlabel("gene X expression (TPM)")
+ax.set_ylabel("gene Y expression (TPM)")
+ax.set_xlim(1, 11); ax.set_ylim(-1, 17)
+ax.scatter(co.gene_x, co.gene_y, color=GREY, s=50, alpha=.8)   # one dot per sample
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+
+
+<!-- slide 100 -->
+## Building a Plot · Step 3 — Colour by Tissue {.smaller}
+
+[The Python viz stack · building a figure]{.eyebrow}
+
+### 3 · Colour
+
+Loop over the tissues, one pass each, one palette colour each. Colour now carries real signal, the tissues separate.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "10-14"
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.8
+import matplotlib.pyplot as plt
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()
+
+fig, ax = plt.subplots(figsize=(5.6, 4.8))
+ax.set_xlabel("gene X expression (TPM)")
+ax.set_ylabel("gene Y expression (TPM)")
+ax.set_xlim(1, 11); ax.set_ylim(-1, 17)
+pal = {"Leaf": GREEN, "Root": BLUE, "Seed": AMBER}   # one colour per tissue
+for tissue, c in pal.items():
+    g = co[co.tissue == tissue]
+    ax.scatter(g.gene_x, g.gene_y, color=c, s=50, alpha=.8, edgecolors=CREAM, label=tissue, zorder=3)
+ax.legend(frameon=False, loc="lower right")     # name the tissues
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+
+
+<!-- slide 101 -->
+## Building a Plot · Step 4 — Polish & Labels {.smaller}
+
+[The Python viz stack · building a figure]{.eyebrow}
+
+### 4 · Polish
+
+A single linear fit across all samples summarises the trend. Compute slope and intercept, draw it in red, and let the title state what we found.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "14-17"
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.8
+import matplotlib.pyplot as plt
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()
+
+fig, ax = plt.subplots(figsize=(5.6, 4.8))
+ax.set_xlabel("gene X expression (TPM)")
+ax.set_ylabel("gene Y expression (TPM)")
+ax.set_xlim(1, 11); ax.set_ylim(-1, 17)
+pal = {"Leaf": GREEN, "Root": BLUE, "Seed": AMBER}
+for tissue, c in pal.items():
+    g = co[co.tissue == tissue]
+    ax.scatter(g.gene_x, g.gene_y, color=c, s=50, alpha=.8, edgecolors=CREAM, label=tissue, zorder=3)
+m, b = np.polyfit(co.gene_x, co.gene_y, 1)             # single linear fit
+xs = np.array([co.gene_x.min(), co.gene_x.max()])
+ax.plot(xs, m * xs + b, color=RED, lw=2.2, zorder=1)   # draw it in red
+ax.set_title("Gene Y tracks gene X", color="#333333")  # state the finding
+ax.legend(frameon=False, loc="lower right")
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+
+
+<!-- slide 102 -->
+## Building a Plot · Step 5 — Style Once, Reuse Everywhere {.smaller}
+
+[The Python viz stack · building a figure]{.eyebrow}
+
+### 5 · House style
+
+Bundle your spine and grid choices into one block and apply it. The per-axes spine code disappears, every plot inherits the same look.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "6-13"
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.8
+import matplotlib.pyplot as plt
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()
+
+house = {                                    # the house style, defined ONCE
+    "axes.spines.top":   False,
+    "axes.spines.right": False,
+    "axes.grid":         True,
+    "grid.linestyle":    "--",
+    "grid.color":        LINE,
+}
+with plt.rc_context(house):                  # apply it: no per-axes spine code
+    fig, ax = plt.subplots(figsize=(5.6, 4.8))
+    ax.set_xlabel("gene X expression (TPM)")
+    ax.set_ylabel("gene Y expression (TPM)")
+    ax.set_xlim(1, 11); ax.set_ylim(-1, 17)
+    pal = {"Leaf": GREEN, "Root": BLUE, "Seed": AMBER}
+    for tissue, c in pal.items():
+        g = co[co.tissue == tissue]
+        ax.scatter(g.gene_x, g.gene_y, color=c, s=50, alpha=.8, edgecolors=CREAM, label=tissue, zorder=3)
+    m, b = np.polyfit(co.gene_x, co.gene_y, 1)
+    xs = np.array([co.gene_x.min(), co.gene_x.max()])
+    ax.plot(xs, m * xs + b, color=RED, lw=2.2, zorder=1)
+    ax.set_title("Gene Y tracks gene X", color="#333333")
+    ax.legend(frameon=False, loc="lower right")
+plt.show()
+```
+
+
+<!-- slide 103 -->
+## Building a Plot · Step 6 — Transparency {.smaller}
+
+[The Python viz stack · building a figure]{.eyebrow}
+
+### 6 · Alpha
+
+Lower the dot opacity. Where samples pile up along the line the colour deepens, so density reads instead of one solid mass.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "21"
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.8
+import matplotlib.pyplot as plt
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()
+
+house = {
+    "axes.spines.top":   False,
+    "axes.spines.right": False,
+    "axes.grid":         True,
+    "grid.linestyle":    "--",
+    "grid.color":        LINE,
+}
+with plt.rc_context(house):
+    fig, ax = plt.subplots(figsize=(5.6, 4.8))
+    ax.set_xlabel("gene X expression (TPM)")
+    ax.set_ylabel("gene Y expression (TPM)")
+    ax.set_xlim(1, 11); ax.set_ylim(-1, 17)
+    pal = {"Leaf": GREEN, "Root": BLUE, "Seed": AMBER}
+    for tissue, c in pal.items():
+        g = co[co.tissue == tissue]
+        ax.scatter(g.gene_x, g.gene_y, color=c, s=50, alpha=.35, edgecolors=CREAM, label=tissue, zorder=3)   # lower alpha: density shows
+    m, b = np.polyfit(co.gene_x, co.gene_y, 1)
+    xs = np.array([co.gene_x.min(), co.gene_x.max()])
+    ax.plot(xs, m * xs + b, color=RED, lw=2.2, zorder=1)
+    ax.set_title("Gene Y tracks gene X", color="#333333")
+    ax.legend(frameon=False, loc="lower right")
+plt.show()
+```
+
+
+<!-- slide 104 -->
+## Building a Plot · Step 7 — Drop the Vertical Grid {.smaller}
+
+[The Python viz stack · building a figure]{.eyebrow}
+
+### 7 · Grid
+
+Keep the horizontal gridlines as value guides, drop the verticals. Fewer competing lines, the eye reads the y values cleanly.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "25"
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.8
+import matplotlib.pyplot as plt
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()
+
+house = {
+    "axes.spines.top":   False,
+    "axes.spines.right": False,
+    "axes.grid":         True,
+    "grid.linestyle":    "--",
+    "grid.color":        LINE,
+}
+with plt.rc_context(house):
+    fig, ax = plt.subplots(figsize=(5.6, 4.8))
+    ax.set_xlabel("gene X expression (TPM)")
+    ax.set_ylabel("gene Y expression (TPM)")
+    ax.set_xlim(1, 11); ax.set_ylim(-1, 17)
+    pal = {"Leaf": GREEN, "Root": BLUE, "Seed": AMBER}
+    for tissue, c in pal.items():
+        g = co[co.tissue == tissue]
+        ax.scatter(g.gene_x, g.gene_y, color=c, s=50, alpha=.35, edgecolors=CREAM, label=tissue, zorder=3)
+    m, b = np.polyfit(co.gene_x, co.gene_y, 1)
+    xs = np.array([co.gene_x.min(), co.gene_x.max()])
+    ax.plot(xs, m * xs + b, color=RED, lw=2.2, zorder=1)
+    ax.xaxis.grid(False)                     # keep horizontal guides, drop verticals
+    ax.set_title("Gene Y tracks gene X", color="#333333")
+    ax.legend(frameon=False, loc="lower right")
+plt.show()
+```
+
+
+<!-- slide 105 -->
+## Building a Plot · Step 8 — Point At It {.smaller}
+
+[The Python viz stack · building a figure]{.eyebrow}
+
+### 8 · Arrow
+
+Find the sample furthest above the fit, then aim a curved `annotate` arrow at it. The `rad` bends the arrow so it comes in from the side instead of crossing the dot.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "26-31"
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.8
+import matplotlib.pyplot as plt
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()
+
+house = {
+    "axes.spines.top":   False,
+    "axes.spines.right": False,
+    "axes.grid":         True,
+    "grid.linestyle":    "--",
+    "grid.color":        LINE,
+}
+with plt.rc_context(house):
+    fig, ax = plt.subplots(figsize=(5.6, 4.8))
+    ax.set_xlabel("gene X expression (TPM)")
+    ax.set_ylabel("gene Y expression (TPM)")
+    ax.set_xlim(1, 11); ax.set_ylim(-1, 17)
+    pal = {"Leaf": GREEN, "Root": BLUE, "Seed": AMBER}
+    for tissue, c in pal.items():
+        g = co[co.tissue == tissue]
+        ax.scatter(g.gene_x, g.gene_y, color=c, s=50, alpha=.35, edgecolors=CREAM, label=tissue, zorder=3)
+    m, b = np.polyfit(co.gene_x, co.gene_y, 1)
+    xs = np.array([co.gene_x.min(), co.gene_x.max()])
+    ax.plot(xs, m * xs + b, color=RED, lw=2.2, zorder=1)
+    ax.xaxis.grid(False)
+    co["resid"] = co.gene_y - (m * co.gene_x + b)   # distance from the fit
+    hot = co.loc[co.resid.idxmax()]                 # furthest sample above it
+    ax.annotate(f"{hot.tissue} outlier", xy=(hot.gene_x, hot.gene_y),
+                xytext=(hot.gene_x - 3.2, hot.gene_y + 2.0),
+                arrowprops=dict(arrowstyle="->", color=INK, lw=1.6,
+                                connectionstyle="arc3,rad=-0.3"))   # curved callout
+    ax.set_title("Gene Y tracks gene X", color="#333333")
+    ax.legend(frameon=False, loc="lower right")
+plt.show()
+```
+
+
+<!-- slide 106 -->
+## Building a Plot · Step 9 — Highlight the Sample {.smaller}
+
+[The Python viz stack · building a figure]{.eyebrow}
+
+### 9 · Edge
+
+Re-draw that one sample with a thick **white edge**. The wall lifts it off the crowd the arrow is pointing at.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "32-33"
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.8
+import matplotlib.pyplot as plt
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()
+
+house = {
+    "axes.spines.top":   False,
+    "axes.spines.right": False,
+    "axes.grid":         True,
+    "grid.linestyle":    "--",
+    "grid.color":        LINE,
+}
+with plt.rc_context(house):
+    fig, ax = plt.subplots(figsize=(5.6, 4.8))
+    ax.set_xlabel("gene X expression (TPM)")
+    ax.set_ylabel("gene Y expression (TPM)")
+    ax.set_xlim(1, 11); ax.set_ylim(-1, 17)
+    pal = {"Leaf": GREEN, "Root": BLUE, "Seed": AMBER}
+    for tissue, c in pal.items():
+        g = co[co.tissue == tissue]
+        ax.scatter(g.gene_x, g.gene_y, color=c, s=50, alpha=.35, edgecolors=CREAM, label=tissue, zorder=3)
+    m, b = np.polyfit(co.gene_x, co.gene_y, 1)
+    xs = np.array([co.gene_x.min(), co.gene_x.max()])
+    ax.plot(xs, m * xs + b, color=RED, lw=2.2, zorder=1)
+    ax.xaxis.grid(False)
+    co["resid"] = co.gene_y - (m * co.gene_x + b)
+    hot = co.loc[co.resid.idxmax()]
+    ax.annotate(f"{hot.tissue} outlier", xy=(hot.gene_x, hot.gene_y),
+                xytext=(hot.gene_x - 3.2, hot.gene_y + 2.0),
+                arrowprops=dict(arrowstyle="->", color=INK, lw=1.6,
+                                connectionstyle="arc3,rad=-0.3"))
+    ax.scatter(hot.gene_x, hot.gene_y, s=120, color=pal[hot.tissue],   # re-draw it
+               edgecolor="white", linewidth=2.2, zorder=5)             # white wall pops it
+    ax.set_title("Gene Y tracks gene X", color="#333333")
+    ax.legend(frameon=False, loc="lower right")
+plt.show()
+```
+
+
+<!-- slide 107 -->
+## Building a Plot · Step 10 — Title, Subtitle, Caption {.smaller}
+
+[The Python viz stack · building a figure]{.eyebrow}
+
+### 10 · Header
+
+Layer the text the way an editorial figure does: a bold **title**, an *italic* **subtitle**, and a small **caption** crediting the source.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "34-39"
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.8
+import matplotlib.pyplot as plt
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()
+
+house = {
+    "axes.spines.top":   False,
+    "axes.spines.right": False,
+    "axes.grid":         True,
+    "grid.linestyle":    "--",
+    "grid.color":        LINE,
+}
+with plt.rc_context(house):
+    fig, ax = plt.subplots(figsize=(5.6, 4.8))
+    ax.set_xlabel("gene X expression (TPM)")
+    ax.set_ylabel("gene Y expression (TPM)")
+    ax.set_xlim(1, 11); ax.set_ylim(-1, 17)
+    pal = {"Leaf": GREEN, "Root": BLUE, "Seed": AMBER}
+    for tissue, c in pal.items():
+        g = co[co.tissue == tissue]
+        ax.scatter(g.gene_x, g.gene_y, color=c, s=50, alpha=.35, edgecolors=CREAM, label=tissue, zorder=3)
+    m, b = np.polyfit(co.gene_x, co.gene_y, 1)
+    xs = np.array([co.gene_x.min(), co.gene_x.max()])
+    ax.plot(xs, m * xs + b, color=RED, lw=2.2, zorder=1)
+    ax.xaxis.grid(False)
+    co["resid"] = co.gene_y - (m * co.gene_x + b)
+    hot = co.loc[co.resid.idxmax()]
+    ax.annotate(f"{hot.tissue} outlier", xy=(hot.gene_x, hot.gene_y),
+                xytext=(hot.gene_x - 3.2, hot.gene_y + 2.0),
+                arrowprops=dict(arrowstyle="->", color=INK, lw=1.6,
+                                connectionstyle="arc3,rad=-0.3"))
+    ax.scatter(hot.gene_x, hot.gene_y, s=120, color=pal[hot.tissue],
+               edgecolor="white", linewidth=2.2, zorder=5)
+    ax.text(0.0, 1.13, "Two genes, one trend",                       # main title
+            transform=ax.transAxes, fontsize=13, fontweight="bold", color=INK)
+    ax.text(0.0, 1.05, "co-expression across three tissues",         # italic subtitle
+            transform=ax.transAxes, fontsize=10, color=MUTED, style="italic")
+    fig.text(0.5, -0.04, "Source: load_coexpression() · demo data",  # caption
+             ha="center", fontsize=8, color=MUTED)
+    ax.legend(frameon=False, loc="lower right")
+plt.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Build in layers, then refine with **properties**: transparency for density, a lighter grid, a curved arrow plus a white edge to single one point out, and a layered **title / subtitle / caption** to say what it means.
+:::
+
+<!-- slide 108 -->
+## Exercise — Load, Scatter, Correlate {.smaller}
+
+[Exercise · your turn]{.eyebrow}
+
+### Your turn: run the whole recipe on a new dataset
+
+`load_scatter_demo()` is a **synthetic practice dataset** (`log2fc`, `expression`, `group`). Load it, scatter `expression` against `log2fc`, then compute Pearson r and print it in the corner. Use the house style from Step 5.
+
+```{python}
+#| echo: true
+#| eval: false
+#| code-line-numbers: false
+import matplotlib.pyplot as plt
+from genomics_course.data import load_scatter_demo
+
+df = load_scatter_demo()        # columns: log2fc, expression, group
+
+# 1. make a figure + axes
+# 2. scatter expression (y) against log2fc (x)
+# 3. r = np.corrcoef(...)  ->  ax.text(...) it in the top-left
+# 4. label the axes
+# your code here
+```
+
+::: {.exercise}
+[Exercise]{.xl}
+Get the **mechanics** working first: load → scatter → annotate r. We'll look at what the number actually means on the next slide.
+:::
+
+
+<!-- slide 109 -->
+## Exercise — Solution & the Catch {.smaller}
+
+[Exercise · solution]{.eyebrow}
+
+### r is high — but here that is an artifact
+
+:::: {.columns}
+::: {.column width="46%"}
+The recipe runs and prints a strong-looking r. The catch: in this toy dataset
+`expression` was **built** as `0.8 * log2fc + noise`, so the correlation is
+baked in, and `group` is assigned at random. The number is real; the biology
+is not. Always ask what generated the data before trusting an r.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: true
+#| code-line-numbers: "10-12"
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.6
+import matplotlib.pyplot as plt
+from genomics_course.data import load_scatter_demo
+
+df = load_scatter_demo()
+
+with plt.rc_context(house):
+    fig, ax = plt.subplots(figsize=(5.6, 4.6))
+    ax.scatter(df.log2fc, df.expression, color=GREY, s=45, alpha=.7)
+    r = np.corrcoef(df.log2fc, df.expression)[0, 1]   # Pearson r
+    ax.text(0.04, 0.93, f"r = {r:.2f}", transform=ax.transAxes,
+            fontsize=14, fontweight="bold", color=INK)
+    ax.set_xlabel("log2 fold change")
+    ax.set_ylabel("expression")
+plt.show()
+```
+:::
+::::
+
+::: {.exercise}
+[Exercise · the lesson]{.xl}
+A high r only means two columns move together. Here they move together **by construction**. Correlation is a description, not a discovery.
+:::
+
+<!-- slide 110 -->
+# Ternary Plots {.divider}
+
+[Compositional data · three parts that sum to one]{.eyebrow}
+
+
+<!-- slide 111 -->
+## Ternary · The Data {.smaller}
+
+[Genomics · compositional data]{.eyebrow}
+
+### Three ancestry fractions per individual, summing to one
+
+Each individual's ancestry splits across three populations and the fractions sum to 1. We simulate that with a Dirichlet draw: mostly-A, mostly-B, mostly-C, plus some evenly admixed.
+
+```{python}
+#| echo: true
+#| output-location: column
+import numpy as np, pandas as pd
+
+rng_adm = np.random.default_rng(7)
+comp = np.vstack([rng_adm.dirichlet(a, n) for a, n in
+                  [([8,1,1], 30), ([1,8,1], 30), ([1,1,8], 30), ([2,2,2], 20)]])
+adm = pd.DataFrame(comp, columns=["Pop A", "Pop B", "Pop C"]).round(3)
+adm.head(4)
+```
+
+
+<!-- slide 112 -->
+## Ternary · Step 1 — The Triangle {.smaller}
+
+[Genomics · compositional data]{.eyebrow}
+
+### 1 · Frame
+
+`ternary_diagram` draws the triangle, gridlines, and ticks for you. Three corners, one per population. Near a corner means mostly that population, the centre means evenly admixed.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "1,8"
+#| output-location: column
+#| fig-width: 5.4
+#| fig-height: 4.6
+from ternary_diagram import TernaryDiagram
+
+rng_adm = np.random.default_rng(7)        # fixed seed -> same points every step
+comp = np.vstack([rng_adm.dirichlet(a, n) for a, n in
+                  [([8,1,1], 30), ([1,8,1], 30), ([1,1,8], 30), ([2,2,2], 20)]])
+
+fig, ax = plt.subplots(figsize=(5.4, 4.6))
+td = TernaryDiagram(["Pop A", "Pop B", "Pop C"], ax=ax)   # frame, gridlines, ticks
+plt.show()
+```
+
+
+<!-- slide 113 -->
+## Ternary · Step 2 — The Points {.smaller}
+
+[Genomics · compositional data]{.eyebrow}
+
+### 2 · Scatter
+
+`td.scatter` takes the whole `comp` array, one row per individual. It places each point by its three fractions automatically. One colour for now.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "9"
+#| output-location: column
+#| fig-width: 5.4
+#| fig-height: 4.6
+from ternary_diagram import TernaryDiagram
+
+rng_adm = np.random.default_rng(7)
+comp = np.vstack([rng_adm.dirichlet(a, n) for a, n in
+                  [([8,1,1], 30), ([1,8,1], 30), ([1,1,8], 30), ([2,2,2], 20)]])
+
+fig, ax = plt.subplots(figsize=(5.4, 4.6))
+td = TernaryDiagram(["Pop A", "Pop B", "Pop C"], ax=ax)
+td.scatter(vector=comp, c=GREY, s=28, edgecolors=CREAM, linewidths=0.4, zorder=3)   # one dot per individual
+plt.show()
+```
+
+
+<!-- slide 114 -->
+## Ternary · Step 3 — Colour by Population {.smaller}
+
+[Genomics · compositional data]{.eyebrow}
+
+### 3 · Colour
+
+Colour each point by its **dominant** population (`argmax` of the three fractions). The three corner clusters light up; the admixed individuals stay near the middle.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "7,10"
+#| output-location: column
+#| fig-width: 5.4
+#| fig-height: 4.6
+from ternary_diagram import TernaryDiagram
+
+rng_adm = np.random.default_rng(7)
+comp = np.vstack([rng_adm.dirichlet(a, n) for a, n in
+                  [([8,1,1], 30), ([1,8,1], 30), ([1,1,8], 30), ([2,2,2], 20)]])
+
+cols = np.array([GREEN, BLUE, AMBER])[comp.argmax(1)]   # colour by dominant population
+fig, ax = plt.subplots(figsize=(5.4, 4.6))
+td = TernaryDiagram(["Pop A", "Pop B", "Pop C"], ax=ax)
+td.scatter(vector=comp, c=cols, s=28, edgecolors=CREAM, linewidths=0.4, zorder=3)
+plt.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Three parts that sum to one belong in a **triangle**. Corners are pure ancestry, the centre is admixture, and `argmax` colouring reveals the dominant population at a glance.
+:::
+
+::: {.footer style="font-size: 0.58em; color: #666666;"}
+`ternary-diagram` (yu9824), MIT. Install: `pip install ternary-diagram`.
+:::

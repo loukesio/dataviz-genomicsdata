@@ -26,6 +26,14 @@ Thumbs.db
 *_cache/
 *_files/
 
-# Exclude fonts if they're proprietary
-# fonts/
+# Keep the Plot Directory PDF — students download it
+!day1/images/*.pdf
+
+# Python build artifacts
+__pycache__/
+*.egg-info/
+*.pyc
+
+# Claude Code
+.claude/
 

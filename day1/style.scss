@@ -9,6 +9,7 @@
         theme: [default, style.scss]
         width: 1280
         height: 720
+        center: false          # required for the footer band to work
 -----------------------------------------------------------------------------*/
 
 // Fonts must be imported before the defaults block.
@@ -204,13 +205,17 @@ $code-block-font-size: 0.62em;
 // ---- TAKEAWAY / BOTTOM LINE  ·  ::: {.takeaway} … ::: ----------------------
 // Drop at the END of a content slide to land the one thing they remember.
 // Add .alt for the purple variant.
+// (single merged block: compact sizing + forced wrap, .tl + .alt preserved)
 .reveal .takeaway {
   border-left:3px solid $green; background:$green-tint;
-  border-radius:0 9px 9px 0; padding:.7em 1.1em; margin-top:1em;
+  border-radius:0 9px 9px 0;
+  padding:.5em 1em; margin:.6em 0 0;
+  font-size:.82em; line-height:1.32;
   .tl { font-family:$font-family-monospace; font-size:.5em; font-weight:600;
         letter-spacing:.18em; text-transform:uppercase; color:$green-deep;
         display:block; margin-bottom:.25em; }
-  p { margin:0; color:$ink; max-width:none; }
+  p { margin:0; color:$ink; max-width:none; }   // fill the box (box is contained
+                                                // by center:false + figure cap)
   b, strong { color:$green-deep; }
   &.alt { border-color:$purple; background:$purple-tint;
           .tl { color:$purple; } b, strong { color:$purple; } }
@@ -248,6 +253,9 @@ $code-block-font-size: 0.62em;
 
 // ---- COLUMNS (Quarto .columns/.column) -------------------------------------
 .reveal .columns { display:flex; gap:2.2em; align-items:center; }
+// recap slide wants EQUAL-HEIGHT tinted panels, so override center -> stretch.
+// Author the div as:  :::: {.columns .recap}
+.reveal .columns.recap { align-items:stretch; }
 
 // ---- BROWSER / APP FRAME  ·  ::: {.browser} --------------------------------
 .reveal .browser {
@@ -261,4 +269,112 @@ $code-block-font-size: 0.62em;
 // reduced motion / print safety: never hide content behind entrance animation
 @media (prefers-reduced-motion: reduce) {
   .reveal .fragment { opacity:1 !important; visibility:visible !important; }
+}
+
+.df-preview {
+  max-height: 150px;
+  overflow-y: auto;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.62em;
+  line-height: 1.4;
+  border: 1px solid #D9D9D9;
+  border-radius: 4px;
+  padding: 0.4em 0.7em;
+  background: #FFFFFF;
+}
+.df-preview pre { margin: 0; background: transparent; }
+
+.full-width-lead {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: block;
+  margin: 0.3em 0 0.6em;
+}
+.full-width-lead p {
+  max-width: none !important;
+}
+
+// ---- CODE WINDOW · ONE scrollbar — force version ----------------------------
+// reveal.js core ships `.reveal pre code { overflow:auto; max-height:400px }`.
+// THAT inner rule is the second bar. Override it with !important (no specificity
+// war) and strip its max-height, then let exactly ONE element — the <pre> —
+// scroll. Descendant selectors so no wrapper nesting can dodge it.
+.reveal .sourceCode,
+.reveal .sourceCode pre,
+.reveal .sourceCode pre code,
+.reveal pre code {
+  overflow: visible !important;   // nothing scrolls...
+  max-height: none !important;    // ...and kill reveal's 400px on <code>
+}
+.reveal .sourceCode pre,
+.reveal pre.sourceCode {
+  max-height: 340px !important;   // ...except the <pre>: the ONE scroller
+  overflow: auto !important;
+  margin: 0;
+}
+.reveal .sourceCode pre code {
+  font-size: 0.82em;
+  line-height: 1.5;
+  white-space: pre;               // don't wrap; the <pre> scrolls sideways
+}
+
+
+// ---- GLOBAL FIGURE CAP · only executed (matplotlib) outputs -----------------
+// Scoped to .cell-output-display so hand-sized images (book covers, portraits,
+// the typography table) keep their authored width. Dial ONE number: max-height.
+.reveal .cell-output-display img {
+  max-height: 340px;        // THE DIAL. Vertical budget: 720 - title(~230)
+                            // - takeaway(~70) - footer band(~30) - tab chrome(~50)
+                            // leaves ~340 for the figure. Nudge up/down by ~20.
+  width:  auto !important;  // overrides Quarto's retina width so max-height drives
+  height: auto !important;
+}
+
+// ---- FOOTER BAND · reserve the bottom strip so flow content can't sit on it --
+// Requires `center: false` in the revealjs front matter (content top-aligned).
+// If your takeaway still kisses the footer, the figure cap above is the lever.
+.reveal .slides > section { padding-bottom: 1.6em; }
+
+// ---- OPTIONAL · re-center ONLY the title + divider slides --------------------
+// `center: false` top-aligns every slide. If the title and section-divider
+// slides look better vertically centered, uncomment this. Content slides are
+// untouched and stay top-aligned.
+// #title-slide,
+// .reveal section.divider {
+//   height: 100%;
+//   display: flex; flex-direction: column; justify-content: center;
+// }
+
+// ---- RECAP SLIDE  ·  :::: {.columns .recap} -> ::: {.recap-col .done/.next} --
+// Sub-headers + tinted column panels for the "what we covered / what's next"
+// slide. Uses palette variables so it matches .key/.alt and the takeaway boxes
+// exactly (no off-by-a-hex drift).
+.reveal .recap-head {
+  display:block;
+  font-family:$font-family-monospace;
+  font-size:.62em; letter-spacing:.06em; text-transform:uppercase;
+  font-weight:700; margin:.7em 0 .15em;
+}
+.reveal .recap-head.done { color:$green-deep; }   // matches .key  / takeaway
+.reveal .recap-head.next { color:$purple; }       // matches .alt  / takeaway.alt
+
+.reveal .recap-col {
+  border-radius:10px; padding:.6em .9em; height:100%;   // height:100% works
+}                                                        // because .columns.recap
+.reveal .recap-col.done { background:$green-tint; }      // is align-items:stretch
+.reveal .recap-col.next { background:$purple-tint; }
+.reveal .recap-col p { margin:0 0 .35em; font-size:.92em; max-width:none; }
+
+// ---- EXERCISE CALLOUT  ·  ::: {.exercise} … ::: ----------------------------
+// Amber left-border + "EXERCISE" label. Visually distinct from .takeaway/.keybox
+// so "your turn" slides are recognisable at a glance.
+.reveal .exercise {
+  border-left:3px solid $amber; background:#FBF3DC;
+  border-radius:0 9px 9px 0; padding:.6em 1em; margin:.6em 0 0;
+  font-size:.82em; line-height:1.34;
+  .xl { font-family:$font-family-monospace; font-size:.5em; font-weight:600;
+        letter-spacing:.18em; text-transform:uppercase; color:#8A6D00;
+        display:block; margin-bottom:.25em; }
+  p { margin:0; color:$ink; max-width:none; }
+  b, strong { color:#8A6D00; }
 }

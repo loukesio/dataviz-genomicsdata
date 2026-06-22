@@ -8,6 +8,7 @@ format:
     theme: [default, style.scss]
     width: 1280
     height: 720
+    center: false       
     slide-number: c
     progress: true
     transition: fade
@@ -16,6 +17,8 @@ format:
     highlight-style: arrow
     code-line-numbers: true
     fig-align: center
+    fig-format: retina
+    fig-dpi: 192
 execute:
   echo: true
   warning: false
@@ -32,30 +35,35 @@ jupyter: python3
 # applies the cream-canvas matplotlib rcParams. The same module is what the
 # `_04_fundamentals` section teaches students to build.
 from genomics_course.theme import *                # noqa: F401,F403
-from genomics_course.data import (                 # the nine course datasets
+from genomics_course.data import (
     load_deseq2, load_admixture, load_gwas, load_variants, load_lineages,
     load_timecourse, load_coexpression, load_anscombe, load_datasaurus,
+    load_qc, load_tissue_expression, load_assay_counts, load_reads_per_sample,
+    load_scatter_demo,
 )
 import numpy as np, pandas as pd, matplotlib.pyplot as plt, seaborn as sns
 import warnings
+import plotly.express as px                         # interactive plots (slide 8)
 warnings.filterwarnings('ignore')
 
 rng = np.random.default_rng(7)   # only for the synthetic teaching examples
 ```
 
 {{< include sections/_00_motivation.qmd >}}
-{{< include sections/_01_why_python.qmd >}}
-{{< include sections/_02_ecosystem.qmd >}}
-{{< include sections/_03_matplotlib_basics.qmd >}}
-{{< include sections/_04_fundamentals.qmd >}}
-{{< include sections/_05_logistics.qmd >}}
-{{< include sections/_06_scatter.qmd >}}
-{{< include sections/_07_volcano.qmd >}}
-{{< include sections/_08_distributions.qmd >}}
+{{< include sections/_01_logistics.qmd >}}
+{{< include sections/_02_fundamentals.qmd >}}
+{{< include sections/_03_why_python.qmd >}}
+{{< include sections/_04_ecosystem.qmd >}}
+{{< include sections/_05_first_plots.qmd >}}
+{{< include sections/_06_distributions.qmd >}}
+{{< include sections/_07_scatter.qmd >}}
+{{< include sections/_08_volcano.qmd >}}
 {{< include sections/_09_dimreduction.qmd >}}
 {{< include sections/_10_admixture.qmd >}}
 {{< include sections/_11_heatmaps.qmd >}}
 {{< include sections/_12_waffle_waterfall.qmd >}}
 {{< include sections/_13_peaks.qmd >}}
 {{< include sections/_14_pathways.qmd >}}
-{{< include sections/_15_recap.qmd >}}
+{{< include sections/_15_synteny.qmd >}}
+{{< include sections/_16_misc.qmd >}}
+{{< include sections/_17_recap.qmd >}}

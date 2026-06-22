@@ -1,0 +1,300 @@
+<!-- slide 216 -->
+## A Dumbbell for QC {.smaller}
+
+[Make it publication-ready]{.eyebrow}
+
+### The job: summarise sequencing QC to your boss
+
+You sent 12 samples for sequencing. For each, you have the **raw mapping rate** and the **callable rate after QC**. The boss wants one chart: which samples held up, and which lost too much.
+
+:::: {.columns}
+::: {.column width="46%"}
+Start with the data, one row per sample, sorted so the worst callable rate sits at the bottom.
+
+```{.python code-line-numbers="1-4"}
+qc = load_qc()                       # 12 samples
+qc = qc.sort_values("callable")      # worst at the bottom
+y  = range(len(qc))                  # one row each
+qc.head()
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| class-output: df-preview
+qc = load_qc().sort_values("callable").reset_index(drop=True)
+y = range(len(qc))
+print(qc[["sample", "raw", "callable", "loss"]].head())
+```
+:::
+::::
+
+<!-- slide 217 -->
+## A Dumbbell for QC {.smaller}
+
+[Make it publication-ready]{.eyebrow}
+
+### Draw the bars: the gap is the story
+
+:::: {.columns}
+::: {.column width="46%"}
+One horizontal bar per sample, from callable to raw. The bar length *is* the QC loss, longer means more lost.
+
+```{.python code-line-numbers="1|3-5"}
+fig, ax = plt.subplots(figsize=(7, 5))
+
+for i, r in qc.iterrows():            # one bar per row
+    ax.plot([r.callable, r.raw],      # x: callable -> raw
+            [i, i], color=GREY, lw=2)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 5
+fig, ax = plt.subplots(figsize=(7, 5), facecolor=CREAM); ax.set_facecolor(CREAM)
+for i, r in qc.iterrows():
+    ax.plot([r.callable, r.raw], [i, i], color=GREY, lw=2, zorder=1)
+ax.set_yticks(list(y)); ax.set_yticklabels(qc["sample"])
+ax.set_xlim(60, 100)
+ax.spines[["top", "right", "left"]].set_visible(False); ax.tick_params(left=False)
+plt.show()
+```
+:::
+::::
+
+<!-- slide 218 -->
+## A Dumbbell for QC {.smaller}
+
+[Make it publication-ready]{.eyebrow}
+
+### Add the dumbbell ends: raw and callable
+
+:::: {.columns}
+::: {.column width="46%"}
+Two dots per row: where the sample started (raw) and where it landed after QC (callable).
+
+```{.python code-line-numbers="6-7"}
+for i, r in qc.iterrows():
+    ax.plot([r.callable, r.raw],
+            [i, i], color=GREY, lw=2)
+
+ax.scatter(qc.raw, y, color=GREY)        # raw mapping
+ax.scatter(qc.callable, y, color=GREEN)  # callable after QC
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 5
+fig, ax = plt.subplots(figsize=(7, 5), facecolor=CREAM); ax.set_facecolor(CREAM)
+for i, r in qc.iterrows():
+    ax.plot([r.callable, r.raw], [i, i], color=GREY, lw=2, zorder=1)
+ax.scatter(qc.raw, list(y), color=GREY, s=55, zorder=2)
+ax.scatter(qc.callable, list(y), color=GREEN, s=55, zorder=3)
+ax.set_yticks(list(y)); ax.set_yticklabels(qc["sample"])
+ax.set_xlim(60, 100)
+ax.spines[["top", "right", "left"]].set_visible(False); ax.tick_params(left=False)
+plt.show()
+```
+:::
+::::
+
+<!-- slide 219 -->
+## A Dumbbell for QC {.smaller}
+
+[Make it publication-ready]{.eyebrow}
+
+### Style it: percent axis, quiet grid, labels
+
+:::: {.columns}
+::: {.column width="46%"}
+Format x as a percentage, add a faint x-grid so rows are easy to read across, and label the axis.
+
+```{.python code-line-numbers="1|3-4"}
+import matplotlib.ticker as mtick
+
+ax.xaxis.set_major_formatter(
+    mtick.PercentFormatter(100, decimals=0))
+ax.set_xlabel("genome callable")
+ax.grid(axis="x", color=LINE, alpha=0.5)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 5
+import matplotlib.ticker as mtick
+fig, ax = plt.subplots(figsize=(7, 5), facecolor=CREAM); ax.set_facecolor(CREAM)
+for i, r in qc.iterrows():
+    ax.plot([r.callable, r.raw], [i, i], color=GREY, lw=2, zorder=1)
+ax.scatter(qc.raw, list(y), color=GREY, s=55, zorder=2)
+ax.scatter(qc.callable, list(y), color=GREEN, s=55, zorder=3)
+ax.set_yticks(list(y)); ax.set_yticklabels(qc["sample"])
+ax.xaxis.set_major_formatter(mtick.PercentFormatter(100, decimals=0))
+ax.set_xlim(60, 100); ax.set_xlabel("genome callable")
+ax.grid(axis="x", color=LINE, alpha=0.5, lw=0.6); ax.set_axisbelow(True)
+ax.spines[["top", "right", "left"]].set_visible(False); ax.tick_params(left=False)
+plt.show()
+```
+:::
+::::
+
+<!-- slide 220 -->
+## A Dumbbell for QC {.smaller}
+
+[Make it publication-ready]{.eyebrow}
+
+### The message: one bold colour flags the problem
+
+:::: {.columns}
+::: {.column width="46%"}
+A sample that loses more than 15 points is a concern. Colour those bars and dots **red**, everything else stays quiet. The eye goes straight to S01 and S12.
+
+```{.python code-line-numbers="1|3-4|6-7"}
+qc["flag"] = qc.loss > 15            # the rule
+
+bar = [RED if f else GREY for f in qc.flag]
+dot = [RED if f else GREEN for f in qc.flag]
+
+ax.set_title("Two samples lose too much to QC",
+             fontweight="bold", loc="left")
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 5
+import matplotlib.ticker as mtick
+fig, ax = plt.subplots(figsize=(7, 5), facecolor=CREAM); ax.set_facecolor(CREAM)
+qc["flag"] = qc.loss > 15
+for i, r in qc.iterrows():
+    ax.plot([r.callable, r.raw], [i, i],
+            color=RED if r.flag else GREY, lw=2, zorder=1)
+ax.scatter(qc.raw, list(y), color=GREY, s=55, zorder=2, label="raw mapping")
+ax.scatter(qc.callable, list(y),
+           color=[RED if f else GREEN for f in qc.flag], s=55, zorder=3,
+           label="callable after QC")
+ax.set_yticks(list(y)); ax.set_yticklabels(qc["sample"])
+ax.xaxis.set_major_formatter(mtick.PercentFormatter(100, decimals=0))
+ax.set_xlim(60, 100); ax.set_xlabel("genome callable")
+ax.set_title("Two samples lose too much to QC", fontweight="bold", color=INK, loc="left")
+ax.grid(axis="x", color=LINE, alpha=0.5, lw=0.6); ax.set_axisbelow(True)
+ax.spines[["top", "right", "left"]].set_visible(False); ax.tick_params(left=False)
+plt.show()
+```
+:::
+::::
+
+::: {.takeaway}
+[The bottom line]{.tl}
+A dumbbell turns "before vs after" into one readable picture. Sort by the value that matters, and let **one bold colour** carry the verdict.
+:::
+
+<!-- slide 221 -->
+## General-Purpose Libraries {.smaller}
+
+[The Python viz stack]{.eyebrow}
+
+### Matplotlib · Seaborn · Plotly
+
+```{python}
+#| echo: false
+#| fig-width: 10
+#| fig-height: 5
+
+import matplotlib.patches as mpatches
+
+fig, axes = plt.subplots(1, 3, figsize=(10, 5))
+
+# ── matplotlib ────────────────────────────────────────────────────────────────
+np.random.seed(42)
+x = np.linspace(0, 4 * np.pi, 200)
+axes[0].plot(x, np.sin(x), color=BRAND, linewidth=2.5, label='sin(x)')
+axes[0].plot(x, np.cos(x), color=ACCENT_PURP, linewidth=2.5, label='cos(x)')
+axes[0].fill_between(x, np.sin(x), alpha=0.15, color=BRAND)
+axes[0].set_title('Matplotlib\n(low-level control)', fontsize=11)
+axes[0].legend(fontsize=9)
+
+# ── seaborn ───────────────────────────────────────────────────────────────────
+rng = np.random.default_rng(42)
+df  = pd.DataFrame({'x': rng.normal(0, 1, 300), 'y': rng.normal(0, 1, 300),
+                    'group': rng.choice(['A','B','C'], 300)})
+for g, color in zip(['A','B','C'], [BRAND, ACCENT_YLW, ACCENT_PURP]):
+    sub = df[df['group'] == g]
+    axes[1].scatter(sub['x'], sub['y'], color=color, s=25, alpha=0.6, label=g)
+axes[1].set_title('Seaborn\n(statistical plots)', fontsize=11)
+axes[1].legend(fontsize=9)
+
+# ── plotly badge (static preview) ─────────────────────────────────────────────
+categories = ['Control', 'Treatment A', 'Treatment B', 'Treatment C']
+values     = [45, 78, 62, 91]
+bars = axes[2].barh(categories, values,
+                    color=[GRAY_DARK, BRAND, BRAND_LIGHT, ACCENT_YLW])
+axes[2].set_xlim(0, 110)
+for bar, val in zip(bars, values):
+    axes[2].text(val + 2, bar.get_y() + bar.get_height()/2,
+                 f'{val}', va='center', fontsize=9)
+axes[2].set_title('Plotly\n(interactive plots)', fontsize=11)
+
+plt.tight_layout()
+plt.show()
+```
+
+::: {.footer style="font-size: 0.55em; color: #808080; white-space: nowrap;"}
+All three libraries are installed with: `pip install matplotlib seaborn plotly`
+:::
+
+<!-- slide 222 -->
+## Genomics-Specific Libraries {.smaller}
+
+[The Python viz stack]{.eyebrow}
+
+### Two pillars of the genomics ecosystem
+
+```{python}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 5.5
+
+fig, ax = plt.subplots(figsize=(11, 5.5))
+ax.set_xlim(0, 10); ax.set_ylim(0, 10)
+ax.axis('off')
+
+libraries = [
+    # (x, y, name, description, color)
+    (1.2, 8.5, 'PyComplexHeatmap', 'Complex clustered heatmaps\nwith annotations', BRAND),
+    (1.2, 6.8, 'pyCirclize',       'Circos plots for genome-wide\nrelationships',   BRAND),
+    (1.2, 5.1, 'Toytree',          'Phylogenetic tree drawing\nand manipulation',   BRAND),
+    (1.2, 3.4, 'pyMSAviz',         'Multiple sequence alignment\nvisualization',    BRAND),
+    (1.2, 1.7, 'dna_features_viewer', 'Gene maps and genomic\nfeature diagrams',   BRAND),
+
+    (5.8, 8.5, 'DashBio (Plotly)', 'Interactive genomics widgets\n(volcano, Manhattan…)', ACCENT_PURP),
+    (5.8, 6.8, 'pyGenomeTracks',   'Genome browser-style\ntrack visualizations',   ACCENT_PURP),
+    (5.8, 5.1, 'UpSetPlot',        'Visualization of complex\nset intersections',   ACCENT_PURP),
+    (5.8, 3.4, 'PyWaffle',         'Waffle charts for\nproportions',               ACCENT_PURP),
+    (5.8, 1.7, 'gget',             'Gene / pathway enrichment\nqueries',            ACCENT_PURP),
+]
+
+for x, y, name, desc, color in libraries:
+    ax.add_patch(mpatches.FancyBboxPatch(
+        (x - 1.1, y - 0.6), 3.8, 1.1,
+        boxstyle='round,pad=0.1',
+        facecolor=color + '22', edgecolor=color, linewidth=1.5))
+    ax.text(x + 0.8, y + 0.1,  name, fontsize=9.5, fontweight='bold',
+            color=color, ha='center')
+    ax.text(x + 0.8, y - 0.28, desc, fontsize=7.5, color=GRAY_DARK,
+            ha='center')
+
+ax.text(2.7, 9.55, 'Genomics-specific', fontsize=11, fontweight='bold',
+        color=BRAND, ha='center')
+ax.text(7.3, 9.55, 'Interactive / Utility', fontsize=11, fontweight='bold',
+        color=ACCENT_PURP, ha='center')
+
+plt.tight_layout()
+plt.show()
+```

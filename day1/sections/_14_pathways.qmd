@@ -1,391 +1,259 @@
-<!-- slide 130 -->
-# Pathway & Annotation Plots {.divider}
+<!-- slide 195 -->
+# Pathway Enrichment {.divider}
 
-[Functional enrichment · Day 01]{.eyebrow}
+[From gene list to biology · Day 01]{.eyebrow}
 
-<!-- slide 131 -->
-## Gene Ontology & Pathway Enrichment {.smaller}
 
-[Functional enrichment]{.eyebrow}
+<!-- slide 196 -->
+## What Enrichment Asks {.smaller}
 
-### From gene list to biology
+[Pathway enrichment · theory]{.eyebrow}
 
-:::::: columns
-:::: {.column width="50%"}
-**What enrichment analysis shows:**
+### Is any pathway over-represented in my gene list?
 
-- Which biological processes are over-represented in a gene list
-- GO terms: Biological Process, Molecular Function, Cellular Component
-- KEGG / Reactome pathways
+You ran differential expression, you have a list of significant genes. Enrichment asks: do those genes fall into known pathways (GO terms, KEGG) **more than chance**? A pathway with 5 of your 50 genes when the genome would predict 1 is enriched, evidence that process is involved.
 
-**Typical workflow:**
+The workflow is always the same: **DE → significant genes → test each pathway against a background → rank by adjusted p-value → plot the top hits**. The fixing-up is multiple testing: you test thousands of pathways, so you read `p_adj`, not raw p.
 
-1. Run differential expression
-2. Select significant genes (up / down)
-3. Test for pathway over-representation
-4. Visualize top enriched pathways
 
-**Python tools:**
+<!-- slide 197 -->
+## Getting Enrichment · gget {.smaller}
 
-- `gget enrichr` — simple API to Enrichr database
-- `gprofiler-official` — g:Profiler API
-- `gseapy` — GSEA and over-representation analysis
-::::
+[Pathway enrichment · the tool]{.eyebrow}
 
-::: {.column width="50%"}
+### One call to the Enrichr database
+
+`gget enrichr` takes a gene list and a library name and returns a ranked table, no account, no upload. It hits a web API, so we ran it once and saved the result into `load_enrichment()`; the deck plots that offline.
+
 ```{python}
-#| echo: false
-#| fig-width: 5.5
-#| fig-height: 5.5
+#| echo: true
+#| eval: false
+# pip install gget   (this call needs internet — we pre-saved its output)
+import gget
 
-pathways = [
-    'Cell division', 'DNA replication', 'DNA repair',
-    'Apoptosis', 'p53 signaling', 'Notch signaling',
-    'Wnt signaling', 'mTOR pathway', 'MAPK cascade',
-    'Cell migration',
-]
-enrichment = -np.log10(np.random.uniform(1e-15, 0.04, 10))
-gene_count = np.random.randint(10, 120, 10)
-enrichment_sorted = np.argsort(enrichment)
+drought_genes = ["RD29A", "DREB2A", "ABA1", "NCED3", "P5CS1",   # your significant genes
+                 "RAB18", "COR15A", "LEA14", "RD22", "ERD10"]
+res = gget.enrichr(drought_genes, database="GO_Biological_Process_2021")
 
-fig, ax = plt.subplots(figsize=(5.5, 5.5))
-bars = ax.barh(
-    range(10), enrichment[enrichment_sorted],
-    color=[BRAND if v > 5 else BRAND_LIGHT for v in enrichment[enrichment_sorted]],
-    alpha=0.85, edgecolor='none',
-)
-ax.set_yticks(range(10))
-ax.set_yticklabels([pathways[i] for i in enrichment_sorted], fontsize=8.5)
-ax.set_xlabel('−log₁₀(adjusted p-value)', fontsize=10)
-ax.set_title('Top Enriched Pathways', fontsize=11, fontweight='bold')
-ax.axvline(x=-np.log10(0.05), color=RED, linewidth=1.2, linestyle='--',
-           alpha=0.7, label='p = 0.05')
-ax.legend(fontsize=8, frameon=False)
-ax.spines[['top','right']].set_visible(False)
-plt.tight_layout(); plt.show()
+# res columns include: path_name, adj_p_val, overlapping_genes
+res[["path_name", "adj_p_val", "overlapping_genes"]].head()
+# → we cleaned this into load_enrichment(): pathway, direction, p_adj, gene_count, gene_ratio
 ```
-:::
-::::::
 
-<!-- slide 132 -->
-## Pathway Enrichment — Pipeline {.smaller background-color="#f6f4ee"}
 
-[Functional enrichment]{.eyebrow}
+<!-- slide 198 -->
+## Pathway · The Data {.smaller}
 
-### Pipeline
+[Pathway enrichment]{.eyebrow}
+
+### The pre-computed results table
+
+`load_enrichment()` holds the enriched pathways for both directions: each pathway, its adjusted p-value, how many of your genes hit it (`gene_count`), the fraction of the pathway you hit (`gene_ratio`), and a functional `category`.
 
 ```{python}
-#| echo: false
-pipeline_flowchart([
-    "Significant gene list",
-    "Enrichment vs background",
-    "Adjusted p-values",
-    "Top-N pathways",
-    "Horizontal bars or bubble",
-    "padj 0.05 threshold",
-])
+#| echo: true
+#| output-location: column
+from genomics_course.data import load_enrichment
+
+en = load_enrichment()   # pathway, direction, p_adj, gene_count, gene_ratio, category
+en.head(4)
+```
+
+
+<!-- slide 199 -->
+## Pathway Bars · Step 1 — Rank by Significance {.smaller}
+
+[Pathway enrichment · build]{.eyebrow}
+
+### 1 · −log10(p), sorted into bars
+
+p-values are tiny and uneven, so transform to `−log10(p_adj)`: bigger = more significant. Sort and draw horizontal bars so the long labels stay readable.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "4,6-8"
+#| output-location: column
+#| fig-width: 6.2
+#| fig-height: 5.0
+from genomics_course.data import load_enrichment
+
+en = load_enrichment()                                   # pathway, direction, p_adj, ...
+en["nlp"] = -np.log10(en.p_adj)                          # significance on a readable scale
+d = en.sort_values("nlp")                                # smallest at bottom
+
+fig, ax = plt.subplots(figsize=(6.2, 5.0))
+ax.barh(range(len(d)), d.nlp, color=GREY)                # one bar per pathway
+ax.set_yticks(range(len(d))); ax.set_yticklabels(d.pathway, fontsize=7.5)
+ax.set_xlabel("−log₁₀(adjusted p)")
+for s in ["top", "right"]: ax.spines[s].set_visible(False)
 plt.show()
 ```
 
-<!-- slide 133 -->
-## gget: Enrichment in One Line {.smaller .scrollable}
 
-[Functional enrichment]{.eyebrow}
+<!-- slide 200 -->
+## Pathway Bars · Step 2 — Colour by Direction {.smaller}
 
-### From gene list to KEGG bars
+[Pathway enrichment · build]{.eyebrow}
 
-```{python}
-#| echo: true
-#| eval: false
-#| code-line-numbers: "1-3|5-11|13-28"
+### 2 · Induced vs repressed
 
-# pip install gget
-import gget
-gget.setup('enrichr')   # one-time setup
-
-# Step 1: Run enrichment on a gene list
-gene_list = [
-    'TP53','BRCA1','BRCA2','CDKN1A','MDM2','BAX',
-    'BCL2','CASP3','CASP9','ATM','CHEK2','PTEN',
-    'RB1','E2F1','CDK2','CCND1','MYC','EGFR',
-]
-results = gget.enrichr(
-    genes    = gene_list,
-    database = 'KEGG_2021_Human',
-    plot     = False,
-)
-
-# Step 2: Visualize top 10 enriched pathways
-import matplotlib.pyplot as plt
-import numpy as np
-
-top10 = results.head(10).sort_values('adj_p_val')
-neg_log_p = -np.log10(top10['adj_p_val'])
-
-fig, ax = plt.subplots(figsize=(10, 5))
-bars = ax.barh(range(len(top10)), neg_log_p,
-               color=[BRAND if p < 0.01 else BRAND_LIGHT
-                      for p in top10['adj_p_val']],
-               alpha=0.85, edgecolor='none')
-ax.set_yticks(range(len(top10)))
-ax.set_yticklabels(top10['pathway'], fontsize=9)
-ax.set_xlabel('−log₁₀(adjusted p-value)', fontsize=11, labelpad=8)
-ax.set_title('KEGG Pathway Enrichment', fontsize=13, fontweight='bold')
-ax.axvline(-np.log10(0.05), color=RED, lw=1.2, ls='--', label='p = 0.05')
-ax.legend(frameon=False); ax.spines[['top','right']].set_visible(False)
-plt.tight_layout(); plt.show()
-```
-
-<!-- slide 134 -->
-## Bubble Plot: Enrichment with Gene Counts {.smaller .scrollable}
-
-[Functional enrichment]{.eyebrow}
-
-### Encode size and category, too
+Map a colour to each regulation direction. Now you can see whether drought-induced pathways differ in kind from the repressed ones, they do.
 
 ```{python}
 #| echo: true
-#| eval: false
+#| code-line-numbers: "5,9"
+#| output-location: column
+#| fig-width: 6.2
+#| fig-height: 5.0
+from genomics_course.data import load_enrichment
 
-np.random.seed(2026)
+en = load_enrichment()
+en["nlp"] = -np.log10(en.p_adj)
+d = en.sort_values("nlp")
+dir_pal = {"up": GREEN, "down": BLUE}                    # induced vs repressed
 
-pathways_data = pd.DataFrame({
-    'pathway'    : [
-        'Cell division', 'DNA replication', 'DNA repair',
-        'Apoptosis', 'p53 signaling', 'Notch signaling',
-        'Wnt signaling', 'mTOR pathway', 'MAPK cascade', 'Cell migration',
-    ],
-    'neg_log10_p': np.random.uniform(2, 12, 10),
-    'gene_count' : np.random.randint(10, 120, 10),
-    'gene_ratio' : np.random.uniform(0.1, 0.6, 10),
-    'category'   : np.random.choice(
-        ['Cell cycle','DNA processes','Signaling','Cell motility'], 10),
-})
-pathways_data = pathways_data.sort_values('neg_log10_p', ascending=True)
-
-cat_colors = {'Cell cycle': BRAND, 'DNA processes': ACCENT_PURP,
-              'Signaling': ACCENT_YLW, 'Cell motility': RED}
-
-fig, ax = plt.subplots(figsize=(10, 5.5))
-for _, row in pathways_data.iterrows():
-    ax.scatter(row['gene_ratio'], row['pathway'],
-               s=row['gene_count'] * 3,
-               c=cat_colors[row['category']],
-               alpha=0.8, zorder=3)
-    ax.text(row['gene_ratio'] + 0.01, row['pathway'],
-            f"  p={10**(-row['neg_log10_p']):.1e}",
-            va='center', fontsize=7.5, color=GRAY_DARK)
-
-from matplotlib.lines import Line2D
-legend_elements = [Line2D([0],[0], marker='o', color='w', markersize=8,
-                           markerfacecolor=c, label=l, alpha=0.85)
-                   for l, c in cat_colors.items()]
-ax.legend(handles=legend_elements, title='Category', fontsize=8,
-          frameon=False, loc='lower right')
-ax.set_xlabel('Gene Ratio (genes hit / pathway size)', fontsize=11, labelpad=8)
-ax.set_title('Pathway Enrichment Bubble Plot', fontsize=13, fontweight='bold')
-ax.spines[['top','right']].set_visible(False)
-plt.tight_layout(); plt.show()
+fig, ax = plt.subplots(figsize=(6.2, 5.0))
+ax.barh(range(len(d)), d.nlp, color=d.direction.map(dir_pal), alpha=.9)  # colour each bar
+ax.set_yticks(range(len(d))); ax.set_yticklabels(d.pathway, fontsize=7.5)
+ax.set_xlabel("−log₁₀(adjusted p)")
+for s in ["top", "right"]: ax.spines[s].set_visible(False)
+plt.show()
 ```
 
-<!-- slide 135 -->
-## Bubble Plot — Result {.plot-slide background-color="#f6f4ee"}
 
-[Functional enrichment]{.eyebrow}
+<!-- slide 201 -->
+## Pathway Bars · Step 3 — Threshold & Finding {.smaller}
 
-### Pathways · gene ratio · counts
+[Pathway enrichment · build]{.eyebrow}
+
+### 3 · Mark significance, name the biology
+
+Add a dashed line at `p = 0.05` (everything right of it is significant), a legend, and a title that states the result. The split is clean: stress and signalling up, photosynthesis and growth down.
 
 ```{python}
-#| echo: false
-#| eval: true
-#| fig-width: 10
-#| fig-height: 5.5
+#| echo: true
+#| code-line-numbers: "11,14-16,17-18"
+#| output-location: column
+#| fig-width: 6.2
+#| fig-height: 5.0
+from genomics_course.data import load_enrichment
+from matplotlib.lines import Line2D                      # for the legend swatches
 
-np.random.seed(2026)
+en = load_enrichment()
+en["nlp"] = -np.log10(en.p_adj)
+d = en.sort_values("nlp")
+dir_pal = {"up": GREEN, "down": BLUE}
 
-pathways_data = pd.DataFrame({
-    'pathway'    : [
-        'Cell division', 'DNA replication', 'DNA repair',
-        'Apoptosis', 'p53 signaling', 'Notch signaling',
-        'Wnt signaling', 'mTOR pathway', 'MAPK cascade', 'Cell migration',
-    ],
-    'neg_log10_p': np.random.uniform(2, 12, 10),
-    'gene_count' : np.random.randint(10, 120, 10),
-    'gene_ratio' : np.random.uniform(0.1, 0.6, 10),
-    'category'   : np.random.choice(
-        ['Cell cycle','DNA processes','Signaling','Cell motility'], 10),
-})
-pathways_data = pathways_data.sort_values('neg_log10_p', ascending=True)
-
-cat_colors = {'Cell cycle': BRAND, 'DNA processes': ACCENT_PURP,
-              'Signaling': ACCENT_YLW, 'Cell motility': RED}
-
-fig, ax = plt.subplots(figsize=(10, 5.5))
-for _, row in pathways_data.iterrows():
-    ax.scatter(row['gene_ratio'], row['pathway'],
-               s=row['gene_count'] * 3,
-               c=cat_colors[row['category']],
-               alpha=0.8, zorder=3)
-    ax.text(row['gene_ratio'] + 0.01, row['pathway'],
-            f"  p={10**(-row['neg_log10_p']):.1e}",
-            va='center', fontsize=7.5, color=GRAY_DARK)
-
-from matplotlib.lines import Line2D
-legend_elements = [Line2D([0],[0], marker='o', color='w', markersize=8,
-                           markerfacecolor=c, label=l, alpha=0.85)
-                   for l, c in cat_colors.items()]
-ax.legend(handles=legend_elements, title='Category', fontsize=8,
-          frameon=False, loc='lower right')
-ax.set_xlabel('Gene Ratio (genes hit / pathway size)', fontsize=11, labelpad=8)
-ax.set_title('Pathway Enrichment Bubble Plot', fontsize=13, fontweight='bold')
-ax.spines[['top','right']].set_visible(False)
-plt.tight_layout(); plt.show()
+fig, ax = plt.subplots(figsize=(6.2, 5.0))
+ax.barh(range(len(d)), d.nlp, color=d.direction.map(dir_pal), alpha=.9)
+ax.axvline(-np.log10(0.05), color=RED, ls="--", lw=1.1)  # significance threshold
+ax.set_yticks(range(len(d))); ax.set_yticklabels(d.pathway, fontsize=7.5)
+ax.set_xlabel("−log₁₀(adjusted p)")
+for s in ["top", "right"]: ax.spines[s].set_visible(False)
+handles = [Line2D([0], [0], marker="s", color="w", markerfacecolor=c, label=k, ms=8)
+           for k, c in dir_pal.items()]                  # up / down key
+ax.legend(handles=handles, frameon=False, fontsize=8, loc="lower right")
+ax.set_title("DROUGHT INDUCES STRESS, REPRESSES PHOTOSYNTHESIS",
+             color="#333333", fontweight="bold", fontsize=9, loc="left")
+plt.show()
 ```
 
-<!-- slide 136 -->
-## Exercise: Pathway Visualization {.smaller .scrollable}
 
-[Functional enrichment]{.eyebrow}
+<!-- slide 202 -->
+## Pathway Bubbles · Step 1 — Add Two More Variables {.smaller}
 
-### Hands-on practice
+[Pathway enrichment · build]{.eyebrow}
+
+### 1 · Gene ratio on x, count as size
+
+A bar shows one number; a bubble shows three. Put `gene_ratio` on the x-axis and scale each marker by `gene_count`, so a big bubble far right is a pathway you hit broadly and deeply.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "5-7"
+#| output-location: column
+#| fig-width: 6.2
+#| fig-height: 5.0
+from genomics_course.data import load_enrichment
+
+en = load_enrichment()
+en["nlp"] = -np.log10(en.p_adj)
+top = en.nlargest(10, "nlp").sort_values("nlp")          # ten most significant
+
+fig, ax = plt.subplots(figsize=(6.2, 5.0))
+ax.scatter(top.gene_ratio, range(len(top)),              # x = ratio, y = pathway
+           s=top.gene_count * 6, color=GREY, alpha=.8)   # bubble size = gene count
+ax.set_yticks(range(len(top))); ax.set_yticklabels(top.pathway, fontsize=7.5)
+ax.set_xlabel("gene ratio (hits / pathway size)")
+for s in ["top", "right"]: ax.spines[s].set_visible(False)
+plt.show()
+```
+
+
+<!-- slide 203 -->
+## Pathway Bubbles · Step 2 — Colour by Category {.smaller}
+
+[Pathway enrichment · build]{.eyebrow}
+
+### 2 · A fourth variable: function
+
+Colour the bubbles by functional `category` and add a legend. Four dimensions, significance (rank), breadth (x), size (count), and function (colour), on one panel.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "5,9,13-15"
+#| output-location: column
+#| fig-width: 6.2
+#| fig-height: 5.0
+from genomics_course.data import load_enrichment
+from matplotlib.lines import Line2D
+
+en = load_enrichment()
+en["nlp"] = -np.log10(en.p_adj)
+top = en.nlargest(10, "nlp").sort_values("nlp")
+cat_pal = {"Stress": RED, "Signaling": AMBER, "Metabolism": PURPLE,   # colour per function
+           "Photosynthesis": GREEN, "Growth": BLUE}
+
+fig, ax = plt.subplots(figsize=(6.2, 5.0))
+ax.scatter(top.gene_ratio, range(len(top)), s=top.gene_count * 6,
+           c=top.category.map(cat_pal), alpha=.8, linewidths=0)   # colour by category
+ax.set_yticks(range(len(top))); ax.set_yticklabels(top.pathway, fontsize=7.5)
+ax.set_xlabel("gene ratio (hits / pathway size)")
+for s in ["top", "right"]: ax.spines[s].set_visible(False)
+handles = [Line2D([0], [0], marker="o", color="w", markerfacecolor=c, label=k, ms=8)
+           for k, c in cat_pal.items()]
+ax.legend(handles=handles, frameon=False, fontsize=7, title="category", loc="lower right")
+plt.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Enrichment turns a gene list into ranked biology: **`gget enrichr` to get the table → −log10(p) bars to rank → bubbles to add gene ratio, count, and function**. Read `p_adj`, not raw p, and always show how many genes drove each hit.
+:::
+
+
+<!-- slide 204 -->
+## Exercise · Read the Enrichment {.smaller}
+
+[Pathway enrichment · exercise]{.eyebrow}
+
+### Which pathways, and how confident?
 
 ::: {.exercise}
-**Coding Exercise — Pathway Visualization**
+[Real scenario]{.xl}
+A reviewer asks: of the drought-**induced** pathways, which clear significance, and which is supported by the most of your genes? Filter `load_enrichment()` and rank two ways.
 
-Visualize pathway enrichment for up- and down-regulated gene sets: a horizontal bar chart of the top 10 pathways per direction, and a bubble plot with gene ratio on the x-axis.
-
-::: {.sandbox}
 ```{python}
 #| echo: true
 #| eval: false
+from genomics_course.data import load_enrichment
 
-np.random.seed(2026)
+en = load_enrichment()                          # pathway, direction, p_adj, gene_count, ...
 
-# Simulate enrichment results for two gene sets (up- and down-regulated)
-pathways_up = pd.DataFrame({
-    'pathway'   : [f'Pathway_{i:02d}' for i in range(15)],
-    'p_adj'     : np.random.uniform(1e-10, 0.04, 15),
-    'gene_count': np.random.randint(5, 80, 15),
-    'gene_ratio': np.random.uniform(0.05, 0.5, 15),
-    'direction' : 'up',
-})
-
-pathways_down = pd.DataFrame({
-    'pathway'   : [f'Pathway_{i:02d}' for i in range(10, 25)],
-    'p_adj'     : np.random.uniform(1e-8, 0.04, 15),
-    'gene_count': np.random.randint(5, 80, 15),
-    'gene_ratio': np.random.uniform(0.05, 0.5, 15),
-    'direction' : 'down',
-})
-
-enrichment_results = pd.concat([pathways_up, pathways_down])
-
-# Your tasks:
-# 1. Create a horizontal bar chart for top 10 pathways from each direction
-# 2. Color bars by direction (up = green, down = red)
-# 3. Make a bubble plot with gene_ratio on x-axis, size = gene_count
-# 4. Add a significance threshold line
-
-# Bonus: Create a "back-to-back" bar chart showing up vs down simultaneously
+# 1. keep only direction == "up"
+# 2. significant?  en.p_adj < 0.05
+# 3. most significant:    sort by p_adj ascending, take top 3
+# 4. best-supported:      sort by gene_count descending, take top 3
+# 5. do the two top-3 lists agree? (low p and high gene_count aren't the same thing)
 ```
 :::
-
-<details>
-<summary>Show solution</summary>
-
-```{python}
-#| echo: false
-#| eval: true
-
-import numpy as np, pandas as pd
-import matplotlib.pyplot as plt
-
-np.random.seed(2026)
-
-pathways_up = pd.DataFrame({
-    'pathway'   : [f'Pathway_{i:02d}' for i in range(15)],
-    'p_adj'     : np.random.uniform(1e-10, 0.04, 15),
-    'gene_count': np.random.randint(5, 80, 15),
-    'gene_ratio': np.random.uniform(0.05, 0.5, 15),
-    'direction' : 'up',
-})
-pathways_down = pd.DataFrame({
-    'pathway'   : [f'Pathway_{i:02d}' for i in range(10, 25)],
-    'p_adj'     : np.random.uniform(1e-8, 0.04, 15),
-    'gene_count': np.random.randint(5, 80, 15),
-    'gene_ratio': np.random.uniform(0.05, 0.5, 15),
-    'direction' : 'down',
-})
-enrichment_results = pd.concat([pathways_up, pathways_down]).reset_index(drop=True)
-enrichment_results['neg_log10_p'] = -np.log10(enrichment_results['p_adj'])
-
-dir_pal = {'up': COLORS['primary'], 'down': COLORS['secondary']}
-threshold = -np.log10(0.05)
-
-# ── Panel A: horizontal bar chart ─────────────────────────────────────────────
-top_up   = (enrichment_results[enrichment_results.direction == 'up']
-            .nsmallest(10, 'p_adj').sort_values('neg_log10_p'))
-top_down = (enrichment_results[enrichment_results.direction == 'down']
-            .nsmallest(10, 'p_adj').sort_values('neg_log10_p'))
-
-fig, axes = plt.subplots(1, 2, figsize=(14, 6), facecolor="white")
-for ax in axes:
-    ax.set_facecolor("white")
-
-for ax, df_sub, direction in [(axes[0], top_up, 'up'), (axes[1], top_down, 'down')]:
-    color = dir_pal[direction]
-    ax.barh(range(len(df_sub)), df_sub['neg_log10_p'],
-            color=color, alpha=0.8, linewidth=0)
-    ax.axvline(threshold, color=COLORS['zero_line'], lw=1.2, ls='--',
-               label='p = 0.05')
-    ax.set_yticks(range(len(df_sub)))
-    ax.set_yticklabels(df_sub['pathway'], fontsize=9)
-    ax.set_xlabel('−log₁₀(adjusted p-value)', fontsize=10)
-    ax.set_title(f'TOP 10 — {direction.upper()}-REGULATED', fontweight='bold')
-    ax.legend(frameon=False, fontsize=8)
-
-fig.suptitle('PATHWAY ENRICHMENT — HORIZONTAL BAR CHART', fontweight='bold', fontsize=13)
-fig.text(0.01, -0.02,
-         'Top 10 pathways per direction. Dashed line = significance threshold (p = 0.05).',
-         fontsize=8.5, style='italic', color=COLORS['text_light'])
-plt.tight_layout()
-plt.show()
-
-# ── Panel B: bubble plot ───────────────────────────────────────────────────────
-all_top = pd.concat([top_up, top_down]).sort_values('neg_log10_p', ascending=True)
-
-fig2, ax2 = plt.subplots(figsize=(10, 7), facecolor="white")
-ax2.set_facecolor("white")
-
-for _, row in all_top.iterrows():
-    ax2.scatter(row['gene_ratio'], row['pathway'],
-                s=row['gene_count'] * 4,
-                c=dir_pal[row['direction']],
-                alpha=0.75, zorder=3, linewidths=0)
-
-ax2.axvline(0.1, color=COLORS['zero_line'], lw=1, ls='--',
-            label='gene ratio = 0.10')
-ax2.set_xlabel('Gene Ratio (genes hit / pathway size)', fontsize=11)
-ax2.set_title('PATHWAY ENRICHMENT BUBBLE PLOT', fontweight='bold', fontsize=13)
-
-from matplotlib.lines import Line2D
-legend_els = [Line2D([0],[0], marker='o', color='w', markersize=9,
-                     markerfacecolor=v, label=k, alpha=0.8)
-              for k, v in dir_pal.items()]
-for size in [10, 40, 80]:
-    legend_els.append(Line2D([0],[0], marker='o', color='w',
-                             markersize=np.sqrt(size*4),
-                             markerfacecolor=COLORS['text_light'],
-                             label=f'n={size}', alpha=0.7))
-ax2.legend(handles=legend_els, frameon=False, fontsize=8, ncol=2)
-ax2.text(0.01, -0.1,
-         'Bubble size ∝ gene count. Color = regulation direction.',
-         transform=ax2.transAxes, fontsize=8.5, style='italic',
-         color=COLORS['text_light'])
-plt.tight_layout()
-plt.show()
-```
-
-</details>
-:::
-

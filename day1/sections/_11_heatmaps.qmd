@@ -1,332 +1,259 @@
-<!-- slide 105 -->
+<!-- slide 168 -->
 # Heatmaps {.divider}
 
-[Expression heatmaps · Day 01]{.eyebrow}
+[Expression matrices · Day 01]{.eyebrow}
 
-<!-- slide 106 -->
-## Heatmap Fundamentals {.smaller}
 
-[Expression heatmaps]{.eyebrow}
+<!-- slide 169 -->
+## What a Heatmap Shows {.smaller}
+
+[Expression heatmaps · theory]{.eyebrow}
 
 ### Colour, clustering, annotation
 
-**What heatmaps show:** gene × sample expression matrices, correlation matrices, presence/absence patterns, epigenomic signals (ChIP-seq, ATAC-seq).
+A heatmap turns a matrix into a grid of coloured cells: gene × sample expression, a sample-by-sample correlation matrix, an epigenomic signal. Colour encodes the value, so the choice of map matters, **diverging** (e.g. `RdBu_r`, centred at 0) for z-scores that go both ways, sequential for one-directional quantities.
 
-**Key features:**
+Two moves make it readable. **Z-score each gene** so a quietly-expressed gene and a loud one are on the same scale (colour then means "high/low *for this gene*"). Then **cluster** rows and columns so similar genes and similar samples sit together, the dendrograms reorder the matrix until the structure appears. `seaborn.clustermap` does both with good defaults; `PyComplexHeatmap` adds rich annotation tracks.
 
-- Color encodes value (sequential or diverging palette)
-- Hierarchical clustering groups similar rows/columns
-- Dendrograms reveal sample relationships
-- Annotations add metadata (condition, batch, etc.)
 
-**Libraries:** `seaborn.clustermap` (quick, good defaults) ; `PyComplexHeatmap` (publication-quality with rich annotations).
-
-<!-- slide 107 -->
-## Heatmap Fundamentals — Result {.plot-slide background-color="#f6f4ee"}
+<!-- slide 170 -->
+## Heatmap · The Data {.smaller}
 
 [Expression heatmaps]{.eyebrow}
 
-### Clustered heatmap
+### A real expression matrix + its sample metadata
+
+`load_expression()` is a log2 matrix, genes down the rows, samples across the columns. `load_expression_meta()` is the matching per-sample table (condition, batch, QC), the annotation we'll layer on top.
 
 ```{python}
-#| echo: false
-#| fig-width: 6
+#| echo: true
+#| output-location: column
+from genomics_course.data import load_expression, load_expression_meta
+
+expr = load_expression()        # 40 genes × 24 samples
+meta = load_expression_meta()   # sample, condition, batch, qc
+expr.iloc[:3, :4]
+```
+
+
+<!-- slide 171 -->
+## Heatmap · Step 1 — Z-Score & Colour {.smaller}
+
+[Expression heatmaps · build]{.eyebrow}
+
+### 1 · Put every gene on one scale
+
+Z-score each gene (row), so colour means high or low *relative to that gene's own mean*. Drop it into `sns.heatmap` with a diverging map centred at 0. The blocks are faintly there, but the rows and columns are still in file order.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "5,8-10"
+#| output-location: column
+#| fig-width: 6.0
+#| fig-height: 5.0
+import seaborn as sns                                       # heatmap / clustermap library
+from genomics_course.data import load_expression
+
+expr = load_expression()                                    # genes × samples (log2)
+z = expr.sub(expr.mean(1), axis=0).div(expr.std(1), axis=0) # z-score each gene: mean 0, sd 1
+
+fig, ax = plt.subplots(figsize=(6.0, 5.0))                  # one panel
+sns.heatmap(z, cmap="RdBu_r", center=0, ax=ax,              # diverging map, white at z = 0
+            cbar_kws={"label": "z-score"},                  # colourbar legend
+            xticklabels=False, yticklabels=False)           # 40×24 labels would be unreadable
+ax.set_xlabel("samples"); ax.set_ylabel("genes")
+plt.show()
+```
+
+
+<!-- slide 172 -->
+## Heatmap · Step 2 — Cluster It {.smaller}
+
+[Expression heatmaps · build]{.eyebrow}
+
+### 2 · Let the structure sort itself
+
+Swap `heatmap` for `clustermap`. It hierarchically clusters rows and columns and reorders both, adding dendrograms. Similar genes pull together, similar samples pull together, and the two modules and two conditions snap into clean blocks.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "7-9"
+#| output-location: column
+#| fig-width: 6.0
 #| fig-height: 5.5
-
-np.random.seed(42)
-n_genes, n_samples = 30, 20
-
-# Two-group structure
-base  = np.random.normal(0, 1, (n_genes, n_samples))
-base[:15, :10] += 2.5   # up in group 1
-base[15:, 10:] += 2.5   # up in group 2
-
-df_heat = pd.DataFrame(
-    base,
-    index   = [f'Gene{i:03d}' for i in range(n_genes)],
-    columns = [f'S{i:02d}' for i in range(n_samples)],
-)
-
-cg = sns.clustermap(
-    df_heat, cmap='RdBu_r', center=0,
-    figsize=(6, 5.5), linewidths=0,
-    xticklabels=False, yticklabels=False,
-    cbar_kws={'label': 'z-score'},
-)
-cg.ax_heatmap.set_xlabel('Samples'); cg.ax_heatmap.set_ylabel('Genes')
-plt.show()
-```
-
-<!-- slide 108 -->
-## Heatmap / Clustermap — Pipeline {.smaller background-color="#f6f4ee"}
-
-[Expression heatmaps]{.eyebrow}
-
-### Pipeline
-
-```{python}
-#| echo: false
-pipeline_flowchart([
-    "Expression matrix",
-    "Filter low counts",
-    "Z-score per gene",
-    "Hierarchical clustering",
-    "Diverging colourmap",
-    "Side annotation tracks",
-])
-plt.show()
-```
-
-<!-- slide 109 -->
-## Seaborn Clustermap: Code {.smaller .scrollable}
-
-[Expression heatmaps]{.eyebrow}
-
-### Build it in three moves
-
-```{python}
-#| echo: true
-#| eval: false
-#| code-line-numbers: "1-9|11-18|20-32"
-
-# Step 1: Prepare expression matrix
 import seaborn as sns
-import pandas as pd
-import numpy as np
-from scipy.stats import zscore
+from genomics_course.data import load_expression
 
-np.random.seed(42)
-expr_matrix = pd.DataFrame(
-    np.random.normal(8, 2, (50, 24)),
-    index   = [f'Gene_{i:03d}' for i in range(50)],
-    columns = [f'S{i:02d}'     for i in range(24)],
-)
+expr = load_expression()                                    # genes × samples
+z = expr.sub(expr.mean(1), axis=0).div(expr.std(1), axis=0) # per-gene z-score
 
-# Step 2: Z-score normalize (per gene)
-expr_z = expr_matrix.apply(zscore, axis=1)
-
-# Sample annotation for color bar
-groups = pd.Series(
-    ['Control'] * 12 + ['Treatment'] * 12,
-    index=expr_matrix.columns
-)
-col_colors = groups.map({'Control': COLORS['primary'], 'Treatment': '#E8A838'})
-
-# Step 3: Build the clustermap
-cg = sns.clustermap(
-    expr_z,
-    cmap        = 'RdBu_r',
-    center      = 0,
-    col_colors  = col_colors,      # annotation bar on top
-    row_cluster = True,
-    col_cluster = True,
-    figsize     = (10, 8),
-    linewidths  = 0,
-    cbar_kws    = {'label': 'z-score', 'shrink': 0.5},
-)
-cg.fig.suptitle('Gene Expression Heatmap', y=1.02,
-                fontsize=14, fontweight='bold')
+cg = sns.clustermap(z, cmap="RdBu_r", center=0,             # cluster rows AND columns
+                    figsize=(6.0, 5.5), xticklabels=False, yticklabels=False,
+                    cbar_kws={"label": "z-score"})          # dendrograms added automatically
 plt.show()
 ```
 
-<!-- slide 110 -->
-## Seaborn Clustermap — Result {.plot-slide background-color="#f6f4ee"}
 
-[Expression heatmaps]{.eyebrow}
+<!-- slide 173 -->
+## Heatmap · Step 3 — Annotate the Samples {.smaller}
 
-### With group annotation
+[Expression heatmaps · build]{.eyebrow}
 
-```{python}
-#| echo: false
-#| eval: true
-#| fig-width: 8
-#| fig-height: 6
+### 3 · Bring in the metadata
 
-np.random.seed(42)
-expr_matrix = pd.DataFrame(
-    np.random.normal(8, 2, (50, 24)),
-    index   = [f'Gene_{i:03d}' for i in range(50)],
-    columns = [f'S{i:02d}'     for i in range(24)],
-)
-# inject group structure
-expr_matrix.iloc[:25, :12] += 1.5
-expr_matrix.iloc[25:, 12:] += 1.5
-# z-score per gene (row) without going through apply
-row_means = expr_matrix.mean(axis=1)
-row_sds   = expr_matrix.std(axis=1).replace(0, 1)
-expr_z    = (expr_matrix.subtract(row_means, axis=0)
-                        .div(row_sds, axis=0))
-
-groups = ['Control'] * 12 + ['Treatment'] * 12
-col_colors = [COLORS['primary'] if g == 'Control' else '#E8A838' for g in groups]
-
-cg = sns.clustermap(
-    expr_z, cmap='RdBu_r', center=0,
-    col_colors=col_colors,
-    row_cluster=True, col_cluster=True,
-    figsize=(8, 6), linewidths=0,
-    cbar_kws={'label': 'z-score', 'shrink': 0.5},
-    yticklabels=False,
-)
-cg.fig.suptitle('Gene Expression Heatmap', y=1.02,
-                fontsize=13, fontweight='bold')
-plt.show()
-```
-
-<!-- slide 111 -->
-## PyComplexHeatmap: Rich Annotations {.smaller .scrollable}
-
-[Expression heatmaps]{.eyebrow}
-
-### Annotated to publication-quality
+Map each sample's condition to a colour and pass it as `col_colors`. A strip appears above the columns, so you can check that the clusters actually recover the biology, not a batch artefact.
 
 ```{python}
 #| echo: true
-#| eval: false
-#| code-line-numbers: "1-4|6-15|17-30"
+#| code-line-numbers: "8-9,12"
+#| output-location: column
+#| fig-width: 6.0
+#| fig-height: 5.5
+import seaborn as sns
+from genomics_course.data import load_expression, load_expression_meta
 
-# pip install PyComplexHeatmap
-from PyComplexHeatmap import ClusterMapPlotter, anno_label, anno_barplot
+expr = load_expression()                                    # genes × samples
+meta = load_expression_meta()                               # sample, condition, batch, qc
+z = expr.sub(expr.mean(1), axis=0).div(expr.std(1), axis=0) # per-gene z-score
 
-# Step 1: Build annotation DataFrames
-sample_anno = pd.DataFrame({
-    'Condition' : ['Control'] * 12 + ['Treated'] * 12,
-    'Batch'     : list('AABBCCAABBCC') * 2,
-    'QC_score'  : np.random.uniform(0.85, 1.0, 24),
-}, index=expr_matrix.columns)
+cond_pal = {"Control": BLUE, "Drought": AMBER}              # one colour per condition
+col_colors = meta.set_index("sample")["condition"].map(cond_pal)  # colour for each sample column
 
-gene_anno = pd.DataFrame({
-    'Pathway' : np.random.choice(
-        ['Apoptosis','Cell cycle','Metabolism','Signaling'], 50),
-    'mean_exp': expr_matrix.mean(axis=1),
-}, index=expr_matrix.index)
-
-# Step 2: Plot with full annotation suite
-col_ha = HeatmapAnnotation(
-    Condition = anno_simple(sample_anno['Condition'],
-                            colors={'Control':COLORS['primary'],'Treated':'#E8A838'}),
-    Batch     = anno_simple(sample_anno['Batch']),
-    QC        = anno_barplot(sample_anno['QC_score'], height=15,
-                             colors=COLORS['primary']),
-)
-
-cm = ClusterMapPlotter(
-    data        = expr_z,
-    top_annotation = col_ha,
-    cmap        = 'RdBu_r',
-    row_cluster = True,
-    col_cluster = True,
-    label       = 'z-score',
-    figsize     = (12, 9),
-)
+cg = sns.clustermap(z, cmap="RdBu_r", center=0, figsize=(6.0, 5.5),
+                    col_colors=col_colors,                  # condition strip above the columns
+                    xticklabels=False, yticklabels=False, cbar_kws={"label": "z-score"})
+plt.show()
 ```
 
-::: {.footer style="font-size: 0.55em; color: #808080; white-space: nowrap;"}
-PyComplexHeatmap is a Python port of R's ComplexHeatmap — nearly identical API for R users.
+
+<!-- slide 174 -->
+## Heatmap · Step 4 — Polish & Title {.smaller}
+
+[Expression heatmaps · build]{.eyebrow}
+
+### 4 · Slim the trees, add a key, name the finding
+
+Thin the dendrograms, mute their colour, add a legend for the annotation strip, and title with the result. The figure now reads itself: two gene modules, cleanly split by condition.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "2,15-20"
+#| output-location: column
+#| fig-width: 6.0
+#| fig-height: 5.5
+import seaborn as sns
+from matplotlib.patches import Patch                        # to build the condition legend
+from genomics_course.data import load_expression, load_expression_meta
+
+expr = load_expression()                                    # genes × samples
+meta = load_expression_meta()                               # metadata
+z = expr.sub(expr.mean(1), axis=0).div(expr.std(1), axis=0) # per-gene z-score
+
+cond_pal = {"Control": BLUE, "Drought": AMBER}              # condition colours
+col_colors = meta.set_index("sample")["condition"].map(cond_pal)  # per-column colour
+
+cg = sns.clustermap(z, cmap="RdBu_r", center=0, figsize=(6.0, 5.5),
+                    col_colors=col_colors, xticklabels=False, yticklabels=False,
+                    cbar_kws={"label": "z-score"},
+                    dendrogram_ratio=(.12, .12),            # slimmer dendrograms
+                    tree_kws={"colors": MUTED, "linewidths": .6})  # muted tree lines
+handles = [Patch(color=c, label=k) for k, c in cond_pal.items()]   # legend swatches
+cg.ax_col_dendrogram.legend(handles=handles, ncol=2,        # put the key over the top dendrogram
+                            frameon=False, loc="center", fontsize=8)
+cg.fig.suptitle("Drought genes split into two modules",     # title states the finding
+                fontweight="bold", color=INK, y=1.02)
+plt.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+The recipe: **z-score each gene → cluster rows and columns → annotate the samples → title the finding**. Z-scoring makes genes comparable; clustering reorders the matrix until structure appears; the annotation strip proves the clusters are biology, not batch.
 :::
 
-<!-- slide 112 -->
-## Exercise: Expression Heatmap {.smaller .scrollable}
 
-[Expression heatmaps]{.eyebrow}
+<!-- slide 175 -->
+## Level Up · PyComplexHeatmap {.smaller .scrollable}
 
-### Hands-on practice
+[Expression heatmaps · advanced]{.eyebrow}
+
+### Several annotation tracks at once
+
+For publication figures with stacked tracks (categorical strips + numeric mini-barplots), `PyComplexHeatmap` mirrors R's ComplexHeatmap. One `HeatmapAnnotation` holds every track.
+
+```{python}
+#| echo: true
+#| eval: false
+# pip install PyComplexHeatmap
+from PyComplexHeatmap import HeatmapAnnotation, anno_simple, anno_barplot, ClusterMapPlotter
+from genomics_course.data import load_expression, load_expression_meta
+
+expr = load_expression()
+meta = load_expression_meta().set_index("sample")           # align metadata to matrix columns
+z = expr.sub(expr.mean(1), axis=0).div(expr.std(1), axis=0) # per-gene z-score
+
+col_ha = HeatmapAnnotation(                                 # one object, several stacked tracks
+    Condition=anno_simple(meta["condition"],                # categorical strip
+                          colors={"Control": BLUE, "Drought": AMBER}),
+    Batch=anno_simple(meta["batch"]),                       # second categorical strip
+    QC=anno_barplot(meta["qc"], colors=GREEN, height=12),   # numeric mini-barplot
+    axis=1, verbose=0)
+
+ClusterMapPlotter(data=z, top_annotation=col_ha, cmap="RdBu_r",  # clustered heatmap + tracks
+                  row_cluster=True, col_cluster=True, label="z-score",
+                  show_rownames=False, show_colnames=False)
+```
+
+
+<!-- slide 176 -->
+## Exercise · Sample QC {.smaller}
+
+[Expression heatmaps · exercise]{.eyebrow}
+
+### Did the replicates behave?
 
 ::: {.exercise}
-**Coding Exercise — Expression Heatmap**
+[Real scenario]{.xl}
+Before trusting any analysis, check that replicates agree and nothing is mislabelled. Build a **sample × sample correlation heatmap**, annotate it by condition, and read whether the two groups form clean blocks, or whether a sample sits in the wrong one (a possible swap).
 
-Z-score normalize a 3-condition RNA-seq matrix and produce a clustered heatmap with condition color annotations that reveals the underlying gene expression structure.
-
-::: {.sandbox}
 ```{python}
 #| echo: true
 #| eval: false
+import seaborn as sns
+from genomics_course.data import load_expression, load_expression_meta
 
-np.random.seed(2026)
-n_genes, n_samples = 60, 30
+expr = load_expression()
+meta = load_expression_meta()
 
-# Three conditions (10 samples each)
-conditions = ['Control', 'Drug_A', 'Drug_B']
-expr = np.random.normal(8, 1.5, (n_genes, n_samples))
-
-# Introduce condition-specific patterns
-expr[:20,  :10] += 3    # gene group 1 up in Control
-expr[20:40, 10:20] += 3 # gene group 2 up in Drug_A
-expr[40:,  20:]   += 3  # gene group 3 up in Drug_B
-
-expression = pd.DataFrame(
-    expr,
-    index   = [f'Gene_{i:03d}' for i in range(n_genes)],
-    columns = ([f'Ctrl_{i}'   for i in range(10)] +
-               [f'DrugA_{i}'  for i in range(10)] +
-               [f'DrugB_{i}'  for i in range(10)]),
-)
-
-# Your tasks:
-# 1. Z-score normalize the matrix
-# 2. Create a seaborn clustermap with condition color annotation
-# 3. Choose an appropriate diverging colormap
-# 4. Set meaningful title and colorbar label
-# 5. Identify how many gene clusters emerge
-
-# Bonus: Add gene pathway annotations with PyComplexHeatmap
+# 1. corr = expr.corr()                                    # sample × sample Pearson matrix
+# 2. col  = meta.set_index("sample")["condition"].map({"Control": BLUE, "Drought": AMBER})
+# 3. sns.clustermap(corr, cmap="rocket", row_colors=col, col_colors=col)
+# 4. read it: two clean blocks? any sample correlating with the wrong group?
 ```
 :::
 
-<details>
-<summary>Show solution</summary>
+
+<!-- slide 177 -->
+## Exercise · Top Variable Genes {.smaller}
+
+[Expression heatmaps · exercise]{.eyebrow}
+
+### You can't cluster 20,000 genes
+
+::: {.exercise}
+[Real scenario]{.xl}
+The standard first look at an RNA-seq matrix isn't every gene, it's the most *variable* ones, the genes carrying the signal. Select the top 20 by row variance and cluster just those.
 
 ```{python}
-#| echo: false
-#| eval: true
-
-import numpy as np, pandas as pd
-import matplotlib.pyplot as plt
+#| echo: true
+#| eval: false
 import seaborn as sns
-from scipy.stats import zscore
+from genomics_course.data import load_expression
 
-np.random.seed(42)
-n_genes, n_samples = 100, 30
-conditions = ['Control']*10 + ['Treated']*10 + ['Recovery']*10
-genes = [f'GENE_{i:03d}' for i in range(n_genes)]
+expr = load_expression()
+z = expr.sub(expr.mean(1), axis=0).div(expr.std(1), axis=0)
 
-X = np.random.randn(n_genes, n_samples)
-X[:20,  10:20] += 3   # cluster 1: up in Treated
-X[20:40, 20:] += 2    # cluster 2: up in Recovery
-X[40:60, :10] += 2    # cluster 3: up in Control
-expr = pd.DataFrame(X, index=genes,
-                    columns=[f'{c}_{i+1}' for c, n in
-                             zip(['Ctrl','Treat','Rec'], [10,10,10])
-                             for i in range(n)])
-
-Z = pd.DataFrame(zscore(expr, axis=1), index=expr.index, columns=expr.columns)
-
-cond_colors = {'Ctrl': COLORS['secondary'], 'Treat': COLORS['primary'], 'Rec': COLORS['quaternary']}
-col_colors  = [cond_colors[c.rsplit('_',1)[0]] for c in Z.columns]
-
-g = sns.clustermap(
-    Z, col_colors=col_colors,
-    cmap='RdBu_r', center=0, vmin=-3, vmax=3,
-    figsize=(12, 9), linewidths=0,
-    cbar_kws={'label': 'Z-score', 'shrink': 0.4},
-    dendrogram_ratio=(0.1, 0.15),
-    tree_kws={'linewidths': 0.5, 'colors': COLORS['text_light']},
-)
-g.fig.set_facecolor("white")
-g.ax_heatmap.set_xlabel('')
-g.ax_heatmap.set_ylabel('')
-g.ax_heatmap.tick_params(left=False, bottom=False)
-g.fig.suptitle('GENE EXPRESSION HEATMAP', fontweight='bold', y=1.01)
-
-from matplotlib.patches import Patch
-legend = [Patch(color=v, label=k) for k, v in
-          {'Control': COLORS['secondary'], 'Treated': COLORS['primary'],
-           'Recovery': COLORS['quaternary']}.items()]
-g.ax_col_dendrogram.legend(handles=legend, loc='center', ncol=3,
-                            frameon=False, fontsize=9)
-plt.show()
+# 1. top = z.var(axis=1).sort_values(ascending=False).head(20).index   # 20 most variable genes
+# 2. sns.clustermap(z.loc[top], cmap="RdBu_r", center=0, yticklabels=True)
+# 3. do the same two modules still separate the conditions with only 20 genes?
 ```
-
-</details>
 :::
-
