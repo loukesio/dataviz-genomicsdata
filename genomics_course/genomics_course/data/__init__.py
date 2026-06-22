@@ -78,7 +78,90 @@ def load_datasaurus(name=None):
         df = df[df["dataset"] == name].reset_index(drop=True)
     return df
 
+def load_qc():
+    """Per-sample sequencing QC: raw mapping rate vs callable rate after QC.
+    Columns: sample, raw, callable, loss (12 samples; two flagged droppers)."""
+    return _load("qc_callable.parquet")
+
+def load_tissue_expression():
+    """BRCA1 expression across tissues (tissue, tpm). Heart highest."""
+    return _load("tissue_expression.parquet")
+
+
+def load_assay_counts():
+    """Public datasets per assay type (assay, n_datasets)."""
+    return _load("assay_counts.parquet")
+
+
+def load_reads_per_sample():
+    """Reads per sample in millions (sample, reads)."""
+    return _load("reads_per_sample.parquet")
+
+def load_scatter_demo():
+    """Control vs Treatment scatter demo (log2fc, expression, group).
+    For the step-by-step 'Building a Plot' slides."""
+    return _load("scatter_demo.parquet")
+
+def load_wine():
+    """UCI Wine clustering dataset: 178 samples × 13 chemistry features.
+    No class labels — meant for unsupervised student exercises
+    (PCA, k-means / hierarchical clustering, feature scaling)."""
+    return _load("wine.parquet")
+
+def load_microbiome():
+    """Longitudinal gut microbiome phylum abundances (day, phase, taxon, abundance).
+    Tidy long form; each day sums to 1. Phases: baseline → antibiotic (days 5-7,
+    Proteobacteria bloom) → recovery. For composition-over-time stacked bars."""
+    return _load("microbiome_phyla.parquet")
+
+def load_expression():
+    """Drought RNA-seq log2 expression matrix (40 genes × 24 samples), genes as index."""
+    return _load("expression_matrix.parquet").set_index("gene")
+
+def load_expression_meta():
+    """Sample metadata for the drought expression matrix (sample, condition, batch, qc).
+    Use as annotation tracks alongside load_expression()."""
+    return _load("expression_meta.parquet")
+
+def load_pseudotime():
+    """Single-cell marker expression along pseudotime (cell, stage, expression); 8 ordered
+    stages, the gene switches from OFF to ON. For ridgeline distribution plots."""
+    return _load("pseudotime.parquet")
+
+def load_grape_snps():
+    """Synthetic Vitis SNP genotypes: 90 vines × 300 SNPs across 3 grape species
+    (vinifera, labrusca, riparia). Columns: sample, species, SNP_0000..SNP_0299
+    (0/1/2 minor-allele count). For PCA / t-SNE / UMAP student exercises —
+    PCA pulls the 3 species into clean clusters."""
+    return _load("grape_snps.parquet")
+
+def load_variant_classes():
+    """Clinical variant interpretation counts (classification, n)."""
+    return _load("variant_classes.parquet")
+
+def load_tmb_cohort():
+    """Tumour mutation burden cohort (patient, tmb, subtype, msi)."""
+    return _load("tmb_cohort.parquet")
+
+def load_peaks():
+    """Epigenomic signal tracks (position, H3K27ac, H3K4me3, ATAC) over 20 kb."""
+    return _load("peaks_signal.parquet")
+
+def load_peak_genes():
+    """Gene annotations for the peak window (name, start, end, strand)."""
+    return _load("peaks_genes.parquet")
+
+def load_enrichment():
+    """Pathway enrichment for the drought DE genes (pathway, direction, p_adj,
+    gene_count, gene_ratio, category)."""
+    return _load("enrichment.parquet")
 
 __all__ = ["load_admixture", "load_gwas", "load_deseq2", "load_variants",
            "load_lineages", "load_timecourse", "load_coexpression",
-           "load_anscombe", "load_datasaurus"]
+           "load_anscombe", "load_datasaurus", "load_qc",
+           "load_tissue_expression", "load_assay_counts", "load_reads_per_sample",
+           "load_scatter_demo", "load_wine", "load_microbiome",
+           "load_expression", "load_expression_meta", "load_pseudotime",
+           "load_grape_snps",
+           "load_variant_classes", "load_tmb_cohort",
+           "load_peaks", "load_peak_genes", "load_enrichment"]

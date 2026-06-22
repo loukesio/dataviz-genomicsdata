@@ -108,6 +108,7 @@ econ_spectrum = LinearSegmentedColormap.from_list(
 
 # ════════════════════════════════════════════════════════════════════════
 # 3) Matplotlib rcParams — IBM Plex Mono on the warm Economist canvas.
+#    Seaborn inherits these (it draws on matplotlib axes).
 # ════════════════════════════════════════════════════════════════════════
 
 mpl.rcParams.update({
@@ -118,6 +119,23 @@ mpl.rcParams.update({
     "axes.spines.top": False, "axes.spines.right": False,
     "font.size": 12,
 })
+
+# ════════════════════════════════════════════════════════════════════════
+# 3b) Plotly template — same identity for interactive figures.
+#     Registers an "econ" template and stacks it on plotly's "simple_white"
+#     so every plotly figure inherits the cream canvas + Economist colourway
+#     without per-figure styling.
+# ════════════════════════════════════════════════════════════════════════
+
+import plotly.graph_objects as go
+import plotly.io as pio
+
+pio.templates["econ"] = go.layout.Template(layout=dict(
+    paper_bgcolor=CREAM, plot_bgcolor=CREAM,
+    font=dict(family=_MONO, color=INK),
+    colorway=[GREEN, BLUE, AMBER, RED, PURPLE],
+))
+pio.templates.default = "simple_white+econ"
 
 # ════════════════════════════════════════════════════════════════════════
 # 4) Back-compat aliases — the existing section files still reference these
