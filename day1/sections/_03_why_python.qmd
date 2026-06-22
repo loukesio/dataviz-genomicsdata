@@ -213,10 +213,10 @@ matplotlib makes you loop and build the legend. seaborn and ggplot2 just declare
 
 ### Same scatter, three tools, three trade-offs
 
-matplotlib gives control, seaborn gives speed, plotly gives interactivity. Pick by the job, not by habit.
+matplotlib gives control, seaborn gives speed, plotly gives interactivity. Pick by the job, not by habit. Setup once, then plot three ways.
 
 ```{python}
-#| echo: false
+#| echo: true
 import seaborn as sns
 
 peng = sns.load_dataset("penguins").dropna(
