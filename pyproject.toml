@@ -37,7 +37,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["genomics_course"]
 
 [tool.setuptools.package-data]
 genomics_course = ["data/files/*.parquet"]
