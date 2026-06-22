@@ -1,0 +1,508 @@
+<!-- slide 14 -->
+# Time Series Plots {.divider}
+
+[Trajectories with uncertainty]{.eyebrow}
+
+
+<!-- slide 15 -->
+## What Is a Time Series Plot? {.smaller}
+
+[Time series · theory]{.eyebrow}
+
+### x is time, y is the measurement, lines show trends, bars or bands show uncertainty
+
+A **time series plot** answers two questions at once: *what is the trajectory*, and *how confident are we at each point*. The x-axis carries time (minutes, hours, days, weeks), the y-axis carries the measurement (expression, abundance, signal). One **line per entity** traces its trajectory — gene, sample, cell line, patient.
+
+The interesting question is always **how to show uncertainty** around each point:
+
+- **Error bars** (`ax.errorbar`): vertical whiskers ± SEM or 95% CI at every measured time. Best when you have **few points** (≤ 6 timepoints) — the eye can read each whisker.
+- **Ribbons** (`ax.fill_between`): a translucent band between mean ± SEM. Best when you have **many points** (a dense kinetic curve) — error bars would clutter; a ribbon shows the envelope at a glance.
+- **Small multiples**: one panel per entity, faint grey context behind each focal trajectory. Best when you have **many entities** and lines overlap.
+
+The rule is: pick the encoding that lets the audience *read direction + confidence* without effort.
+
+
+<!-- slide 16 -->
+## Time Series · The Data {.smaller}
+
+[Time series · data peek]{.eyebrow}
+
+### One row per (gene, timepoint) — tpm with its standard error
+
+`load_timecourse()` returns a tidy long-form table: 6 genes (BRCA1, TP53, EGFR, MYC, KRAS, PTEN) measured at 5 timepoints (0, 2, 6, 12, 24 hours), with the mean **tpm** and its standard error **sem**. Long-form is the format every plotting library expects.
+
+```{python}
+#| echo: true
+#| output-location: column
+
+tc = load_timecourse()           # gene, time, tpm, sem  (long-form, 6 genes x 5 timepoints)
+tc.head(6)
+```
+
+
+<!-- slide 17 -->
+## Time Series · The `.sem` Footgun {.smaller}
+
+[Time series · gotcha]{.eyebrow}
+
+### `DataFrame.sem` is a *method*. Always use bracket access for the column
+
+This dataset has a column literally called `sem` — the standard error of the mean. **But** pandas DataFrames already have a `.sem()` *method* (it computes the standard error). Dot access loses to the method every time and you get a confusing error. The fix is one character: brackets.
+
+:::: {.columns}
+::: {.column width="50%"}
+
+**The bug** — `tc.sem` returns the **method**, not the column:
+
+```python
+tc = load_timecourse()
+
+tc.sem                       # bound method, not data
+# <bound method ... DataFrame.sem of ...>
+
+tc.sem.values                # AttributeError!
+# AttributeError: 'function' object
+#  has no attribute 'values'
+```
+
+When you pass `yerr=tc.sem` to matplotlib you get a cryptic `TypeError` because matplotlib tried to use the method as an array.
+:::
+::: {.column width="50%"}
+
+**The fix** — always use bracket access:
+
+```python
+tc = load_timecourse()
+
+tc["sem"]                    # the actual column
+# 0    3.062
+# 1    1.901
+# ...
+
+tc["sem"].values             # plain numpy array
+# array([3.06, 1.90, 2.32, ...])
+```
+
+**Rule of thumb**: prefer `df["col"]` over `df.col` *always*. Brackets work for every legal name; dots silently break on `mean`, `sum`, `sem`, `count`, `index`, `T`, …
+:::
+::::
+
+
+<!-- slide 18 -->
+## Time Series · Step 1 — One Gene {.smaller}
+
+[Time series · build]{.eyebrow}
+
+### 1 · BRCA1 only, time vs tpm
+
+Build the **idea** on one gene. Filter the long table to BRCA1, draw time on x and tpm on y. A single `ax.plot` with markers tells the trajectory.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-5|7-8|10-15"}
+tc = load_timecourse()                              # the full long-form table
+brca1 = tc[tc["gene"] == "BRCA1"]                   # filter to one gene
+
+# sanity check: 5 rows, one per timepoint
+brca1 = brca1.sort_values("time")                   # ensure x is monotonic
+
+fig, ax = plt.subplots(figsize=(5.6, 4.2))          # CREATE the canvas
+ax.plot(brca1["time"], brca1["tpm"],                # CALL: x = time, y = tpm
+        marker="o", color=COURSE_PAL[0], lw=2,      # green-teal "story" line
+        markersize=6)
+
+ax.set_xlabel("time (hours)")
+ax.set_ylabel("tpm")
+ax.set_title("BRCA1 expression over 24h", color=INK)
+ax.spines[["top", "right"]].set_visible(False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 5.6
+#| fig-height: 4.2
+
+tc = load_timecourse()
+brca1 = tc[tc["gene"] == "BRCA1"].sort_values("time")
+
+fig, ax = plt.subplots(figsize=(5.6, 4.2))
+ax.plot(brca1["time"], brca1["tpm"],
+        marker="o", color=COURSE_PAL[0], lw=2,
+        markersize=6)
+
+ax.set_xlabel("time (hours)")
+ax.set_ylabel("tpm")
+ax.set_title("BRCA1 expression over 24h", color=INK)
+ax.spines[["top", "right"]].set_visible(False)
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 19 -->
+## Time Series · Step 2 — All Six Genes {.smaller}
+
+[Time series · build]{.eyebrow}
+
+### 2 · One line per gene, distinct on-palette colours
+
+Loop the six genes and draw one line per gene. The course palette covers five; for the sixth we use a neutral grey — a deliberate de-emphasis, the gene that doesn't compete for attention.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-5|7-8|10-17|19-22"}
+tc = load_timecourse()                                       # full long-form table
+genes = ["BRCA1", "TP53", "EGFR", "MYC", "KRAS", "PTEN"]     # fixed order
+
+# six colours: five course-palette + one neutral GREY for the last
+palette = COURSE_PAL + [GREY]                                 # length-6 colour list
+
+fig, ax = plt.subplots(figsize=(6.6, 4.4))                    # CREATE the canvas
+
+for gene, colour in zip(genes, palette):                      # one line per gene
+    g = tc[tc["gene"] == gene].sort_values("time")            # filter + order
+    ax.plot(g["time"], g["tpm"],                              # CALL: trajectory
+            marker="o", color=colour, lw=2,
+            markersize=5, label=gene)
+
+ax.set_xlabel("time (hours)")
+ax.set_ylabel("tpm")
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5),
+          frameon=False, fontsize=9)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6.6
+#| fig-height: 4.4
+
+tc = load_timecourse()
+genes = ["BRCA1", "TP53", "EGFR", "MYC", "KRAS", "PTEN"]
+palette = COURSE_PAL + [GREY]
+
+fig, ax = plt.subplots(figsize=(6.6, 4.4))
+
+for gene, colour in zip(genes, palette):
+    g = tc[tc["gene"] == gene].sort_values("time")
+    ax.plot(g["time"], g["tpm"],
+            marker="o", color=colour, lw=2,
+            markersize=5, label=gene)
+
+ax.set_xlabel("time (hours)")
+ax.set_ylabel("tpm")
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5),
+          frameon=False, fontsize=9)
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 20 -->
+## Time Series · Step 3 — Error Bars {.smaller}
+
+[Time series · build]{.eyebrow}
+
+### 3 · `ax.errorbar` adds vertical whiskers at every point
+
+Swap `ax.plot` for `ax.errorbar` and pass `yerr=g["sem"]`. The `capsize=3` gives the little horizontal caps that make whiskers readable. **Bracket access is mandatory** — `g.sem` is the method (slide 17).
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="10-16"}
+tc = load_timecourse()
+genes = ["BRCA1", "TP53", "EGFR", "MYC", "KRAS", "PTEN"]
+palette = COURSE_PAL + [GREY]
+
+fig, ax = plt.subplots(figsize=(6.6, 4.4))
+
+for gene, colour in zip(genes, palette):
+    g = tc[tc["gene"] == gene].sort_values("time")
+
+    # CALL: line + whiskers in one call. yerr=g["sem"], NOT g.sem
+    ax.errorbar(g["time"], g["tpm"],
+                yerr=g["sem"],                       # bracket access — sem is a column
+                marker="o", color=colour, lw=2,
+                markersize=5,
+                capsize=3,                            # caps make whiskers readable
+                label=gene)
+
+ax.set_xlabel("time (hours)")
+ax.set_ylabel("tpm  (mean ± SEM)")
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5),
+          frameon=False, fontsize=9)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6.6
+#| fig-height: 4.4
+
+tc = load_timecourse()
+genes = ["BRCA1", "TP53", "EGFR", "MYC", "KRAS", "PTEN"]
+palette = COURSE_PAL + [GREY]
+
+fig, ax = plt.subplots(figsize=(6.6, 4.4))
+
+for gene, colour in zip(genes, palette):
+    g = tc[tc["gene"] == gene].sort_values("time")
+    ax.errorbar(g["time"], g["tpm"],
+                yerr=g["sem"],
+                marker="o", color=colour, lw=2,
+                markersize=5,
+                capsize=3,
+                label=gene)
+
+ax.set_xlabel("time (hours)")
+ax.set_ylabel("tpm  (mean ± SEM)")
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5),
+          frameon=False, fontsize=9)
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 21 -->
+## Time Series · Step 4 — Ribbons {.smaller}
+
+[Time series · build]{.eyebrow}
+
+### 4 · `ax.fill_between` replaces whiskers with a translucent envelope
+
+When lines are dense, whiskers stack and clutter. Swap them for a **ribbon**: `ax.fill_between(time, tpm − sem, tpm + sem, alpha=0.25)`. The trajectory stays sharp; the uncertainty becomes a soft halo around it.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="10-14|16-19"}
+tc = load_timecourse()
+genes = ["BRCA1", "TP53", "EGFR", "MYC", "KRAS", "PTEN"]
+palette = COURSE_PAL + [GREY]
+
+fig, ax = plt.subplots(figsize=(6.6, 4.4))
+
+for gene, colour in zip(genes, palette):
+    g = tc[tc["gene"] == gene].sort_values("time")
+
+    # CALL 1: the trajectory line, sharp on top
+    ax.plot(g["time"], g["tpm"],
+            color=colour, lw=2, marker="o", markersize=5, label=gene)
+
+    # CALL 2: the uncertainty ribbon, translucent below
+    ax.fill_between(g["time"],
+                    g["tpm"] - g["sem"],             # lower edge of the band
+                    g["tpm"] + g["sem"],             # upper edge of the band
+                    color=colour, alpha=0.20,        # see-through halo
+                    linewidth=0)
+
+ax.set_xlabel("time (hours)")
+ax.set_ylabel("tpm  (mean ± SEM)")
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5),
+          frameon=False, fontsize=9)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6.6
+#| fig-height: 4.4
+
+tc = load_timecourse()
+genes = ["BRCA1", "TP53", "EGFR", "MYC", "KRAS", "PTEN"]
+palette = COURSE_PAL + [GREY]
+
+fig, ax = plt.subplots(figsize=(6.6, 4.4))
+
+for gene, colour in zip(genes, palette):
+    g = tc[tc["gene"] == gene].sort_values("time")
+    ax.plot(g["time"], g["tpm"],
+            color=colour, lw=2, marker="o", markersize=5, label=gene)
+    ax.fill_between(g["time"],
+                    g["tpm"] - g["sem"],
+                    g["tpm"] + g["sem"],
+                    color=colour, alpha=0.20,
+                    linewidth=0)
+
+ax.set_xlabel("time (hours)")
+ax.set_ylabel("tpm  (mean ± SEM)")
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5),
+          frameon=False, fontsize=9)
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 22 -->
+## Time Series · Step 5 — Small Multiples {.smaller}
+
+[Time series · build]{.eyebrow}
+
+### 5 · One panel per gene, faint grey context behind each focal trajectory
+
+The killer plot. A 2×3 grid, **one gene per panel** in its colour with its SEM ribbon, and *every other gene drawn faintly in grey behind it* so each panel has full context. `sharex=True, sharey=True` keeps the axes comparable across panels.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-9|11-18|20-25|27-31"}
+tc = load_timecourse()
+genes = ["BRCA1", "TP53", "EGFR", "MYC", "KRAS", "PTEN"]
+palette = COURSE_PAL + [GREY]
+
+# CREATE: 2 rows x 3 cols, shared axes for easy across-panel comparison
+fig, axes = plt.subplots(2, 3, figsize=(8.4, 4.8),
+                          sharex=True, sharey=True)
+axes = axes.flatten()                                          # 6 axes, easy indexing
+
+for ax, gene, colour in zip(axes, genes, palette):
+    # context: every other gene as a faint grey line behind
+    for other in genes:
+        if other == gene:                                       # skip the focal
+            continue
+        o = tc[tc["gene"] == other].sort_values("time")
+        ax.plot(o["time"], o["tpm"],
+                color=LINE, lw=1, alpha=0.6, zorder=1)         # de-emphasised context
+
+    # focal gene: full colour, ribbon, marker
+    g = tc[tc["gene"] == gene].sort_values("time")
+    ax.plot(g["time"], g["tpm"], color=colour, lw=2.2,
+            marker="o", markersize=4, zorder=3)                # on top of context
+    ax.fill_between(g["time"], g["tpm"] - g["sem"], g["tpm"] + g["sem"],
+                    color=colour, alpha=0.22, linewidth=0, zorder=2)
+
+    ax.set_title(gene, color=colour, fontsize=11, fontweight="bold")
+    ax.spines[["top", "right"]].set_visible(False)
+
+fig.supxlabel("time (hours)"); fig.supylabel("tpm")
+plt.tight_layout()
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8.4
+#| fig-height: 4.8
+
+tc = load_timecourse()
+genes = ["BRCA1", "TP53", "EGFR", "MYC", "KRAS", "PTEN"]
+palette = COURSE_PAL + [GREY]
+
+fig, axes = plt.subplots(2, 3, figsize=(8.4, 4.8),
+                          sharex=True, sharey=True)
+axes = axes.flatten()
+
+for ax, gene, colour in zip(axes, genes, palette):
+    for other in genes:
+        if other == gene:
+            continue
+        o = tc[tc["gene"] == other].sort_values("time")
+        ax.plot(o["time"], o["tpm"],
+                color=LINE, lw=1, alpha=0.6, zorder=1)
+
+    g = tc[tc["gene"] == gene].sort_values("time")
+    ax.plot(g["time"], g["tpm"], color=colour, lw=2.2,
+            marker="o", markersize=4, zorder=3)
+    ax.fill_between(g["time"], g["tpm"] - g["sem"], g["tpm"] + g["sem"],
+                    color=colour, alpha=0.22, linewidth=0, zorder=2)
+
+    ax.set_title(gene, color=colour, fontsize=11, fontweight="bold")
+    ax.spines[["top", "right"]].set_visible(False)
+
+fig.supxlabel("time (hours)"); fig.supylabel("tpm")
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 23 -->
+## Time Series · Seaborn Variant {.smaller}
+
+[Time series · ergonomic]{.eyebrow}
+
+### One `sns.lineplot` call replaces the loop
+
+Seaborn understands long-form data natively. Pass the whole `tc` table, name the columns, and use `hue="gene"` — seaborn does the per-gene split, the colour cycling, *and* the standard-error ribbon (`errorbar="se"`) in one call. The cost: less control over each line's styling.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-9|11-14"}
+tc = load_timecourse()
+
+# CALL: one line per `gene`, ribbon from `errorbar="se"`
+ax = sns.lineplot(
+    data=tc, x="time", y="tpm",
+    hue="gene",                                       # split by gene -> 6 colours
+    hue_order=["BRCA1","TP53","EGFR","MYC","KRAS","PTEN"],
+    palette=COURSE_PAL + [GREY],                      # the same 6-colour list
+    errorbar="se",                                    # ribbon = ± standard error
+    marker="o", linewidth=2)
+
+ax.set_xlabel("time (hours)"); ax.set_ylabel("tpm")
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5),
+          frameon=False, fontsize=9, title="")
+```
+
+**Trade-off**: seaborn collapses the loop and adds a ribbon for free — perfect for **exploration**. matplotlib's explicit loop wins when you need **bespoke styling per line** (one bold, the rest dimmed; mixed dashes; small-multiples). Use seaborn to *see*, matplotlib to *publish*.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6.6
+#| fig-height: 4.4
+
+tc = load_timecourse()
+
+fig, ax = plt.subplots(figsize=(6.6, 4.4))
+sns.lineplot(
+    data=tc, x="time", y="tpm",
+    hue="gene",
+    hue_order=["BRCA1","TP53","EGFR","MYC","KRAS","PTEN"],
+    palette=COURSE_PAL + [GREY],
+    errorbar="se",
+    marker="o", linewidth=2,
+    ax=ax)
+
+ax.set_xlabel("time (hours)"); ax.set_ylabel("tpm")
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5),
+          frameon=False, fontsize=9, title="")
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 24 -->
+## Time Series · Takeaway {.smaller}
+
+[Time series · recap]{.eyebrow}
+
+### Trajectory plus uncertainty, scaled to your data
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **Lines tell direction**, error bars or ribbons tell **confidence**.
+2. **Error bars for few points** (≤ 6 timepoints); **ribbons for many**.
+3. **Small multiples** isolate each story when lines overlap — keep faint grey context behind each panel.
+4. **Always use bracket access** for `df["sem"]` — the dot-attribute collides with `DataFrame.sem()` and silently breaks.
+
+Direction + confidence + isolation: the three knobs of every time-series figure. Pick the one your audience needs most for *this* plot.
+:::

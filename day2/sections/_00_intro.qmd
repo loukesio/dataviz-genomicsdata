@@ -1,0 +1,63 @@
+<!-- slide 1 -->
+# Welcome to Day 2 {.divider}
+
+[Genome-scale charts · Day 02]{.eyebrow}
+
+
+<!-- slide 2 -->
+## What We'll Build Today {.smaller}
+
+[Outline · Day 02]{.eyebrow}
+
+### From single genes to whole genomes
+
+Yesterday we plotted single experiments and single contrasts. Today we *zoom out*: the unit of analysis is no longer one gene or one sample, it is **the genome itself**. Each chart in this deck answers a question that only makes sense at that scale.
+
+:::: {.columns}
+::: {.column width="50%"}
+- **Stacked bars** — composition of mixtures (admixture, microbiome)
+- **Time series** — trajectories with uncertainty
+- **MSA** — letters that line up across sequences
+- **Manhattan** — significance across the whole genome
+:::
+::: {.column width="50%"}
+- **Genome stats** — coverage, peaks, gene models
+- **pyCirclize** — circular genome plots
+- **Synteny** — comparing genomes side-by-side
+
+::: {.takeaway}
+[Today's promise]{.tl}
+Every chart starts from a tidy `pandas` DataFrame and grows **one annotated line at a time**. Read the comments — they're the lesson.
+:::
+:::
+::::
+
+
+<!-- slide 3 -->
+## The Setup Cell {.smaller}
+
+[Logistics · Day 02]{.eyebrow}
+
+### One install, then everything works
+
+`genomics_course` ships every loader, the Economist theme, and the matplotlib `rcParams`. Run this once per Colab/Jupyter session, then every later cell just imports.
+
+```bash
+pip install -q "git+https://github.com/loukesio/dataviz-genomicsdata.git@Python_2026"
+```
+
+```{.python code-line-numbers="1-3|5-9|11-13"}
+# the theme registers IBM Plex Mono, defines the Economist palette
+# (GREEN, BLUE, AMBER, RED, PURPLE + neutrals), and applies the
+# cream-canvas matplotlib rcParams. One import, deck-wide consistency.
+from genomics_course.theme import *
+
+from genomics_course.data import (
+    load_gwas, load_admixture, load_qc,
+    load_peaks, load_peak_genes, load_timecourse,
+)                                                # the loaders we'll use today
+
+import numpy as np, pandas as pd
+import matplotlib.pyplot as plt, seaborn as sns
+import matplotlib.patches as mpatches            # for synteny ribbons later
+```

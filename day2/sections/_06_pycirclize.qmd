@@ -1,0 +1,508 @@
+<!-- slide 45 -->
+# Circular Genome Plots {.divider}
+
+[pyCirclize · Circos-style]{.eyebrow}
+
+
+<!-- slide 46 -->
+## Why Circular? {.smaller}
+
+[pyCirclize · theory]{.eyebrow}
+
+### When the x-axis bends back on itself
+
+Most genome views are linear: position on the x-axis, value on the y. That works for one chromosome at a time, and Manhattan plots cheat by laying 22 of them end-to-end. But the moment the *relationships between* chromosomes are the story — a translocation that moves a block from chr3 to chr14, a regulator on chr1 that drives expression on chr19, a Hi-C contact map — a line breaks.
+
+Bend the axis into a circle and three things change:
+
+- Every chromosome becomes the **same visual length** to the eye, regardless of bp.
+- You can draw a **chord** between any two points without crossing the figure.
+- You can stack many **concentric tracks** (expression, methylation, density) without a vertical spaghetti of axes.
+
+The trade-off: less detail *within* each chromosome (it's a curved sliver), more visibility *across* them. Reach for circular when the answer is in the connections, not the local peaks.
+
+
+<!-- slide 47 -->
+## Anatomy of a Circos Figure {.smaller}
+
+[pyCirclize · theory]{.eyebrow}
+
+### Sectors, tracks, links — the three primitives
+
+:::: {.columns}
+::: {.column width="46%"}
+A circular plot has three building blocks:
+
+- **Sectors** — wedges of the ring, one per chromosome (or contig, or sample). The gap between them is a visual breath.
+- **Tracks** — concentric bands at radii `(inner_r, outer_r)`. Each track holds one data layer: scatter, line, bar, heatmap.
+- **Links** — chords drawn through the centre, joining two genomic intervals on possibly different sectors.
+
+Build a Circos by declaring the sectors first (`{name: length}`), then adding tracks to each sector and links between them.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6
+#| fig-height: 6
+
+# CREATE — pure-matplotlib cartoon, no pyCirclize, so the labels stay legible
+fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(aspect="equal"))    # CREATE
+
+# draw four sectors as wedges separated by small gaps
+sector_specs = [(0, 80, "chr1", BLUE), (95, 175, "chr2", GREEN),
+                (190, 270, "chr3", AMBER), (285, 355, "chr4", PURPLE)]
+for theta1, theta2, name, colour in sector_specs:
+    # outer track band (90->100) — the "axis" ring                       # CALL
+    ax.add_patch(mpatches.Wedge((0, 0), 1.00, theta1, theta2, width=0.10,
+                                facecolor=colour, edgecolor=INK, lw=0.5, alpha=0.9))
+    # inner data track band (70->88)
+    ax.add_patch(mpatches.Wedge((0, 0), 0.88, theta1, theta2, width=0.18,
+                                facecolor=CREAM, edgecolor=LINE, lw=0.5))
+    # sector label, placed just outside the outer ring
+    mid = np.deg2rad((theta1 + theta2) / 2)
+    ax.text(1.12 * np.cos(mid), 1.12 * np.sin(mid), name,
+            ha="center", va="center", fontsize=11, color=INK, fontweight="bold")
+
+# a single chord (link) — quadratic Bezier through the origin
+from matplotlib.patches import FancyArrowPatch
+ax.add_patch(FancyArrowPatch((0.70 * np.cos(np.deg2rad(40)),  0.70 * np.sin(np.deg2rad(40))),
+                             (0.70 * np.cos(np.deg2rad(220)), 0.70 * np.sin(np.deg2rad(220))),
+                             connectionstyle="arc3,rad=0.25",
+                             arrowstyle="-", color=RED, lw=1.4, alpha=0.7))
+
+# annotation arrows / labels                                              # CALL
+ax.annotate("sector",          xy=(0.98, 0.55), xytext=(1.45, 0.95),
+            arrowprops=dict(arrowstyle="-", color=MUTED, lw=0.6), fontsize=10, color=MUTED)
+ax.annotate("track\n(inner_r, outer_r)", xy=(0.78, -0.40), xytext=(1.30, -0.85),
+            arrowprops=dict(arrowstyle="-", color=MUTED, lw=0.6), fontsize=10, color=MUTED)
+ax.annotate("link (chord)",    xy=(0.10, 0.05), xytext=(0.55, -1.35),
+            arrowprops=dict(arrowstyle="-", color=RED,   lw=0.6), fontsize=10, color=RED)
+ax.annotate("gap",             xy=(0.95 * np.cos(np.deg2rad(87)),  0.95 * np.sin(np.deg2rad(87))),
+            xytext=(-0.10, 1.55),
+            arrowprops=dict(arrowstyle="-", color=MUTED, lw=0.6), fontsize=10, color=MUTED)
+
+ax.set_xlim(-1.7, 1.7); ax.set_ylim(-1.7, 1.7)
+ax.axis("off")
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 48 -->
+## Circos · The Data {.smaller}
+
+[pyCirclize · data peek]{.eyebrow}
+
+### Same GWAS table, this time on a ring
+
+`load_gwas("height")` is the table we already met for the Manhattan: one row per SNP, four columns. To draw it circular, we need one extra dictionary — the **length of each chromosome** — which is just `max(pos)` per `chrom`. That dictionary defines the sectors.
+
+```{python}
+#| echo: true
+#| output-location: column
+
+gwas = load_gwas("height")                # chrom, pos, pval, snp
+gwas.head(5)
+```
+
+```{python}
+#| echo: true
+#| output-location: column
+
+# per-chromosome length = max position on that chromosome
+chrom_len = gwas.groupby("chrom")["pos"].max().to_dict()
+{k: chrom_len[k] for k in list(chrom_len)[:4]}     # peek at first four
+```
+
+
+<!-- slide 49 -->
+## Circos · Step 1 — Just the Sectors {.smaller}
+
+[pyCirclize · build]{.eyebrow}
+
+### 1 · The empty ring
+
+Before any data, build the layout. The `sectors` dict maps chromosome name to length in bp; pyCirclize converts that into proportionally-sized wedges. We give each sector a label and draw — at this point the figure is a labelled empty ring, the canvas every other layer will rest on.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-4|6-8|10-14"}
+from pycirclize import Circos                     # the main class
+
+gwas = load_gwas("height")                        # same table as Manhattan
+chrom_len = gwas.groupby("chrom")["pos"].max().to_dict()
+
+# sectors: {name: length_in_bp} — order = clockwise order on the ring
+sectors = {f"chr{c}": chrom_len[c] for c in sorted(chrom_len)}
+
+circos = Circos(sectors, space=2)                 # CREATE: 2deg gap between sectors
+
+for sector in circos.sectors:
+    name = sector.name                                 # pyCirclize: list of Sector(name=...)       # one label per chromosome
+    sector.text(name, r=108, size=8, color=INK)   # r = radius (axis is 0-100)
+
+fig = circos.plotfig(figsize=(6.5, 6.5))          # CALL: returns matplotlib Figure
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6.5
+#| fig-height: 6.5
+
+try:
+    from pycirclize import Circos
+except ImportError as e:
+    raise ImportError(
+        "pyCirclize is required for this slide. Install with: pip install pycirclize"
+    ) from e
+
+gwas = load_gwas("height")
+chrom_len = gwas.groupby("chrom")["pos"].max().to_dict()
+sectors = {f"chr{c}": chrom_len[c] for c in sorted(chrom_len)}
+
+circos = Circos(sectors, space=2)
+for sector in circos.sectors:
+    name = sector.name                                 # pyCirclize: list of Sector(name=...)
+    sector.text(name, r=108, size=8, color=INK)
+
+fig = circos.plotfig(figsize=(6.5, 6.5))
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 50 -->
+## Circos · Step 2 — Axis & Ticks {.smaller}
+
+[pyCirclize · build]{.eyebrow}
+
+### 2 · Give each sector a measuring stick
+
+A ring with no marks is pretty but useless — we can't read positions. `sector.axis()` paints the outer boundary; `sector.xticks_by_interval(...)` drops tick marks at fixed bp intervals so the eye has anchors.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="10-15"}
+from pycirclize import Circos
+
+gwas = load_gwas("height")
+chrom_len = gwas.groupby("chrom")["pos"].max().to_dict()
+sectors = {f"chr{c}": chrom_len[c] for c in sorted(chrom_len)}
+
+circos = Circos(sectors, space=2)                          # CREATE
+
+for sector in circos.sectors:
+    name = sector.name                                 # pyCirclize: list of Sector(name=...)
+    sector.text(name, r=108, size=8, color=INK)
+    # outer axis ring with line styling
+    sector.axis(fc=CREAM, ec=INK, lw=0.6)
+    # ticks live on a Track, not on the Sector itself — make a thin rim track at
+    # the outer edge so the labels orbit the ring without overlapping data.
+    rim = sector.add_track((96, 100))
+    rim.xticks_by_interval(100_000_000,                                  # every 100 Mb
+                           label_size=6, label_orientation="vertical",
+                           label_formatter=lambda v: f"{v/1e6:.0f}M")    # bp -> Mb
+
+fig = circos.plotfig(figsize=(6.5, 6.5))                   # CALL
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6.5
+#| fig-height: 6.5
+
+from pycirclize import Circos
+
+gwas = load_gwas("height")
+chrom_len = gwas.groupby("chrom")["pos"].max().to_dict()
+sectors = {f"chr{c}": chrom_len[c] for c in sorted(chrom_len)}
+
+circos = Circos(sectors, space=2)
+for sector in circos.sectors:
+    name = sector.name                                 # pyCirclize: list of Sector(name=...)
+    sector.text(name, r=108, size=8, color=INK)
+    sector.axis(fc=CREAM, ec=INK, lw=0.6)
+    rim = sector.add_track((96, 100))
+    rim.xticks_by_interval(100_000_000,
+                           label_size=6, label_orientation="vertical",
+                           label_formatter=lambda v: f"{v/1e6:.0f}M")
+
+fig = circos.plotfig(figsize=(6.5, 6.5))
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 51 -->
+## Circos · Step 3 — Manhattan-on-a-Ring {.smaller}
+
+[pyCirclize · build]{.eyebrow}
+
+### 3 · Skyscrapers, pointing outward
+
+Add a scatter **track** at radii `(60, 90)` — a band between 60% and 90% of the ring. For each sector, pull just that chromosome's SNPs out of the GWAS frame and scatter `pos` against `-log10(p)`. Significance now points *outward*: the higher the dot, the closer to the sky.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="11-21"}
+from pycirclize import Circos
+
+gwas = load_gwas("height").copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])               # significance axis
+chrom_len = gwas.groupby("chrom")["pos"].max().to_dict()
+sectors = {f"chr{c}": chrom_len[c] for c in sorted(chrom_len)}
+
+circos = Circos(sectors, space=2)                       # CREATE
+
+for sector in circos.sectors:
+    name = sector.name                                 # pyCirclize: list of Sector(name=...)
+    sector.text(name, r=108, size=8, color=INK)
+    sector.axis(fc=CREAM, ec=INK, lw=0.6)
+
+    # add a track at radii 60-90 (the band the SNP cloud lives in)
+    track = sector.add_track((60, 90))
+    # subset the dataframe to this chromosome only
+    chrom_num = int(name.replace("chr", ""))
+    df = gwas[gwas["chrom"] == chrom_num]
+    # CALL: scatter SNP position vs -log10(p) inside the track
+    track.scatter(df["pos"].to_numpy(), df["nlog10p"].to_numpy(),
+                  s=1.5, color=GREY, alpha=0.6)
+
+fig = circos.plotfig(figsize=(7, 7))                    # CALL
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 7
+
+from pycirclize import Circos
+
+gwas = load_gwas("height").copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])
+chrom_len = gwas.groupby("chrom")["pos"].max().to_dict()
+sectors = {f"chr{c}": chrom_len[c] for c in sorted(chrom_len)}
+
+circos = Circos(sectors, space=2)
+for sector in circos.sectors:
+    name = sector.name                                 # pyCirclize: list of Sector(name=...)
+    sector.text(name, r=108, size=8, color=INK)
+    sector.axis(fc=CREAM, ec=INK, lw=0.6)
+    track = sector.add_track((60, 90))
+    chrom_num = int(name.replace("chr", ""))
+    df = gwas[gwas["chrom"] == chrom_num]
+    track.scatter(df["pos"].to_numpy(), df["nlog10p"].to_numpy(),
+                  s=1.5, color=GREY, alpha=0.6)
+
+fig = circos.plotfig(figsize=(7, 7))
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 52 -->
+## Circos · Step 4 — Hits & Threshold Ring {.smaller}
+
+[pyCirclize · build]{.eyebrow}
+
+### 4 · Colour what crossed the line
+
+The same logic as the linear Manhattan: a dashed ring at `-log10(5e-8)`, and the SNPs above it re-drawn in red on top of the grey cloud. The threshold becomes a circle; significance becomes everything that pokes through it.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="17-25"}
+from pycirclize import Circos
+
+gwas = load_gwas("height").copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])
+chrom_len = gwas.groupby("chrom")["pos"].max().to_dict()
+sectors = {f"chr{c}": chrom_len[c] for c in sorted(chrom_len)}
+gw_thresh = -np.log10(5e-8)                          # genome-wide significance
+
+circos = Circos(sectors, space=2)                    # CREATE
+
+for sector in circos.sectors:
+    name = sector.name                                 # pyCirclize: list of Sector(name=...)
+    sector.text(name, r=108, size=8, color=INK)
+    sector.axis(fc=CREAM, ec=INK, lw=0.6)
+
+    track = sector.add_track((60, 90))
+    chrom_num = int(name.replace("chr", ""))
+    df = gwas[gwas["chrom"] == chrom_num]
+    # background cloud — grey
+    track.scatter(df["pos"].to_numpy(), df["nlog10p"].to_numpy(),
+                  s=1.5, color=GREY, alpha=0.6)
+    # hits — significant SNPs re-drawn red, larger
+    hits = df[df["pval"] < 5e-8]
+    if not hits.empty:                                       # most chroms have no hits
+        track.scatter(hits["pos"].to_numpy(), hits["nlog10p"].to_numpy(),
+                      s=10, color=RED, alpha=0.95)
+    # dashed threshold ring at y = -log10(5e-8)
+    track.line([0, chrom_len[chrom_num]], [gw_thresh, gw_thresh],
+               color=RED, lw=0.6, ls="--")
+
+fig = circos.plotfig(figsize=(7, 7))                 # CALL
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 7
+
+from pycirclize import Circos
+
+gwas = load_gwas("height").copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])
+chrom_len = gwas.groupby("chrom")["pos"].max().to_dict()
+sectors = {f"chr{c}": chrom_len[c] for c in sorted(chrom_len)}
+gw_thresh = -np.log10(5e-8)
+
+circos = Circos(sectors, space=2)
+for sector in circos.sectors:
+    name = sector.name                                 # pyCirclize: list of Sector(name=...)
+    sector.text(name, r=108, size=8, color=INK)
+    sector.axis(fc=CREAM, ec=INK, lw=0.6)
+    track = sector.add_track((60, 90))
+    chrom_num = int(name.replace("chr", ""))
+    df = gwas[gwas["chrom"] == chrom_num]
+    track.scatter(df["pos"].to_numpy(), df["nlog10p"].to_numpy(),
+                  s=1.5, color=GREY, alpha=0.6)
+    hits = df[df["pval"] < 5e-8]
+    if not hits.empty:                                       # most chroms have no hits
+        track.scatter(hits["pos"].to_numpy(), hits["nlog10p"].to_numpy(),
+                      s=10, color=RED, alpha=0.95)
+    track.line([0, chrom_len[chrom_num]], [gw_thresh, gw_thresh],
+               color=RED, lw=0.6, ls="--")
+
+fig = circos.plotfig(figsize=(7, 7))
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 53 -->
+## Circos · Step 5 — Chord Links {.smaller}
+
+[pyCirclize · build]{.eyebrow}
+
+### 5 · Connect the hits across chromosomes
+
+The headline feature of any Circos plot: **chords**. `circos.link((sector_a, start, end), (sector_b, start, end))` draws a quadratic Bezier through the centre joining two intervals. We use it here to connect the top-5 most significant SNPs to each other — real publications use the same primitive for translocations, synteny blocks, or cis-/trans-regulatory pairs.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="28-37"}
+from pycirclize import Circos
+
+gwas = load_gwas("height").copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])
+chrom_len = gwas.groupby("chrom")["pos"].max().to_dict()
+sectors = {f"chr{c}": chrom_len[c] for c in sorted(chrom_len)}
+gw_thresh = -np.log10(5e-8)
+
+circos = Circos(sectors, space=2)                              # CREATE
+
+for sector in circos.sectors:
+    name = sector.name                                 # pyCirclize: list of Sector(name=...)
+    sector.text(name, r=108, size=8, color=INK)
+    sector.axis(fc=CREAM, ec=INK, lw=0.6)
+    track = sector.add_track((60, 90))
+    chrom_num = int(name.replace("chr", ""))
+    df = gwas[gwas["chrom"] == chrom_num]
+    track.scatter(df["pos"].to_numpy(), df["nlog10p"].to_numpy(),
+                  s=1.5, color=GREY, alpha=0.6)
+    hits = df[df["pval"] < 5e-8]
+    if not hits.empty:                                       # most chroms have no hits
+        track.scatter(hits["pos"].to_numpy(), hits["nlog10p"].to_numpy(),
+                      s=10, color=RED, alpha=0.95)
+    track.line([0, chrom_len[chrom_num]], [gw_thresh, gw_thresh],
+               color=RED, lw=0.6, ls="--")
+
+# pick the top-5 strongest hits across the whole genome
+top5 = gwas.nsmallest(5, "pval").reset_index(drop=True)
+
+# draw a chord between consecutive pairs (1-2, 2-3, 3-4, 4-5)
+for i in range(len(top5) - 1):
+    a, b = top5.iloc[i], top5.iloc[i + 1]
+    if a["chrom"] == b["chrom"]:                               # skip intra-chrom
+        continue
+    # link: two (sector, start, end) tuples; +-1bp gives a thin chord
+    circos.link((f"chr{a['chrom']}", int(a['pos']) - 1, int(a['pos']) + 1),
+                (f"chr{b['chrom']}", int(b['pos']) - 1, int(b['pos']) + 1),
+                color=PURPLE, alpha=0.55)
+
+fig = circos.plotfig(figsize=(7, 7))                           # CALL
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 7
+
+from pycirclize import Circos
+
+gwas = load_gwas("height").copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])
+chrom_len = gwas.groupby("chrom")["pos"].max().to_dict()
+sectors = {f"chr{c}": chrom_len[c] for c in sorted(chrom_len)}
+gw_thresh = -np.log10(5e-8)
+
+circos = Circos(sectors, space=2)
+for sector in circos.sectors:
+    name = sector.name                                 # pyCirclize: list of Sector(name=...)
+    sector.text(name, r=108, size=8, color=INK)
+    sector.axis(fc=CREAM, ec=INK, lw=0.6)
+    track = sector.add_track((60, 90))
+    chrom_num = int(name.replace("chr", ""))
+    df = gwas[gwas["chrom"] == chrom_num]
+    track.scatter(df["pos"].to_numpy(), df["nlog10p"].to_numpy(),
+                  s=1.5, color=GREY, alpha=0.6)
+    hits = df[df["pval"] < 5e-8]
+    if not hits.empty:                                       # most chroms have no hits
+        track.scatter(hits["pos"].to_numpy(), hits["nlog10p"].to_numpy(),
+                      s=10, color=RED, alpha=0.95)
+    track.line([0, chrom_len[chrom_num]], [gw_thresh, gw_thresh],
+               color=RED, lw=0.6, ls="--")
+
+top5 = gwas.nsmallest(5, "pval").reset_index(drop=True)
+for i in range(len(top5) - 1):
+    a, b = top5.iloc[i], top5.iloc[i + 1]
+    if a["chrom"] == b["chrom"]:
+        continue
+    circos.link((f"chr{a['chrom']}", int(a['pos']) - 1, int(a['pos']) + 1),
+                (f"chr{b['chrom']}", int(b['pos']) - 1, int(b['pos']) + 1),
+                color=PURPLE, alpha=0.55)
+
+fig = circos.plotfig(figsize=(7, 7))
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 54 -->
+## Circos · Takeaway {.smaller}
+
+[pyCirclize · recap]{.eyebrow}
+
+### Three primitives, any biology
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **Sectors** — `{name: length}` defines the ring; one wedge per chromosome.
+2. **Tracks** — `sector.add_track((inner_r, outer_r))` is a concentric data band; stack as many as the eye can read.
+3. **Links** — `circos.link(...)` is a chord between two intervals; the answer to "which moved with which".
+:::
+
+Circular plots trade per-chromosome zoom for cross-chromosome reach. Use them when the story is **relationships, not values** — translocations, synteny, Hi-C contacts, regulator-target pairs. Same logic for bacterial genomes (one sector per replicon), for metagenomes (one sector per MAG), even for protein domains (one sector per chain).

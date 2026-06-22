@@ -34,6 +34,12 @@ Thumbs.db
 !day1/day1_files/
 !day1/day1_files/**
 
+# Keep the rendered Day-2 deck + Colab notebook — students download both
+!day2/day2.html
+!day2/day2_files/
+!day2/day2_files/**
+!day2/day2.ipynb
+
 # Python build artifacts
 __pycache__/
 *.egg-info/

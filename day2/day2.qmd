@@ -1,0 +1,56 @@
+---
+title: "Genomics Data Visualization"
+subtitle: "<span style='font-size:1.25em;'>with Python</span> · Day 2 · Genome-scale charts & comparative views"
+author: "<div style='width: 100%; text-align: center; margin-left: auto; margin-right: auto;'><a href='https://github.com/loukesio' style='color:#208462;font-weight:600;'>Dr. Loukas Theodosiou</a>&ensp;//&ensp;Day 2 &ensp;//&ensp; June 2026</div>"
+date: "2026-06-23"
+format:
+  revealjs:
+    theme: [default, style.scss]
+    width: 1280
+    height: 720
+    center: false
+    slide-number: c
+    progress: true
+    transition: fade
+    history: false
+    footer: "Genomics Viz with Python"
+    highlight-style: arrow
+    code-line-numbers: true
+    fig-align: center
+    fig-format: retina
+    fig-dpi: 192
+execute:
+  echo: true
+  warning: false
+  freeze: auto
+jupyter: python3
+---
+
+```{python}
+#| label: setup
+#| echo: false
+# Single source of truth for palette, font, and rcParams lives in the package.
+# Importing theme.py registers IBM Plex Mono, defines the Economist palette + ramp
+# helpers (ECON, ECON_QUAL, econ_cmap, econ_diverging, econ_spectrum), and applies
+# the cream-canvas matplotlib rcParams.
+from genomics_course.theme import *                # noqa: F401,F403
+from genomics_course.data import (
+    load_gwas, load_admixture, load_qc, load_peaks, load_peak_genes,
+    load_timecourse, load_variants, load_deseq2, load_lineages,
+)
+import numpy as np, pandas as pd, matplotlib.pyplot as plt, seaborn as sns
+import matplotlib.patches as mpatches
+import warnings
+warnings.filterwarnings("ignore")
+
+rng = np.random.default_rng(11)   # day-2 seed (different from day-1's 7)
+```
+
+{{< include sections/_00_intro.qmd >}}
+{{< include sections/_01_stacked_bar.qmd >}}
+{{< include sections/_02_timeseries.qmd >}}
+{{< include sections/_03_msa.qmd >}}
+{{< include sections/_04_manhattan.qmd >}}
+{{< include sections/_05_genome_stats.qmd >}}
+{{< include sections/_06_pycirclize.qmd >}}
+{{< include sections/_07_synteny.qmd >}}

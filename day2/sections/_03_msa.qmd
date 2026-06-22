@@ -1,0 +1,465 @@
+<!-- slide 25 -->
+# Multiple Sequence Alignment {.divider}
+
+[Comparative sequences]{.eyebrow}
+
+
+<!-- slide 26 -->
+## What Is an MSA? {.smaller}
+
+[MSA · theory]{.eyebrow}
+
+### N sequences, one column at a time
+
+A **multiple sequence alignment (MSA)** stacks N related sequences so that **homologous positions sit in the same column**. Reading top-to-bottom in one column tells you how that letter varies across species, samples, or strains. Reading left-to-right is one full sequence.
+
+Three things the eye looks for:
+
+- **Conserved columns** — every row carries the same letter. These mark functionally important sites (active-site residues, splice motifs, transcription-factor footprints).
+- **Gap columns** (`-`) — an **insertion** in one lineage or a **deletion** in another. Gaps interrupt the grid like vertical white stripes.
+- **Mismatched columns** — divergence. Useful for phylogenetic distance, but only after the alignment is trustworthy.
+
+**Colour encodes chemistry**: the Clustal scheme groups hydrophobic, polar, acidic, and basic residues so families pop. For DNA we just colour by **identity** (A, C, G, T) — four hues is enough.
+
+**When to use it**: phylogeny, conserved-domain hunting, primer design, regulatory motif discovery, variant interpretation.
+
+
+<!-- slide 27 -->
+## MSA · The Data {.smaller}
+
+[MSA · data peek]{.eyebrow}
+
+### Synthesise 8 sequences × 60 columns, low mutation rate + one indel
+
+No real loader: we **build a toy alignment in numpy**. Start from one random ACGT base sequence, derive seven mutants with ~5 % per-base substitutions, then punch a small deletion (`-`) into one sequence at columns 22–26. That gives a realistic-looking conservation pattern with one obvious gap.
+
+```{python}
+#| echo: true
+# 60-column base sequence drawn uniformly from ACGT
+n_cols = 60                                                 # alignment width
+n_rows = 8                                                  # number of sequences
+bases  = np.array(list("ACGT"))                             # the alphabet
+
+# seq 0 is the ancestor; seqs 1..7 inherit then mutate
+base = rng.choice(bases, size=n_cols)                       # one random ACGT row
+aln  = np.tile(base, (n_rows, 1))                           # 8 identical copies
+
+# at each position in each non-ancestor row, mutate with p ≈ 5 %
+mutate = rng.random((n_rows, n_cols)) < 0.05                # boolean mask
+mutate[0] = False                                           # row 0 stays as ancestor
+aln[mutate] = rng.choice(bases, size=mutate.sum())          # swap in a new base
+
+# introduce a clean 5-column deletion in sequence 5 (cols 22..26)
+aln[5, 22:27] = "-"                                         # the indel block
+
+print(aln.shape)                                            # (8, 60)
+print("\n".join("".join(row) for row in aln))               # show the alignment text
+```
+
+
+<!-- slide 28 -->
+## MSA · Step 1 — Coloured Letter Grid {.smaller}
+
+[MSA · build]{.eyebrow}
+
+### 1 · Draw each base as text at (col, row)
+
+The simplest renderer: walk the array and place every letter with `ax.text(col, row, letter, color=...)`. Matplotlib uses **data coordinates**, so `(col, row)` puts column 0 at the left edge and row 0 at the top — but matplotlib's y-axis grows **upward** by default, so we **invert the y-axis** to read top-to-bottom like a text file.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-8|10-13|15-19"}
+# rebuild the alignment so the slide is self-contained
+n_cols, n_rows = 60, 8                                  # alignment shape
+bases = np.array(list("ACGT"))                          # DNA alphabet
+
+base = rng.choice(bases, size=n_cols)                   # ancestor row
+aln = np.tile(base, (n_rows, 1))                        # 8 copies
+mutate = rng.random((n_rows, n_cols)) < 0.05            # 5 % mutation mask
+mutate[0] = False                                       # keep ancestor clean
+aln[mutate] = rng.choice(bases, size=mutate.sum())      # apply mutations
+aln[5, 22:27] = "-"                                     # one indel block
+
+# colour by base identity — Economist palette, GREY for gaps
+col_map = {"A": GREEN, "C": BLUE, "G": AMBER, "T": RED, "-": GREY}
+
+fig, ax = plt.subplots(figsize=(9.5, 2.6))              # CREATE wide canvas
+for r in range(n_rows):                                 # one row of sequence
+    for c in range(n_cols):                             # one column position
+        letter = aln[r, c]                              # the base at (r, c)
+        ax.text(c, r, letter, ha="center", va="center", # CALL: draw letter
+                color=col_map[letter], fontsize=9, fontweight="bold")
+
+ax.set_xlim(-0.5, n_cols - 0.5)                         # column range
+ax.set_ylim(-0.5, n_rows - 0.5)                         # row range
+ax.invert_yaxis()                                       # row 0 at the top
+ax.set_yticks(range(n_rows))                            # one tick per sequence
+ax.set_yticklabels([f"seq{r}" for r in range(n_rows)])  # sequence labels
+ax.set_xticks([])                                       # column ticks add noise
+ax.spines[["top", "right", "bottom"]].set_visible(False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 9.5
+#| fig-height: 2.6
+
+n_cols, n_rows = 60, 8
+bases = np.array(list("ACGT"))
+
+base = rng.choice(bases, size=n_cols)
+aln = np.tile(base, (n_rows, 1))
+mutate = rng.random((n_rows, n_cols)) < 0.05
+mutate[0] = False
+aln[mutate] = rng.choice(bases, size=mutate.sum())
+aln[5, 22:27] = "-"
+
+col_map = {"A": GREEN, "C": BLUE, "G": AMBER, "T": RED, "-": GREY}
+
+fig, ax = plt.subplots(figsize=(9.5, 2.6))
+for r in range(n_rows):
+    for c in range(n_cols):
+        letter = aln[r, c]
+        ax.text(c, r, letter, ha="center", va="center",
+                color=col_map[letter], fontsize=9, fontweight="bold")
+
+ax.set_xlim(-0.5, n_cols - 0.5)
+ax.set_ylim(-0.5, n_rows - 0.5)
+ax.invert_yaxis()
+ax.set_yticks(range(n_rows))
+ax.set_yticklabels([f"seq{r}" for r in range(n_rows)])
+ax.set_xticks([])
+ax.spines[["top", "right", "bottom"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 29 -->
+## MSA · Step 2 — Heatmap Encoding {.smaller}
+
+[MSA · build]{.eyebrow}
+
+### 2 · Paint cells, overlay letters in white
+
+The letter-grid is friendly but **doesn't scale past ~30 rows**. Replace it with a coloured heatmap: encode each base as an integer (`A=0, C=1, G=2, T=3, -=4`), feed that to `ax.imshow` with a **`ListedColormap`** of the five palette colours, then overlay each letter in white on top. The same picture, now scalable to hundreds of sequences.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-7|9-13|15-19|21-25"}
+from matplotlib.colors import ListedColormap
+
+# rebuild alignment
+n_cols, n_rows = 60, 8
+bases = np.array(list("ACGT"))
+base = rng.choice(bases, size=n_cols); aln = np.tile(base, (n_rows, 1))
+mutate = rng.random((n_rows, n_cols)) < 0.05; mutate[0] = False
+aln[mutate] = rng.choice(bases, size=mutate.sum()); aln[5, 22:27] = "-"
+
+# encode each letter as an integer in [0..4]
+code = {"A": 0, "C": 1, "G": 2, "T": 3, "-": 4}         # letter -> index
+aln_int = np.vectorize(code.get)(aln)                   # int array, same shape
+cmap = ListedColormap([GREEN, BLUE, AMBER, RED, "#FFFFFF"])  # one colour per code
+
+fig, ax = plt.subplots(figsize=(9.5, 2.6))              # CREATE canvas
+ax.imshow(aln_int, cmap=cmap, aspect="auto",            # CALL: paint cells
+          interpolation="nearest", vmin=0, vmax=4)
+
+# overlay each letter in white so the identity is still legible
+for r in range(n_rows):
+    for c in range(n_cols):
+        letter = aln[r, c]
+        if letter != "-":                               # skip gaps (white cell)
+            ax.text(c, r, letter, ha="center", va="center",
+                    color="white", fontsize=8, fontweight="bold")
+
+ax.set_yticks(range(n_rows))                            # sequence labels
+ax.set_yticklabels([f"seq{r}" for r in range(n_rows)])
+ax.set_xticks([])                                       # hide column ticks
+ax.spines[["top", "right"]].set_visible(False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 9.5
+#| fig-height: 2.6
+from matplotlib.colors import ListedColormap
+
+n_cols, n_rows = 60, 8
+bases = np.array(list("ACGT"))
+base = rng.choice(bases, size=n_cols); aln = np.tile(base, (n_rows, 1))
+mutate = rng.random((n_rows, n_cols)) < 0.05; mutate[0] = False
+aln[mutate] = rng.choice(bases, size=mutate.sum()); aln[5, 22:27] = "-"
+
+code = {"A": 0, "C": 1, "G": 2, "T": 3, "-": 4}
+aln_int = np.vectorize(code.get)(aln)
+cmap = ListedColormap([GREEN, BLUE, AMBER, RED, "#FFFFFF"])
+
+fig, ax = plt.subplots(figsize=(9.5, 2.6))
+ax.imshow(aln_int, cmap=cmap, aspect="auto",
+          interpolation="nearest", vmin=0, vmax=4)
+
+for r in range(n_rows):
+    for c in range(n_cols):
+        letter = aln[r, c]
+        if letter != "-":
+            ax.text(c, r, letter, ha="center", va="center",
+                    color="white", fontsize=8, fontweight="bold")
+
+ax.set_yticks(range(n_rows))
+ax.set_yticklabels([f"seq{r}" for r in range(n_rows)])
+ax.set_xticks([])
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 30 -->
+## MSA · Step 3 — Conservation Track {.smaller}
+
+[MSA · build]{.eyebrow}
+
+### 3 · Bar above the grid, one bar per column
+
+The canonical MSA viewer layout is **two stacked panels sharing the x-axis**: a tall bottom panel with the alignment, a short top panel with a **conservation bar** per column. Compute conservation as the **fraction of rows showing the most-common non-gap base** — 1.0 means every sequence agrees, 0.25 means random.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-7|9-15|17-23|25-32"}
+from matplotlib.colors import ListedColormap
+
+n_cols, n_rows = 60, 8
+bases = np.array(list("ACGT"))
+base = rng.choice(bases, size=n_cols); aln = np.tile(base, (n_rows, 1))
+mutate = rng.random((n_rows, n_cols)) < 0.05; mutate[0] = False
+aln[mutate] = rng.choice(bases, size=mutate.sum()); aln[5, 22:27] = "-"
+
+# conservation = fraction of most-common non-gap letter per column
+def col_conservation(col):
+    non_gap = col[col != "-"]                           # drop gaps before counting
+    if len(non_gap) == 0:                               # all-gap column edge case
+        return 0.0
+    _, counts = np.unique(non_gap, return_counts=True)  # tally each base
+    return counts.max() / len(non_gap)                  # majority fraction
+conservation = np.array([col_conservation(aln[:, c]) for c in range(n_cols)])
+
+# CREATE two stacked panels — short bar track on top, alignment below
+fig, (axc, axa) = plt.subplots(                         # axc = conservation, axa = aln
+    2, 1, figsize=(9.5, 3.4), sharex=True,
+    gridspec_kw=dict(height_ratios=[1, 4], hspace=0.05))
+
+axc.bar(np.arange(n_cols), conservation,                # CALL: per-column bars
+        color=GREEN, width=0.9)
+axc.set_ylim(0, 1.05); axc.set_yticks([0, 1])
+axc.set_ylabel("cons.", fontsize=8)
+axc.spines[["top", "right"]].set_visible(False)
+
+# the alignment heatmap, identical to step 2
+code = {"A": 0, "C": 1, "G": 2, "T": 3, "-": 4}
+aln_int = np.vectorize(code.get)(aln)
+cmap = ListedColormap([GREEN, BLUE, AMBER, RED, "#FFFFFF"])
+axa.imshow(aln_int, cmap=cmap, aspect="auto", interpolation="nearest", vmin=0, vmax=4)
+axa.set_yticks(range(n_rows)); axa.set_yticklabels([f"seq{r}" for r in range(n_rows)])
+axa.set_xlabel("column"); axa.spines[["top", "right"]].set_visible(False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 9.5
+#| fig-height: 3.4
+from matplotlib.colors import ListedColormap
+
+n_cols, n_rows = 60, 8
+bases = np.array(list("ACGT"))
+base = rng.choice(bases, size=n_cols); aln = np.tile(base, (n_rows, 1))
+mutate = rng.random((n_rows, n_cols)) < 0.05; mutate[0] = False
+aln[mutate] = rng.choice(bases, size=mutate.sum()); aln[5, 22:27] = "-"
+
+def col_conservation(col):
+    non_gap = col[col != "-"]
+    if len(non_gap) == 0:
+        return 0.0
+    _, counts = np.unique(non_gap, return_counts=True)
+    return counts.max() / len(non_gap)
+conservation = np.array([col_conservation(aln[:, c]) for c in range(n_cols)])
+
+fig, (axc, axa) = plt.subplots(
+    2, 1, figsize=(9.5, 3.4), sharex=True,
+    gridspec_kw=dict(height_ratios=[1, 4], hspace=0.05))
+
+axc.bar(np.arange(n_cols), conservation, color=GREEN, width=0.9)
+axc.set_ylim(0, 1.05); axc.set_yticks([0, 1])
+axc.set_ylabel("cons.", fontsize=8)
+axc.spines[["top", "right"]].set_visible(False)
+
+code = {"A": 0, "C": 1, "G": 2, "T": 3, "-": 4}
+aln_int = np.vectorize(code.get)(aln)
+cmap = ListedColormap([GREEN, BLUE, AMBER, RED, "#FFFFFF"])
+axa.imshow(aln_int, cmap=cmap, aspect="auto", interpolation="nearest", vmin=0, vmax=4)
+axa.set_yticks(range(n_rows)); axa.set_yticklabels([f"seq{r}" for r in range(n_rows)])
+axa.set_xlabel("column"); axa.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 31 -->
+## MSA · Step 4 — Zoom to the Indel {.smaller}
+
+[MSA · build]{.eyebrow}
+
+### 4 · Crop to columns 20–30; the gap is the story
+
+At full width every column is one pixel wide and the eye washes out. **Zoom** with `ax.set_xlim(20, 30)` to the indel region — now the gap block (cols 22–26 in `seq5`) reads as five empty cells, and the surrounding conservation is clear column by column. Working MSAs always combine an overview with a zoom.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="35-38"}
+from matplotlib.colors import ListedColormap
+
+n_cols, n_rows = 60, 8
+bases = np.array(list("ACGT"))
+base = rng.choice(bases, size=n_cols); aln = np.tile(base, (n_rows, 1))
+mutate = rng.random((n_rows, n_cols)) < 0.05; mutate[0] = False
+aln[mutate] = rng.choice(bases, size=mutate.sum()); aln[5, 22:27] = "-"
+
+def col_conservation(col):
+    non_gap = col[col != "-"]
+    if len(non_gap) == 0: return 0.0
+    _, counts = np.unique(non_gap, return_counts=True)
+    return counts.max() / len(non_gap)
+conservation = np.array([col_conservation(aln[:, c]) for c in range(n_cols)])
+
+fig, (axc, axa) = plt.subplots(
+    2, 1, figsize=(8.5, 3.6), sharex=True,
+    gridspec_kw=dict(height_ratios=[1, 4], hspace=0.05))
+
+axc.bar(np.arange(n_cols), conservation, color=GREEN, width=0.9)
+axc.set_ylim(0, 1.05); axc.set_yticks([0, 1])
+axc.set_ylabel("cons.", fontsize=8)
+axc.spines[["top", "right"]].set_visible(False)
+
+code = {"A": 0, "C": 1, "G": 2, "T": 3, "-": 4}
+aln_int = np.vectorize(code.get)(aln)
+cmap = ListedColormap([GREEN, BLUE, AMBER, RED, "#FFFFFF"])
+axa.imshow(aln_int, cmap=cmap, aspect="auto", interpolation="nearest", vmin=0, vmax=4)
+for r in range(n_rows):                                 # letters are legible at this zoom
+    for c in range(20, 31):
+        letter = aln[r, c]
+        if letter != "-":
+            axa.text(c, r, letter, ha="center", va="center",
+                     color="white", fontsize=10, fontweight="bold")
+
+# crop both panels to the indel neighbourhood
+axa.set_xlim(19.5, 30.5)                                # zoom x-axis
+axa.set_xticks(range(20, 31))                           # one tick per column
+axa.set_yticks(range(n_rows)); axa.set_yticklabels([f"seq{r}" for r in range(n_rows)])
+axa.set_xlabel("column"); axa.spines[["top", "right"]].set_visible(False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8.5
+#| fig-height: 3.6
+from matplotlib.colors import ListedColormap
+
+n_cols, n_rows = 60, 8
+bases = np.array(list("ACGT"))
+base = rng.choice(bases, size=n_cols); aln = np.tile(base, (n_rows, 1))
+mutate = rng.random((n_rows, n_cols)) < 0.05; mutate[0] = False
+aln[mutate] = rng.choice(bases, size=mutate.sum()); aln[5, 22:27] = "-"
+
+def col_conservation(col):
+    non_gap = col[col != "-"]
+    if len(non_gap) == 0: return 0.0
+    _, counts = np.unique(non_gap, return_counts=True)
+    return counts.max() / len(non_gap)
+conservation = np.array([col_conservation(aln[:, c]) for c in range(n_cols)])
+
+fig, (axc, axa) = plt.subplots(
+    2, 1, figsize=(8.5, 3.6), sharex=True,
+    gridspec_kw=dict(height_ratios=[1, 4], hspace=0.05))
+
+axc.bar(np.arange(n_cols), conservation, color=GREEN, width=0.9)
+axc.set_ylim(0, 1.05); axc.set_yticks([0, 1])
+axc.set_ylabel("cons.", fontsize=8)
+axc.spines[["top", "right"]].set_visible(False)
+
+code = {"A": 0, "C": 1, "G": 2, "T": 3, "-": 4}
+aln_int = np.vectorize(code.get)(aln)
+cmap = ListedColormap([GREEN, BLUE, AMBER, RED, "#FFFFFF"])
+axa.imshow(aln_int, cmap=cmap, aspect="auto", interpolation="nearest", vmin=0, vmax=4)
+for r in range(n_rows):
+    for c in range(20, 31):
+        letter = aln[r, c]
+        if letter != "-":
+            axa.text(c, r, letter, ha="center", va="center",
+                     color="white", fontsize=10, fontweight="bold")
+
+axa.set_xlim(19.5, 30.5)
+axa.set_xticks(range(20, 31))
+axa.set_yticks(range(n_rows)); axa.set_yticklabels([f"seq{r}" for r in range(n_rows)])
+axa.set_xlabel("column"); axa.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 32 -->
+## MSA · Production Tools {.smaller}
+
+[MSA · ecosystem]{.eyebrow}
+
+### Biopython for I/O, pyMSAviz for paper-ready output
+
+For real work, don't roll your own — two libraries cover it:
+
+:::: {.columns}
+::: {.column width="50%"}
+**Biopython** reads/writes every common alignment format (FASTA, Clustal, Stockholm, PHYLIP) and gives you a numpy-like view:
+
+```{.python}
+from Bio import AlignIO
+aln = AlignIO.read("globins.aln", "clustal")
+for record in aln:
+    print(record.id, record.seq[:60])
+```
+:::
+::: {.column width="50%"}
+**pyMSAviz** renders Clustal-coloured, paper-ready figures with conservation tracks, consensus rows, and reasonable defaults:
+
+```{.python}
+from pymsaviz import MsaViz
+mv = MsaViz("globins.aln", color_scheme="Clustal",
+            wrap_length=60, show_consensus=True)
+mv.savefig("globins_msa.png")
+```
+:::
+::::
+
+The matplotlib build you just saw is the **mental model**; these libraries do the same thing with more polish and more formats.
+
+
+<!-- slide 33 -->
+## MSA · Takeaway {.smaller}
+
+[MSA · recap]{.eyebrow}
+
+### What the eye is reading
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **Conservation, identity, gaps** — three things the reader scans for in every column.
+2. **Colour encodes chemistry** (Clustal) or **identity** (A/C/G/T). Four-to-five hues is enough; gaps are grey or white.
+3. **Conservation track on top** of the heatmap turns the eye to interesting columns automatically.
+4. **Always zoom**. A full-width MSA is a dense mosaic; the story lives in a 10–20 column window.
+:::

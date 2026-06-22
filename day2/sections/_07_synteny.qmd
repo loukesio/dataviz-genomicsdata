@@ -1,0 +1,444 @@
+<!-- slide 55 -->
+# Synteny Plots {.divider}
+
+[Genome comparison · ribbons]{.eyebrow}
+
+
+<!-- slide 56 -->
+## What Is a Synteny Plot? {.smaller}
+
+[synteny · theory]{.eyebrow}
+
+### Two genomes as tracks, ribbons as homology
+
+A synteny plot stacks two (or more) chromosomes as horizontal tracks and connects matching regions with a **ribbon**. The geometry tells the story at a glance:
+
+- **SYN** — block in the same order on both genomes. The ribbon is a flat parallelogram. Conserved synteny is the *uneventful* answer.
+- **INV** — same region, opposite strand. The ribbon **twists** because we draw the bottom edge with its endpoints swapped. Inversions are common around centromeres and recombination cold spots.
+- **TRANS** — block at a different position on the other genome. The ribbon crosses or skews; the region is *somewhere else* now.
+
+Reach for synteny when you have two assemblies and the question is structural: what stayed put, what flipped, what moved.
+
+
+<!-- slide 57 -->
+## Today vs Day-1's `plotsr` {.smaller}
+
+[synteny · positioning]{.eyebrow}
+
+### Two complementary views of the same problem
+
+:::: {.columns}
+::: {.column width="46%"}
+On **Day 1** we walked through `plotsr`: the CLI pipeline `align -> SyRI -> plot`, the `genomes.txt`, the `*syri.out` files, the configurable multi-genome figure. It is the production tool.
+
+Today we drop one level lower. We will draw a synteny figure for two genomes **in pure matplotlib**, from `Rectangle` patches and `Polygon` ribbons. No SyRI, no plotsr — just primitives and a small DataFrame.
+:::
+::: {.column width="54%"}
+After this section, plotsr will feel like sugar: it is doing the same thing for `N` genomes that you are doing here for `2`. Once you have built the ribbons yourself, you know which knob to turn when the published default does not fit your figure.
+
+::: {.keybox}
+**Day 1 _15:** `plotsr` — production CLI, multi-genome, SyRI input.
+**Day 2 _07:** matplotlib — two genomes, ribbons from polygons, full control.
+:::
+:::
+::::
+
+
+<!-- slide 58 -->
+## Synteny · Build the Toy Data {.smaller}
+
+[synteny · data]{.eyebrow}
+
+### Six SYN blocks, one inversion, one translocation
+
+We need a DataFrame with the homology calls. Each row is one block: where it lives on genome A, where it lives on genome B, and what type it is. The trick that encodes an inversion is dead simple — the B-coordinates are reversed (`chrB_start > chrB_end`), so when we later draw the polygon, the bottom edge twists.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "1-3|5-13|15-17|19"
+
+# two "chromosomes", each 100 Mb in arbitrary units
+LEN_A = 100.0
+LEN_B = 100.0
+
+# hand-built homology table: 6 SYN, 1 INV, 1 TRANS
+blocks = pd.DataFrame([
+    # SYN: A-coords and B-coords ascending, near-identical positions
+    {"chrA_start":  5, "chrA_end": 18, "chrB_start":  6, "chrB_end": 19, "type": "SYN"},
+    {"chrA_start": 22, "chrA_end": 30, "chrB_start": 23, "chrB_end": 31, "type": "SYN"},
+    {"chrA_start": 34, "chrA_end": 45, "chrB_start": 35, "chrB_end": 46, "type": "SYN"},
+    {"chrA_start": 58, "chrA_end": 68, "chrB_start": 59, "chrB_end": 69, "type": "SYN"},
+    {"chrA_start": 72, "chrA_end": 80, "chrB_start": 73, "chrB_end": 81, "type": "SYN"},
+    {"chrA_start": 92, "chrA_end": 98, "chrB_start": 93, "chrB_end": 99, "type": "SYN"},
+    # INV: same span on A, but B-coords are reversed -> flipped strand
+    {"chrA_start": 48, "chrA_end": 56, "chrB_start": 56, "chrB_end": 48, "type": "INV"},
+    # TRANS: a block at A=82..90 lives at B=10..18 (somewhere else entirely)
+    {"chrA_start": 82, "chrA_end": 90, "chrB_start": 10, "chrB_end": 18, "type": "TRANS"},
+])
+blocks.head(8)
+```
+
+```{python}
+#| echo: true
+
+blocks["type"].value_counts()           # quick sanity check on the mix
+```
+
+
+<!-- slide 59 -->
+## Synteny · Step 1 — The Two Chromosomes {.smaller}
+
+[synteny · build]{.eyebrow}
+
+### 1 · Two rectangles, one above the other
+
+Before any ribbons, place the two chromosomes. They are just `Rectangle` patches: bottom-left corner at `(0, y)`, width = chromosome length, a thin height. Genome A goes on top, genome B on the bottom; the ribbons will eventually live in the gap between them.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-4|6-12|14-17|19-22"}
+from matplotlib.patches import Rectangle           # the chromosome bars
+
+LEN_A, LEN_B = 100.0, 100.0                        # both 100 Mb units
+Y_TOP, Y_BOT, BAR_H = 1.0, 0.0, 0.08               # y-positions and bar thickness
+
+fig, ax = plt.subplots(figsize=(8, 3))             # CREATE
+
+# genome A — top bar
+ax.add_patch(Rectangle((0, Y_TOP), LEN_A, BAR_H,
+                       facecolor=BLUE, edgecolor=INK, lw=0.6))    # CALL
+# genome B — bottom bar
+ax.add_patch(Rectangle((0, Y_BOT), LEN_B, BAR_H,
+                       facecolor=GREEN, edgecolor=INK, lw=0.6))   # CALL
+
+# label each bar on the left
+ax.text(-2, Y_TOP + BAR_H / 2, "Genome A",
+        ha="right", va="center", fontsize=11, color=INK)
+ax.text(-2, Y_BOT + BAR_H / 2, "Genome B",
+        ha="right", va="center", fontsize=11, color=INK)
+
+# cosmetic frame
+ax.set_xlim(-10, max(LEN_A, LEN_B) + 5); ax.set_ylim(-0.3, 1.5)
+ax.set_yticks([]); ax.spines[["top", "right", "left"]].set_visible(False)
+ax.set_xlabel("position (Mb)")
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8
+#| fig-height: 3
+
+from matplotlib.patches import Rectangle
+
+LEN_A, LEN_B = 100.0, 100.0
+Y_TOP, Y_BOT, BAR_H = 1.0, 0.0, 0.08
+
+fig, ax = plt.subplots(figsize=(8, 3))
+ax.add_patch(Rectangle((0, Y_TOP), LEN_A, BAR_H,
+                       facecolor=BLUE,  edgecolor=INK, lw=0.6))
+ax.add_patch(Rectangle((0, Y_BOT), LEN_B, BAR_H,
+                       facecolor=GREEN, edgecolor=INK, lw=0.6))
+ax.text(-2, Y_TOP + BAR_H / 2, "Genome A", ha="right", va="center",
+        fontsize=11, color=INK)
+ax.text(-2, Y_BOT + BAR_H / 2, "Genome B", ha="right", va="center",
+        fontsize=11, color=INK)
+ax.set_xlim(-10, max(LEN_A, LEN_B) + 5); ax.set_ylim(-0.3, 1.5)
+ax.set_yticks([]); ax.spines[["top", "right", "left"]].set_visible(False)
+ax.set_xlabel("position (Mb)")
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 60 -->
+## Synteny · Step 2 — One Ribbon, By Hand {.smaller}
+
+[synteny · build]{.eyebrow}
+
+### 2 · A polygon with four vertices
+
+A ribbon is a four-cornered polygon. The vertices go **clockwise**: top-left, top-right, bottom-right, bottom-left. Top edge sits on genome A; bottom edge sits on genome B. Pick the first SYN block and draw exactly one ribbon to feel the geometry.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|18-28"}
+from matplotlib.patches import Rectangle, Polygon
+
+LEN_A, LEN_B = 100.0, 100.0
+Y_TOP, Y_BOT, BAR_H = 1.0, 0.0, 0.08
+
+fig, ax = plt.subplots(figsize=(8, 3))             # CREATE
+
+ax.add_patch(Rectangle((0, Y_TOP), LEN_A, BAR_H,
+                       facecolor=BLUE,  edgecolor=INK, lw=0.6))
+ax.add_patch(Rectangle((0, Y_BOT), LEN_B, BAR_H,
+                       facecolor=GREEN, edgecolor=INK, lw=0.6))
+
+# pick the first block: A=5..18, B=6..19, SYN
+b = {"chrA_start": 5, "chrA_end": 18, "chrB_start": 6, "chrB_end": 19}
+
+# vertex order — clockwise starting at top-left:
+#   1. (A_start, top edge of B-A gap = Y_TOP)
+#   2. (A_end,   top)
+#   3. (B_end,   bottom edge = Y_BOT + BAR_H)
+#   4. (B_start, bottom)
+verts = [(b["chrA_start"], Y_TOP),                       # top-left
+         (b["chrA_end"],   Y_TOP),                       # top-right
+         (b["chrB_end"],   Y_BOT + BAR_H),               # bottom-right
+         (b["chrB_start"], Y_BOT + BAR_H)]               # bottom-left
+# CALL: filled polygon, low alpha so overlaps remain visible
+ax.add_patch(Polygon(verts, closed=True,
+                     facecolor=GREY, edgecolor="none", alpha=0.45))
+
+ax.text(-2, Y_TOP + BAR_H / 2, "Genome A", ha="right", va="center", color=INK)
+ax.text(-2, Y_BOT + BAR_H / 2, "Genome B", ha="right", va="center", color=INK)
+ax.set_xlim(-10, max(LEN_A, LEN_B) + 5); ax.set_ylim(-0.3, 1.5)
+ax.set_yticks([]); ax.spines[["top", "right", "left"]].set_visible(False)
+ax.set_xlabel("position (Mb)")
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8
+#| fig-height: 3
+
+from matplotlib.patches import Rectangle, Polygon
+
+LEN_A, LEN_B = 100.0, 100.0
+Y_TOP, Y_BOT, BAR_H = 1.0, 0.0, 0.08
+
+fig, ax = plt.subplots(figsize=(8, 3))
+ax.add_patch(Rectangle((0, Y_TOP), LEN_A, BAR_H,
+                       facecolor=BLUE,  edgecolor=INK, lw=0.6))
+ax.add_patch(Rectangle((0, Y_BOT), LEN_B, BAR_H,
+                       facecolor=GREEN, edgecolor=INK, lw=0.6))
+
+b = {"chrA_start": 5, "chrA_end": 18, "chrB_start": 6, "chrB_end": 19}
+verts = [(b["chrA_start"], Y_TOP),
+         (b["chrA_end"],   Y_TOP),
+         (b["chrB_end"],   Y_BOT + BAR_H),
+         (b["chrB_start"], Y_BOT + BAR_H)]
+ax.add_patch(Polygon(verts, closed=True,
+                     facecolor=GREY, edgecolor="none", alpha=0.45))
+
+ax.text(-2, Y_TOP + BAR_H / 2, "Genome A", ha="right", va="center", color=INK)
+ax.text(-2, Y_BOT + BAR_H / 2, "Genome B", ha="right", va="center", color=INK)
+ax.set_xlim(-10, max(LEN_A, LEN_B) + 5); ax.set_ylim(-0.3, 1.5)
+ax.set_yticks([]); ax.spines[["top", "right", "left"]].set_visible(False)
+ax.set_xlabel("position (Mb)")
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 61 -->
+## Synteny · Step 3 — All Blocks, Coloured by Type {.smaller}
+
+[synteny · build]{.eyebrow}
+
+### 3 · The canonical figure
+
+Now sweep through the whole DataFrame. The polygon shape is identical for every block — vertex order **top-left, top-right, bottom-right, bottom-left** — but the *meaning* changes with `type`:
+
+- For **SYN** (grey), `chrB_start < chrB_end`, so the bottom edge goes left-to-right, same as the top — a flat parallelogram.
+- For **INV** (amber), `chrB_start > chrB_end`, so the bottom edge reverses, creating a visual twist.
+- For **TRANS** (blue), the B-coordinates live somewhere unrelated to the A-coordinates, so the ribbon skews across the figure.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|18-28"}
+from matplotlib.patches import Rectangle, Polygon
+
+# colour map — one fill per block type
+TYPE_COLOUR = {"SYN": GREY, "INV": AMBER, "TRANS": BLUE}
+
+LEN_A, LEN_B = 100.0, 100.0
+Y_TOP, Y_BOT, BAR_H = 1.0, 0.0, 0.08
+
+fig, ax = plt.subplots(figsize=(8, 3))                # CREATE
+
+ax.add_patch(Rectangle((0, Y_TOP), LEN_A, BAR_H,
+                       facecolor=BLUE,  edgecolor=INK, lw=0.6))
+ax.add_patch(Rectangle((0, Y_BOT), LEN_B, BAR_H,
+                       facecolor=GREEN, edgecolor=INK, lw=0.6))
+
+# one polygon per row of the blocks DataFrame — vectorise via itertuples
+for b in blocks.itertuples(index=False):
+    verts = [(b.chrA_start, Y_TOP),                   # top-left
+             (b.chrA_end,   Y_TOP),                   # top-right
+             (b.chrB_end,   Y_BOT + BAR_H),           # bottom-right
+             (b.chrB_start, Y_BOT + BAR_H)]           # bottom-left
+    # INV: chrB_start > chrB_end -> bottom edge reverses -> visual twist
+    # TRANS: B-coords far from A-coords -> ribbon skews
+    ax.add_patch(Polygon(verts, closed=True,
+                         facecolor=TYPE_COLOUR[b.type],
+                         edgecolor="none", alpha=0.55))   # CALL
+
+ax.text(-2, Y_TOP + BAR_H / 2, "Genome A", ha="right", va="center", color=INK)
+ax.text(-2, Y_BOT + BAR_H / 2, "Genome B", ha="right", va="center", color=INK)
+ax.set_xlim(-10, max(LEN_A, LEN_B) + 5); ax.set_ylim(-0.3, 1.5)
+ax.set_yticks([]); ax.spines[["top", "right", "left"]].set_visible(False)
+ax.set_xlabel("position (Mb)")
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8
+#| fig-height: 3
+
+from matplotlib.patches import Rectangle, Polygon
+
+TYPE_COLOUR = {"SYN": GREY, "INV": AMBER, "TRANS": BLUE}
+LEN_A, LEN_B = 100.0, 100.0
+Y_TOP, Y_BOT, BAR_H = 1.0, 0.0, 0.08
+
+fig, ax = plt.subplots(figsize=(8, 3))
+ax.add_patch(Rectangle((0, Y_TOP), LEN_A, BAR_H,
+                       facecolor=BLUE,  edgecolor=INK, lw=0.6))
+ax.add_patch(Rectangle((0, Y_BOT), LEN_B, BAR_H,
+                       facecolor=GREEN, edgecolor=INK, lw=0.6))
+
+for b in blocks.itertuples(index=False):
+    verts = [(b.chrA_start, Y_TOP),
+             (b.chrA_end,   Y_TOP),
+             (b.chrB_end,   Y_BOT + BAR_H),
+             (b.chrB_start, Y_BOT + BAR_H)]
+    ax.add_patch(Polygon(verts, closed=True,
+                         facecolor=TYPE_COLOUR[b.type],
+                         edgecolor="none", alpha=0.55))
+
+ax.text(-2, Y_TOP + BAR_H / 2, "Genome A", ha="right", va="center", color=INK)
+ax.text(-2, Y_BOT + BAR_H / 2, "Genome B", ha="right", va="center", color=INK)
+ax.set_xlim(-10, max(LEN_A, LEN_B) + 5); ax.set_ylim(-0.3, 1.5)
+ax.set_yticks([]); ax.spines[["top", "right", "left"]].set_visible(False)
+ax.set_xlabel("position (Mb)")
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 62 -->
+## Synteny · Step 4 — Legend, Ticks, Title {.smaller}
+
+[synteny · build]{.eyebrow}
+
+### 4 · Polish — orient the reader
+
+The figure is informative but spare. Add a tick every 20 Mb so the eye can read positions, a legend mapping colour to block type, and a title that names what we are looking at.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="30-39|41-43"}
+from matplotlib.patches import Rectangle, Polygon
+
+TYPE_COLOUR = {"SYN": GREY, "INV": AMBER, "TRANS": BLUE}
+LEN_A, LEN_B = 100.0, 100.0
+Y_TOP, Y_BOT, BAR_H = 1.0, 0.0, 0.08
+
+fig, ax = plt.subplots(figsize=(8, 3.4))               # CREATE
+
+ax.add_patch(Rectangle((0, Y_TOP), LEN_A, BAR_H,
+                       facecolor=BLUE,  edgecolor=INK, lw=0.6))
+ax.add_patch(Rectangle((0, Y_BOT), LEN_B, BAR_H,
+                       facecolor=GREEN, edgecolor=INK, lw=0.6))
+
+for b in blocks.itertuples(index=False):
+    verts = [(b.chrA_start, Y_TOP),
+             (b.chrA_end,   Y_TOP),
+             (b.chrB_end,   Y_BOT + BAR_H),
+             (b.chrB_start, Y_BOT + BAR_H)]
+    ax.add_patch(Polygon(verts, closed=True,
+                         facecolor=TYPE_COLOUR[b.type],
+                         edgecolor="none", alpha=0.55))
+
+ax.text(-2, Y_TOP + BAR_H / 2, "Genome A", ha="right", va="center", color=INK)
+ax.text(-2, Y_BOT + BAR_H / 2, "Genome B", ha="right", va="center", color=INK)
+ax.set_xlim(-10, max(LEN_A, LEN_B) + 5); ax.set_ylim(-0.3, 1.7)
+ax.set_yticks([]); ax.spines[["top", "right", "left"]].set_visible(False)
+
+# orientation ticks every 20 Mb
+ax.set_xticks(np.arange(0, 101, 20))
+ax.set_xlabel("position (Mb)")
+
+# legend — one Patch handle per block type
+legend_handles = [mpatches.Patch(facecolor=TYPE_COLOUR[t], alpha=0.55, label=t)
+                  for t in ["SYN", "INV", "TRANS"]]
+ax.legend(handles=legend_handles, loc="upper right",
+          frameon=False, fontsize=9, ncol=3,
+          bbox_to_anchor=(1.0, 1.18))
+
+# narrative title — the figure has a point
+ax.set_title("Genome A vs Genome B - 6 syntenic blocks, 1 inversion, 1 translocation",
+             loc="left", fontsize=11, color=INK, pad=14)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8
+#| fig-height: 3.4
+
+from matplotlib.patches import Rectangle, Polygon
+
+TYPE_COLOUR = {"SYN": GREY, "INV": AMBER, "TRANS": BLUE}
+LEN_A, LEN_B = 100.0, 100.0
+Y_TOP, Y_BOT, BAR_H = 1.0, 0.0, 0.08
+
+fig, ax = plt.subplots(figsize=(8, 3.4))
+ax.add_patch(Rectangle((0, Y_TOP), LEN_A, BAR_H,
+                       facecolor=BLUE,  edgecolor=INK, lw=0.6))
+ax.add_patch(Rectangle((0, Y_BOT), LEN_B, BAR_H,
+                       facecolor=GREEN, edgecolor=INK, lw=0.6))
+
+for b in blocks.itertuples(index=False):
+    verts = [(b.chrA_start, Y_TOP),
+             (b.chrA_end,   Y_TOP),
+             (b.chrB_end,   Y_BOT + BAR_H),
+             (b.chrB_start, Y_BOT + BAR_H)]
+    ax.add_patch(Polygon(verts, closed=True,
+                         facecolor=TYPE_COLOUR[b.type],
+                         edgecolor="none", alpha=0.55))
+
+ax.text(-2, Y_TOP + BAR_H / 2, "Genome A", ha="right", va="center", color=INK)
+ax.text(-2, Y_BOT + BAR_H / 2, "Genome B", ha="right", va="center", color=INK)
+ax.set_xlim(-10, max(LEN_A, LEN_B) + 5); ax.set_ylim(-0.3, 1.7)
+ax.set_yticks([]); ax.spines[["top", "right", "left"]].set_visible(False)
+ax.set_xticks(np.arange(0, 101, 20))
+ax.set_xlabel("position (Mb)")
+
+legend_handles = [mpatches.Patch(facecolor=TYPE_COLOUR[t], alpha=0.55, label=t)
+                  for t in ["SYN", "INV", "TRANS"]]
+ax.legend(handles=legend_handles, loc="upper right",
+          frameon=False, fontsize=9, ncol=3,
+          bbox_to_anchor=(1.0, 1.18))
+
+ax.set_title("Genome A vs Genome B - 6 syntenic blocks, 1 inversion, 1 translocation",
+             loc="left", fontsize=11, color=INK, pad=14)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 63 -->
+## Synteny · Takeaway {.smaller}
+
+[synteny · recap]{.eyebrow}
+
+### The whole figure is one `Polygon` call in a loop
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **Two `Rectangle` bars** — one per genome, parallel and labelled.
+2. **One `Polygon` per block**, four vertices in clockwise order. Top edge on A, bottom edge on B.
+3. **Vertex order encodes the rearrangement.** Bottom edge reversed = inversion; bottom edge far from top = translocation.
+4. **Colour encodes the type.** Grey for conserved, amber for flipped, blue for moved.
+:::
+
+Once you can draw this in matplotlib, packages like **plotsr** (Day 1) and **pyCirclize** feel like syntactic sugar over the same idea — they stack the bars, parse the homology table, and draw the polygons for you. Knowing the primitive means you can debug or customise any of them when the default does not say what your figure needs to say.

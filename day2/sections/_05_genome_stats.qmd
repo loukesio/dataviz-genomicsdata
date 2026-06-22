@@ -1,0 +1,512 @@
+<!-- slide 34 -->
+# Genome Statistics {.divider}
+
+[Coverage · peaks · gene models]{.eyebrow}
+
+
+<!-- slide 35 -->
+## Three Questions, Three Charts {.smaller}
+
+[Genome stats · theory]{.eyebrow}
+
+### What is the chart actually answering?
+
+Genome-stats figures crowd into papers and dashboards, but each one is really asking **one** of three questions:
+
+- **Is my sample any good?** Coverage and callable-fraction QC: per-sample bar charts, dumbbells, ridge plots. The chart fails if the reader can't spot the dropouts at a glance.
+- **Where in the genome is the signal?** Peak tracks for ChIP-seq, ATAC-seq, methylation. The x-axis is **genomic coordinate**; the y-axis is signal height. Multiple marks stack vertically with a **shared x-axis**.
+- **What gene is there?** A gene-model track of rectangles with strand-aware arrowheads, drawn under the signal panels so the reader can connect a peak to a feature.
+
+A paper-ready ChIP-seq screenshot is just these three answers, stacked, sharing one x-axis. We'll build it.
+
+
+<!-- slide 36 -->
+## Genome Stats · The QC Data {.smaller}
+
+[Coverage · data peek]{.eyebrow}
+
+### One row per sample — raw vs callable rate, with the loss
+
+`load_qc()` is twelve sequencing libraries with two metrics:
+
+- **`raw`** — fraction of reads that map at all (alignment rate).
+- **`callable`** — fraction of reads that survive duplicate removal, MAPQ filtering, and duplicate-clipping (the bases you can actually call variants from).
+- **`loss`** — `raw − callable`. **Large loss = a problem sample**: high duplication, contamination, or PCR over-amplification.
+
+```{python}
+#| echo: true
+#| output-location: column
+
+qc = load_qc()                       # sample, raw, callable, loss
+qc.head(6)
+```
+
+
+<!-- slide 37 -->
+## Coverage · Step 1 — One Sample, Two Bars {.smaller}
+
+[Coverage · build]{.eyebrow}
+
+### 1 · The simplest possible view
+
+Start with a single sample to fix the colour grammar: **GREEN for `raw`** (what mapped), **AMBER for `callable`** (what survived filters). Side-by-side bars make the gap visible.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-5|7-10|12-15|17-20"}
+qc = load_qc()                                          # 12 samples
+one = qc.iloc[0]                                        # the first sample
+
+vals   = [one["raw"], one["callable"]]                  # two heights
+labels = ["raw", "callable"]                            # two bar names
+colors = [GREEN, AMBER]                                 # palette grammar
+
+fig, ax = plt.subplots(figsize=(4.4, 4.2))              # CREATE compact canvas
+ax.bar(labels, vals, color=colors, width=0.6)           # CALL: side-by-side bars
+
+# annotate each bar with its percentage so the gap is unambiguous
+for i, v in enumerate(vals):
+    ax.text(i, v + 0.01, f"{v:.0%}", ha="center", va="bottom",
+            color=INK, fontweight="bold", fontsize=11)
+
+ax.set_ylim(0, 1.05)                                    # fraction axis
+ax.set_ylabel("fraction of reads")
+ax.set_title(f"{one['sample']} — raw vs callable", color=INK)
+ax.spines[["top", "right"]].set_visible(False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 4.4
+#| fig-height: 4.2
+
+qc = load_qc()
+one = qc.iloc[0]
+
+vals   = [one["raw"], one["callable"]]
+labels = ["raw", "callable"]
+colors = [GREEN, AMBER]
+
+fig, ax = plt.subplots(figsize=(4.4, 4.2))
+ax.bar(labels, vals, color=colors, width=0.6)
+
+for i, v in enumerate(vals):
+    ax.text(i, v + 0.01, f"{v:.0%}", ha="center", va="bottom",
+            color=INK, fontweight="bold", fontsize=11)
+
+ax.set_ylim(0, 1.05)
+ax.set_ylabel("fraction of reads")
+ax.set_title(f"{one['sample']} — raw vs callable", color=INK)
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 38 -->
+## Coverage · Step 2 — Dumbbell Across All Samples {.smaller}
+
+[Coverage · build]{.eyebrow}
+
+### 2 · One lane per sample, sorted by loss
+
+Twelve side-by-side bar pairs is noisy. The canonical view is a **dumbbell**: each sample is one **horizontal lane** with a thin grey line spanning raw → callable, a **GREEN dot at `raw`**, and an **AMBER dot at `callable`**. Sort samples by `loss` (biggest first) and the worst offenders rise to the top.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-9|11-14|16-22|24-28"}
+qc = load_qc().sort_values("loss", ascending=False)     # worst loss on top
+qc = qc.reset_index(drop=True)                          # 0..N for the y-axis
+
+fig, ax = plt.subplots(figsize=(7.2, 4.6))              # CREATE wide-ish canvas
+
+# one thin grey line per sample, from raw down to callable
+ax.hlines(y=qc.index, xmin=qc["callable"], xmax=qc["raw"],
+          color=LINE, lw=2, zorder=1)                   # the "bar" of the dumbbell
+
+# GREEN dot = where we started (raw); AMBER dot = what survived (callable)
+ax.scatter(qc["raw"],      qc.index, color=GREEN, s=80, zorder=3, label="raw")
+ax.scatter(qc["callable"], qc.index, color=AMBER, s=80, zorder=3, label="callable")
+
+# y-axis = sample label, top-to-bottom = worst loss to best
+ax.set_yticks(qc.index)
+ax.set_yticklabels(qc["sample"], fontsize=8)
+ax.invert_yaxis()                                       # biggest loss at top
+ax.set_xlim(0.4, 1.0)                                   # tighten the lens
+ax.set_xlabel("fraction of reads")
+ax.legend(loc="lower right", frameon=False, fontsize=9)
+
+# annotate loss in % at the right edge of each lane
+for _, row in qc.iterrows():
+    ax.text(row["raw"] + 0.005, row.name, f"-{row['loss']:.0%}",
+            va="center", color=MUTED, fontsize=8)
+ax.set_title("Per-sample callable-rate loss", color=INK)
+ax.spines[["top", "right"]].set_visible(False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7.2
+#| fig-height: 4.6
+
+qc = load_qc().sort_values("loss", ascending=False)
+qc = qc.reset_index(drop=True)
+
+fig, ax = plt.subplots(figsize=(7.2, 4.6))
+
+ax.hlines(y=qc.index, xmin=qc["callable"], xmax=qc["raw"],
+          color=LINE, lw=2, zorder=1)
+
+ax.scatter(qc["raw"],      qc.index, color=GREEN, s=80, zorder=3, label="raw")
+ax.scatter(qc["callable"], qc.index, color=AMBER, s=80, zorder=3, label="callable")
+
+ax.set_yticks(qc.index)
+ax.set_yticklabels(qc["sample"], fontsize=8)
+ax.invert_yaxis()
+ax.set_xlim(0.4, 1.0)
+ax.set_xlabel("fraction of reads")
+ax.legend(loc="lower right", frameon=False, fontsize=9)
+
+for _, row in qc.iterrows():
+    ax.text(row["raw"] + 0.005, row.name, f"-{row['loss']:.0%}",
+            va="center", color=MUTED, fontsize=8)
+ax.set_title("Per-sample callable-rate loss", color=INK)
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 39 -->
+## Genome Stats · The Peak Data {.smaller}
+
+[Peaks + genes · data peek]{.eyebrow}
+
+### Two tidy tables — signal tracks and gene annotations
+
+`load_peaks()` is **one row per genomic position** with three signal columns. `load_peak_genes()` is **one row per gene** with start/end/strand.
+
+:::: {.columns}
+::: {.column width="50%"}
+```{python}
+#| echo: true
+peaks = load_peaks()                # position, H3K27ac, H3K4me3, ATAC
+peaks.head(5)
+```
+:::
+::: {.column width="50%"}
+```{python}
+#| echo: true
+genes = load_peak_genes()           # name, start, end, strand
+genes.head(5)
+```
+:::
+::::
+
+H3K27ac marks active enhancers, H3K4me3 marks active promoters, ATAC marks open chromatin. Together they triangulate "where is something happening".
+
+
+<!-- slide 40 -->
+## Peaks · Step 3 — Three Stacked Signal Tracks {.smaller}
+
+[Peaks · build]{.eyebrow}
+
+### 3 · One mark per panel, shared x-axis
+
+Three filled-area panels stacked vertically with `sharex=True`. **The shared x-axis is the contract** — column-aligned positions across all panels let the eye spot a triple co-occurrence (active promoter + active enhancer + open chromatin) at a single x-coordinate.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-8|10-13|15-18|20-23"}
+peaks = load_peaks()                                    # position + 3 signal cols
+x = peaks["position"]                                   # shared genomic axis
+
+# CREATE three panels stacked, all sharing the x-axis
+fig, axes = plt.subplots(
+    3, 1, figsize=(8.8, 4.2), sharex=True,
+    gridspec_kw=dict(hspace=0.15))
+ax_ac, ax_k4, ax_at = axes                              # name each panel
+
+# top panel: H3K27ac — active enhancer mark, RED
+ax_ac.fill_between(x, peaks["H3K27ac"], where=peaks["H3K27ac"] > 0,
+                   color=RED, alpha=0.7)               # CALL: filled area
+ax_ac.set_ylabel("H3K27ac"); ax_ac.spines[["top", "right"]].set_visible(False)
+
+# middle panel: H3K4me3 — active promoter mark, BLUE
+ax_k4.fill_between(x, peaks["H3K4me3"], where=peaks["H3K4me3"] > 0,
+                   color=BLUE, alpha=0.7)
+ax_k4.set_ylabel("H3K4me3"); ax_k4.spines[["top", "right"]].set_visible(False)
+
+# bottom panel: ATAC — open chromatin, GREEN
+ax_at.fill_between(x, peaks["ATAC"], where=peaks["ATAC"] > 0,
+                   color=GREEN, alpha=0.7)
+ax_at.set_ylabel("ATAC"); ax_at.spines[["top", "right"]].set_visible(False)
+ax_at.set_xlabel("genomic position (bp)")
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8.8
+#| fig-height: 4.2
+
+peaks = load_peaks()
+x = peaks["position"]
+
+fig, axes = plt.subplots(
+    3, 1, figsize=(8.8, 4.2), sharex=True,
+    gridspec_kw=dict(hspace=0.15))
+ax_ac, ax_k4, ax_at = axes
+
+ax_ac.fill_between(x, peaks["H3K27ac"], where=peaks["H3K27ac"] > 0,
+                   color=RED, alpha=0.7)
+ax_ac.set_ylabel("H3K27ac"); ax_ac.spines[["top", "right"]].set_visible(False)
+
+ax_k4.fill_between(x, peaks["H3K4me3"], where=peaks["H3K4me3"] > 0,
+                   color=BLUE, alpha=0.7)
+ax_k4.set_ylabel("H3K4me3"); ax_k4.spines[["top", "right"]].set_visible(False)
+
+ax_at.fill_between(x, peaks["ATAC"], where=peaks["ATAC"] > 0,
+                   color=GREEN, alpha=0.7)
+ax_at.set_ylabel("ATAC"); ax_at.spines[["top", "right"]].set_visible(False)
+ax_at.set_xlabel("genomic position (bp)")
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 41 -->
+## Peaks · Step 4 — Gene Model on Its Own {.smaller}
+
+[Peaks · build]{.eyebrow}
+
+### 4 · Rectangles for gene bodies, arrowheads for strand
+
+Before we glue it to the signal tracks, get the **gene model** right on its own axis. Each gene is a **`Rectangle`** spanning `start → end`. Strand is encoded with a small **arrowhead** — a triangular `Polygon` pointing right for `+` strand, left for `−`.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-5|7-10|12-22|24-29"}
+from matplotlib.patches import Rectangle, Polygon
+
+genes = load_peak_genes()                               # name, start, end, strand
+peaks = load_peaks()                                    # only used for x range
+xmin, xmax = peaks["position"].min(), peaks["position"].max()
+
+fig, ax = plt.subplots(figsize=(8.8, 1.6))              # CREATE thin track canvas
+
+# helper to draw one gene as body + arrowhead + name
+def draw_gene(ax, row):
+    y, h = 0, 0.4                                       # vertical centre and height
+    body = Rectangle((row["start"], y - h / 2),         # rectangle anchor (x, y)
+                     row["end"] - row["start"], h,       # width = gene length
+                     facecolor=PURPLE, edgecolor=INK, lw=0.8)
+    ax.add_patch(body)                                  # CALL: gene body
+    # strand-aware arrowhead at the leading edge of the gene
+    if row["strand"] == "+":
+        tip_x, base_x = row["end"], row["end"] - 400    # points right
+    else:
+        tip_x, base_x = row["start"], row["start"] + 400  # points left
+    head = Polygon([(base_x, y - h / 2), (base_x, y + h / 2), (tip_x, y)],
+                   facecolor=PURPLE, edgecolor=INK, lw=0.8)
+    ax.add_patch(head)
+    ax.text((row["start"] + row["end"]) / 2, y + 0.45,  # gene name above body
+            row["name"], ha="center", va="bottom", fontsize=9, fontweight="bold")
+
+# draw every gene; peak_genes has only 3
+for _, row in genes.iterrows():
+    draw_gene(ax, row)
+
+ax.set_xlim(xmin, xmax)                                 # match peak panel range
+ax.set_ylim(-1, 1)                                      # one lane, generous headroom
+ax.set_yticks([]); ax.set_xlabel("genomic position (bp)")
+ax.spines[["top", "right", "left"]].set_visible(False)  # minimalist frame
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8.8
+#| fig-height: 1.6
+from matplotlib.patches import Rectangle, Polygon
+
+genes = load_peak_genes()
+peaks = load_peaks()
+xmin, xmax = peaks["position"].min(), peaks["position"].max()
+
+fig, ax = plt.subplots(figsize=(8.8, 1.6))
+
+def draw_gene(ax, row):
+    y, h = 0, 0.4
+    body = Rectangle((row["start"], y - h / 2),
+                     row["end"] - row["start"], h,
+                     facecolor=PURPLE, edgecolor=INK, lw=0.8)
+    ax.add_patch(body)
+    if row["strand"] == "+":
+        tip_x, base_x = row["end"], row["end"] - 400
+    else:
+        tip_x, base_x = row["start"], row["start"] + 400
+    head = Polygon([(base_x, y - h / 2), (base_x, y + h / 2), (tip_x, y)],
+                   facecolor=PURPLE, edgecolor=INK, lw=0.8)
+    ax.add_patch(head)
+    ax.text((row["start"] + row["end"]) / 2, y + 0.45,
+            row["name"], ha="center", va="bottom", fontsize=9, fontweight="bold")
+
+for _, row in genes.iterrows():
+    draw_gene(ax, row)
+
+ax.set_xlim(xmin, xmax)
+ax.set_ylim(-1, 1)
+ax.set_yticks([]); ax.set_xlabel("genomic position (bp)")
+ax.spines[["top", "right", "left"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 42 -->
+## Peaks · Step 5 — Four-Panel Paper Figure {.smaller}
+
+[Peaks · build]{.eyebrow}
+
+### 5 · Three signal panels + one gene model, one shared x-axis
+
+Glue everything together: **four vertical panels** sharing one x-axis — H3K27ac, H3K4me3, ATAC, then a thin gene-model panel on the bottom. The gene track gets a `height_ratios` shrink and minimal styling (no y-ticks, no frame) so it reads as an annotation, not a fourth data series.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-7|9-14|16-22|24-34"}
+from matplotlib.patches import Rectangle, Polygon
+
+peaks = load_peaks(); genes = load_peak_genes()
+x = peaks["position"]
+
+# CREATE four panels — three signal, one gene model. gene panel is shortest.
+fig, axes = plt.subplots(
+    4, 1, figsize=(9.0, 5.0), sharex=True,
+    gridspec_kw=dict(height_ratios=[1, 1, 1, 0.4], hspace=0.15))
+ax_ac, ax_k4, ax_at, ax_g = axes
+
+# three signal panels (same as step 3, each gets a colour + label)
+for ax, col, color in [(ax_ac, "H3K27ac", RED),
+                       (ax_k4, "H3K4me3", BLUE),
+                       (ax_at, "ATAC",    GREEN)]:
+    ax.fill_between(x, peaks[col], where=peaks[col] > 0, color=color, alpha=0.7)
+    ax.set_ylabel(col); ax.spines[["top", "right"]].set_visible(False)
+
+# gene-model panel — minimal frame so it reads as annotation
+def draw_gene(ax, row):
+    y, h = 0, 0.5
+    ax.add_patch(Rectangle((row["start"], y - h / 2),
+                           row["end"] - row["start"], h,
+                           facecolor=PURPLE, edgecolor=INK, lw=0.8))
+    if row["strand"] == "+":
+        tip_x, base_x = row["end"], row["end"] - 400
+    else:
+        tip_x, base_x = row["start"], row["start"] + 400
+    ax.add_patch(Polygon([(base_x, y - h / 2), (base_x, y + h / 2), (tip_x, y)],
+                          facecolor=PURPLE, edgecolor=INK, lw=0.8))
+    ax.text((row["start"] + row["end"]) / 2, y + 0.55, row["name"],
+            ha="center", va="bottom", fontsize=8, fontweight="bold")
+
+for _, row in genes.iterrows():
+    draw_gene(ax_g, row)
+ax_g.set_ylim(-1, 1.4); ax_g.set_yticks([])               # no y-ticks on annotation
+ax_g.set_xlabel("genomic position (bp)")
+ax_g.spines[["top", "right", "left"]].set_visible(False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 9.0
+#| fig-height: 5.0
+from matplotlib.patches import Rectangle, Polygon
+
+peaks = load_peaks(); genes = load_peak_genes()
+x = peaks["position"]
+
+fig, axes = plt.subplots(
+    4, 1, figsize=(9.0, 5.0), sharex=True,
+    gridspec_kw=dict(height_ratios=[1, 1, 1, 0.4], hspace=0.15))
+ax_ac, ax_k4, ax_at, ax_g = axes
+
+for ax, col, color in [(ax_ac, "H3K27ac", RED),
+                       (ax_k4, "H3K4me3", BLUE),
+                       (ax_at, "ATAC",    GREEN)]:
+    ax.fill_between(x, peaks[col], where=peaks[col] > 0, color=color, alpha=0.7)
+    ax.set_ylabel(col); ax.spines[["top", "right"]].set_visible(False)
+
+def draw_gene(ax, row):
+    y, h = 0, 0.5
+    ax.add_patch(Rectangle((row["start"], y - h / 2),
+                           row["end"] - row["start"], h,
+                           facecolor=PURPLE, edgecolor=INK, lw=0.8))
+    if row["strand"] == "+":
+        tip_x, base_x = row["end"], row["end"] - 400
+    else:
+        tip_x, base_x = row["start"], row["start"] + 400
+    ax.add_patch(Polygon([(base_x, y - h / 2), (base_x, y + h / 2), (tip_x, y)],
+                          facecolor=PURPLE, edgecolor=INK, lw=0.8))
+    ax.text((row["start"] + row["end"]) / 2, y + 0.55, row["name"],
+            ha="center", va="bottom", fontsize=8, fontweight="bold")
+
+for _, row in genes.iterrows():
+    draw_gene(ax_g, row)
+ax_g.set_ylim(-1, 1.4); ax_g.set_yticks([])
+ax_g.set_xlabel("genomic position (bp)")
+ax_g.spines[["top", "right", "left"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 43 -->
+## Peaks · Production Tool {.smaller}
+
+[Peaks · ecosystem]{.eyebrow}
+
+### pyGenomeTracks for paper-grade multi-track plots
+
+For real screenshots — dozens of tracks, BAM files, BigWig, BED, GTF, Hi-C — use [**pyGenomeTracks**](https://github.com/deeptools/pyGenomeTracks). You write a tiny `.ini` config and call one CLI command. It handles axes, scaling, gene model rendering, and Hi-C heatmaps that matplotlib can't touch.
+
+```{.ini}
+[H3K27ac]
+file = H3K27ac.bw
+title = H3K27ac
+color = #B4405F
+height = 1.5
+
+[genes]
+file = annotation.gtf
+title = genes
+style = UCSC
+```
+
+```{.bash}
+pyGenomeTracks --tracks tracks.ini --region chr2:1000-21000 -o figure.pdf
+```
+
+The matplotlib build you just saw is the **mental model**; pyGenomeTracks is the production tool.
+
+
+<!-- slide 44 -->
+## Genome Stats · Takeaway {.smaller}
+
+[Genome stats · recap]{.eyebrow}
+
+### Two stories, one principle
+
+::: {.takeaway}
+[The bottom line]{.tl}
+1. **Coverage tells you what you can trust.** A dumbbell sorted by loss surfaces the worst samples in one glance — bar charts of raw vs callable bury the story.
+2. **Peak tracks + gene models tell you what's happening where.** Stack one panel per signal, one panel for the gene model, all sharing the same x-axis.
+3. **The shared x-axis is the contract.** Column-aligned positions across panels are what let the reader spot co-occurrence — without that, the panels are just three unrelated charts.
+:::

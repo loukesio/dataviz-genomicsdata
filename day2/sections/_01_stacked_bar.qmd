@@ -1,0 +1,492 @@
+<!-- slide 4 -->
+# Stacked Bar Plots {.divider}
+
+[Composition · proportions]{.eyebrow}
+
+
+<!-- slide 5 -->
+## What Is a Stacked Bar? {.smaller}
+
+[Stacked bar · theory]{.eyebrow}
+
+### Every column sums to the whole; bands stack to show its parts
+
+A **stacked bar** answers one question: *what is each sample made of?* Each column is a single observation (an individual, a tumour, a microbiome sample). The bar is sliced into coloured **bands**, one per category, and the heights of those bands sum to the total. When every bar has the same total — say, a proportion that must add to 100% — the chart becomes a pure **composition** view.
+
+**Use it when**:
+
+- **Admixture / ancestry**: each individual = one bar made of ancestry fractions K1…K5.
+- **Microbiome**: each sample = one bar of phylum or genus relative abundance.
+- **Cell-type deconvolution**: each tumour = one bar of immune-cell fractions.
+
+**Avoid it when** only the totals matter (a plain bar chart is clearer) or when you need to *compare a single inner band across many samples* (segment baselines wobble — a line, dot plot, or small multiples wins).
+
+
+<!-- slide 6 -->
+## Anatomy, Before Any Data {.smaller}
+
+[Stacked bar · theory]{.eyebrow}
+
+### Four bars, five bands — how the geometry works
+
+Before touching real ancestry data, build the **idea**. Four cartoon bars, each made of five rectangles in the course palette. The trick is the `bottom=` argument: each band starts where the previous one ended.
+
+```{python}
+#| echo: false
+#| fig-width: 6.4
+#| fig-height: 4.4
+
+# CREATE — a tiny empty canvas for the anatomy cartoon
+fig, ax = plt.subplots(figsize=(6.4, 4.4))
+
+# four fake samples, each a 5-component composition that sums to 1.0
+samples = ["A", "B", "C", "D"]
+comp = np.array([
+    [0.55, 0.20, 0.10, 0.10, 0.05],   # sample A
+    [0.30, 0.35, 0.20, 0.10, 0.05],   # sample B
+    [0.10, 0.20, 0.40, 0.20, 0.10],   # sample C
+    [0.05, 0.10, 0.20, 0.35, 0.30],   # sample D
+])
+band_names = ["K1", "K2", "K3", "K4", "K5"]
+
+# stack bands one at a time, tracking the running "bottom" for each bar
+bottom = np.zeros(len(samples))                       # start every bar at y = 0
+for k in range(5):                                     # one band per K component
+    ax.bar(samples, comp[:, k], bottom=bottom,        # CALL: draw this band atop the last
+           color=COURSE_PAL[k], edgecolor="white", linewidth=0.6,
+           label=band_names[k])
+    bottom += comp[:, k]                              # next band starts where this one ended
+
+# cosmetic frame
+ax.set_ylim(0, 1)
+ax.set_ylabel("composition")
+ax.set_xlabel("sample")
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False, fontsize=9)
+plt.tight_layout()
+plt.show()
+```
+
+
+<!-- slide 7 -->
+## Stacked Bar · The Data {.smaller}
+
+[Stacked bar · data peek]{.eyebrow}
+
+### One row per individual — population label + five ancestry fractions
+
+`load_admixture()` returns 120 individuals across five reference populations (EUR / EAS / AFR / AMR / SAS). Each row carries five ancestry components **K1…K5** whose values sum to 1.0 — they are mixture proportions, the output of a tool like ADMIXTURE or STRUCTURE.
+
+```{python}
+#| echo: true
+#| output-location: column
+
+adm = load_admixture()           # individual, population, K1..K5 (K1..K5 sum to 1)
+adm.head(5)
+```
+
+
+<!-- slide 8 -->
+## Stacked Bar · Step 1 — One Individual {.smaller}
+
+[Stacked bar · build]{.eyebrow}
+
+### 1 · A single bar, K1…K5 stacked on top of each other
+
+Build the **idea** on one person. Take row 0 (an EUR individual), stack their five K fractions vertically with `ax.bar(..., bottom=running_total)`. The bar height ends at exactly 1.0 because the proportions sum.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-6|8-9|11-16|18-20"}
+adm = load_admixture()                          # the full ancestry table
+row = adm.iloc[0]                                # one individual (the first EUR)
+
+# the five mixture proportions for this person
+k_cols = ["K1", "K2", "K3", "K4", "K5"]          # column names in order
+fracs  = [row[k] for k in k_cols]                # numeric values, sum to 1.0
+
+fig, ax = plt.subplots(figsize=(3.8, 4.6))       # CREATE the canvas
+bottom = 0                                        # start the stack at y = 0
+
+for i, k in enumerate(k_cols):                    # one band per K component
+    ax.bar(row["individual"], fracs[i],          # CALL: draw this band
+           bottom=bottom,                         # stack it atop the previous
+           color=COURSE_PAL[i], edgecolor="white", linewidth=0.6,
+           label=k)
+    bottom += fracs[i]                            # next band starts here
+
+ax.set_ylim(0, 1); ax.set_ylabel("ancestry fraction")
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False, fontsize=9)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 3.8
+#| fig-height: 4.6
+
+adm = load_admixture()
+row = adm.iloc[0]
+
+k_cols = ["K1", "K2", "K3", "K4", "K5"]
+fracs  = [row[k] for k in k_cols]
+
+fig, ax = plt.subplots(figsize=(3.8, 4.6))
+bottom = 0
+
+for i, k in enumerate(k_cols):
+    ax.bar(row["individual"], fracs[i],
+           bottom=bottom,
+           color=COURSE_PAL[i], edgecolor="white", linewidth=0.6,
+           label=k)
+    bottom += fracs[i]
+
+ax.set_ylim(0, 1); ax.set_ylabel("ancestry fraction")
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False, fontsize=9)
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 9 -->
+## Stacked Bar · Step 2 — One Population, Sorted {.smaller}
+
+[Stacked bar · build]{.eyebrow}
+
+### 2 · All EUR individuals, sorted by their K1 contribution
+
+Now scale to every EUR individual. Sort them by **K1** so the dominant ancestry forms a smooth gradient — without sorting, the bars look like noise. The `for` loop is unavoidable here: matplotlib's `ax.bar` needs the running `bottom` updated per band.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-4|6-7|9-10|12-19|21-23"}
+adm = load_admixture()                                       # full table
+k_cols = ["K1", "K2", "K3", "K4", "K5"]
+
+eur = adm[adm["population"] == "EUR"].copy()                 # one population
+eur = eur.sort_values("K1", ascending=False)                 # gradient by K1
+
+x = np.arange(len(eur))                                       # 0, 1, 2, ... one slot per ind
+bottom = np.zeros(len(eur))                                   # running total per bar
+
+fig, ax = plt.subplots(figsize=(7.2, 4.2))                    # CREATE the canvas
+
+for i, k in enumerate(k_cols):                                # one band across all bars
+    heights = eur[k].values                                   # bracket access — safe
+    ax.bar(x, heights, bottom=bottom,                         # CALL: draw the band
+           color=COURSE_PAL[i], width=1.0,                    # width=1.0: bars touch
+           edgecolor="none", label=k)
+    bottom += heights                                          # advance the stack
+
+ax.set_xlim(-0.5, len(eur) - 0.5); ax.set_ylim(0, 1)
+ax.set_xticks([]); ax.set_ylabel("ancestry fraction")
+ax.set_title("EUR individuals — sorted by K1", color=MUTED, fontsize=11)
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False, fontsize=9)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7.2
+#| fig-height: 4.2
+
+adm = load_admixture()
+k_cols = ["K1", "K2", "K3", "K4", "K5"]
+
+eur = adm[adm["population"] == "EUR"].copy()
+eur = eur.sort_values("K1", ascending=False)
+
+x = np.arange(len(eur))
+bottom = np.zeros(len(eur))
+
+fig, ax = plt.subplots(figsize=(7.2, 4.2))
+
+for i, k in enumerate(k_cols):
+    heights = eur[k].values
+    ax.bar(x, heights, bottom=bottom,
+           color=COURSE_PAL[i], width=1.0,
+           edgecolor="none", label=k)
+    bottom += heights
+
+ax.set_xlim(-0.5, len(eur) - 0.5); ax.set_ylim(0, 1)
+ax.set_xticks([]); ax.set_ylabel("ancestry fraction")
+ax.set_title("EUR individuals — sorted by K1", color=MUTED, fontsize=11)
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False, fontsize=9)
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 10 -->
+## Stacked Bar · Step 3 — Every Population {.smaller}
+
+[Stacked bar · build]{.eyebrow}
+
+### 3 · All five populations, separators between groups
+
+The canonical admixture plot. Sort *within* each population by its dominant K, concatenate, then draw thin vertical lines between groups so the eye can find the boundaries.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-4|6-11|13-14|16-23|25-30"}
+adm = load_admixture()                                            # full table
+k_cols = ["K1", "K2", "K3", "K4", "K5"]
+pops = ["EUR", "EAS", "AFR", "AMR", "SAS"]                        # fixed order
+dom  = {"EUR": "K1", "EAS": "K2", "AFR": "K3", "AMR": "K4", "SAS": "K5"}
+
+# sort each population internally by its dominant K, then concatenate
+ordered = pd.concat([
+    adm[adm["population"] == p]                                    # one population
+       .sort_values(dom[p], ascending=False)                       # gradient inside
+    for p in pops
+], ignore_index=True)
+
+x = np.arange(len(ordered))                                        # slot per individual
+bottom = np.zeros(len(ordered))
+
+fig, ax = plt.subplots(figsize=(9.0, 4.2))                         # CREATE the canvas
+
+for i, k in enumerate(k_cols):                                     # paint each band
+    heights = ordered[k].values
+    ax.bar(x, heights, bottom=bottom,                              # CALL
+           color=COURSE_PAL[i], width=1.0, edgecolor="none", label=k)
+    bottom += heights
+
+# population boundaries: vertical hairlines
+counts = ordered["population"].value_counts().reindex(pops)        # how many per pop
+boundaries = counts.cumsum().values[:-1]                            # cut points
+for b in boundaries:
+    ax.axvline(b - 0.5, color=CREAM, lw=1.5)                       # thin cream divider
+
+ax.set_xlim(-0.5, len(ordered) - 0.5); ax.set_ylim(0, 1)
+ax.set_xticks([]); ax.set_ylabel("ancestry fraction")
+ax.spines[["top", "right"]].set_visible(False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 9.0
+#| fig-height: 4.2
+
+adm = load_admixture()
+k_cols = ["K1", "K2", "K3", "K4", "K5"]
+pops = ["EUR", "EAS", "AFR", "AMR", "SAS"]
+dom  = {"EUR": "K1", "EAS": "K2", "AFR": "K3", "AMR": "K4", "SAS": "K5"}
+
+ordered = pd.concat([
+    adm[adm["population"] == p].sort_values(dom[p], ascending=False)
+    for p in pops
+], ignore_index=True)
+
+x = np.arange(len(ordered))
+bottom = np.zeros(len(ordered))
+
+fig, ax = plt.subplots(figsize=(9.0, 4.2))
+
+for i, k in enumerate(k_cols):
+    heights = ordered[k].values
+    ax.bar(x, heights, bottom=bottom,
+           color=COURSE_PAL[i], width=1.0, edgecolor="none", label=k)
+    bottom += heights
+
+counts = ordered["population"].value_counts().reindex(pops)
+boundaries = counts.cumsum().values[:-1]
+for b in boundaries:
+    ax.axvline(b - 0.5, color=CREAM, lw=1.5)
+
+ax.set_xlim(-0.5, len(ordered) - 0.5); ax.set_ylim(0, 1)
+ax.set_xticks([]); ax.set_ylabel("ancestry fraction")
+ax.spines[["top", "right"]].set_visible(False)
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 11 -->
+## Stacked Bar · Step 4 — Labels & Legend {.smaller}
+
+[Stacked bar · build]{.eyebrow}
+
+### 4 · Population names along the x, K legend on the right
+
+The composition is right; now make it readable. Centre each population's name *under its block* of bars using the cumulative counts, and pin the K legend outside the axes so it never overlaps the data.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="25-32|34-38"}
+adm = load_admixture()
+k_cols = ["K1", "K2", "K3", "K4", "K5"]
+pops = ["EUR", "EAS", "AFR", "AMR", "SAS"]
+dom  = {"EUR": "K1", "EAS": "K2", "AFR": "K3", "AMR": "K4", "SAS": "K5"}
+
+ordered = pd.concat([
+    adm[adm["population"] == p].sort_values(dom[p], ascending=False)
+    for p in pops
+], ignore_index=True)
+
+x = np.arange(len(ordered))
+bottom = np.zeros(len(ordered))
+
+fig, ax = plt.subplots(figsize=(9.0, 4.4))
+
+for i, k in enumerate(k_cols):
+    heights = ordered[k].values
+    ax.bar(x, heights, bottom=bottom,
+           color=COURSE_PAL[i], width=1.0, edgecolor="none", label=k)
+    bottom += heights
+
+counts = ordered["population"].value_counts().reindex(pops)
+boundaries = counts.cumsum().values[:-1]
+for b in boundaries:
+    ax.axvline(b - 0.5, color=CREAM, lw=1.5)
+
+# population labels: place each at the middle of its block
+edges  = np.concatenate([[0], counts.cumsum().values])               # block edges
+mids   = (edges[:-1] + edges[1:]) / 2                                # midpoints
+ax.set_xticks(mids)                                                   # tick at each mid
+ax.set_xticklabels(pops, color=MUTED, fontsize=10)                    # population names
+ax.tick_params(axis="x", length=0)                                    # hide tick marks
+
+ax.set_xlim(-0.5, len(ordered) - 0.5); ax.set_ylim(0, 1)
+ax.set_ylabel("ancestry fraction")
+ax.set_title("ADMIXTURE K=5 — 120 individuals across 5 populations", color=INK)
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(title="component", loc="center left",
+          bbox_to_anchor=(1.02, 0.5), frameon=False, fontsize=9)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 9.0
+#| fig-height: 4.4
+
+adm = load_admixture()
+k_cols = ["K1", "K2", "K3", "K4", "K5"]
+pops = ["EUR", "EAS", "AFR", "AMR", "SAS"]
+dom  = {"EUR": "K1", "EAS": "K2", "AFR": "K3", "AMR": "K4", "SAS": "K5"}
+
+ordered = pd.concat([
+    adm[adm["population"] == p].sort_values(dom[p], ascending=False)
+    for p in pops
+], ignore_index=True)
+
+x = np.arange(len(ordered))
+bottom = np.zeros(len(ordered))
+
+fig, ax = plt.subplots(figsize=(9.0, 4.4))
+
+for i, k in enumerate(k_cols):
+    heights = ordered[k].values
+    ax.bar(x, heights, bottom=bottom,
+           color=COURSE_PAL[i], width=1.0, edgecolor="none", label=k)
+    bottom += heights
+
+counts = ordered["population"].value_counts().reindex(pops)
+boundaries = counts.cumsum().values[:-1]
+for b in boundaries:
+    ax.axvline(b - 0.5, color=CREAM, lw=1.5)
+
+edges  = np.concatenate([[0], counts.cumsum().values])
+mids   = (edges[:-1] + edges[1:]) / 2
+ax.set_xticks(mids)
+ax.set_xticklabels(pops, color=MUTED, fontsize=10)
+ax.tick_params(axis="x", length=0)
+
+ax.set_xlim(-0.5, len(ordered) - 0.5); ax.set_ylim(0, 1)
+ax.set_ylabel("ancestry fraction")
+ax.set_title("ADMIXTURE K=5 — 120 individuals across 5 populations", color=INK)
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(title="component", loc="center left",
+          bbox_to_anchor=(1.02, 0.5), frameon=False, fontsize=9)
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 12 -->
+## Stacked Bar · Pandas Variant {.smaller}
+
+[Stacked bar · ergonomic]{.eyebrow}
+
+### Three lines with `pandas.DataFrame.plot(stacked=True)`
+
+Pandas wraps matplotlib for the common case. Set the population-ordered index on the K columns and ask for a stacked bar — pandas computes the running `bottom=` for you. You give up control (no per-population sort across groups, harder custom separators), but you get to a publishable draft in three lines.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-8|10-13"}
+adm = load_admixture()
+k_cols = ["K1", "K2", "K3", "K4", "K5"]
+pops = ["EUR", "EAS", "AFR", "AMR", "SAS"]
+
+# group-ordered frame: each pop sorted by its dominant K, indexed by individual
+ordered = pd.concat([adm[adm["population"] == p].sort_values(k_cols[i], ascending=False)
+                     for i, p in enumerate(pops)], ignore_index=True)
+data = ordered.set_index("individual")[k_cols]                # rows=ind, cols=K1..K5
+
+# CALL: pandas builds the whole stacked bar from the frame
+ax = data.plot(kind="bar", stacked=True, width=1.0,
+               color=COURSE_PAL, figsize=(9.0, 4.0), legend=True)
+ax.set_xticks([]); ax.set_ylim(0, 1); ax.set_ylabel("ancestry fraction")
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False, fontsize=9)
+```
+
+**Trade-off**: pandas wins on conciseness; matplotlib wins on **control** — custom separators, per-population sort orders, labels at block midpoints. Use pandas to **draft**, matplotlib to **publish**.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 9.0
+#| fig-height: 4.0
+
+adm = load_admixture()
+k_cols = ["K1", "K2", "K3", "K4", "K5"]
+pops = ["EUR", "EAS", "AFR", "AMR", "SAS"]
+
+ordered = pd.concat([adm[adm["population"] == p].sort_values(k_cols[i], ascending=False)
+                     for i, p in enumerate(pops)], ignore_index=True)
+data = ordered.set_index("individual")[k_cols]
+
+ax = data.plot(kind="bar", stacked=True, width=1.0,
+               color=COURSE_PAL, figsize=(9.0, 4.0), legend=True)
+ax.set_xticks([]); ax.set_ylim(0, 1); ax.set_ylabel("ancestry fraction")
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False, fontsize=9)
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 13 -->
+## Stacked Bar · Takeaway {.smaller}
+
+[Stacked bar · recap]{.eyebrow}
+
+### Composition first, totals only if they vary
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **Each column is one observation**; bands stack to its total.
+2. **Sort within groups** by the dominant component — un-sorted admixture looks like noise.
+3. **One colour per band, fixed across bars** — the eye tracks a band by its colour.
+4. **Separators between groups** (thin cream lines) replace heavy x-ticks.
+
+When the totals are forced equal (admixture proportions sum to 1), the stacked bar is **pure composition**. When totals vary (read counts, dollars), it shows **composition *and* magnitude** in one chart. Pick deliberately.
+:::

@@ -1,0 +1,442 @@
+<!-- slide 30 -->
+# Manhattan Plots {.divider}
+
+[GWAS · genome-wide significance]{.eyebrow}
+
+
+<!-- slide 31 -->
+## What Is a Manhattan Plot? {.smaller}
+
+[Manhattan · theory]{.eyebrow}
+
+### One dot per SNP, the whole genome on the x-axis
+
+A Manhattan plot is the canonical view of a **genome-wide association study (GWAS)**. Each dot is one variant. The **x-axis is genomic position** — every chromosome laid end-to-end — and the **y-axis is the −log10 of the association p-value**. So *higher = stronger evidence* that the variant is linked to the trait.
+
+The shape that gives it its name: most SNPs are background noise, a flat low cloud — but real signals rise into thin **skyscrapers** that look like the New York skyline. The eye reads "significance peaks above the horizon line".
+
+Two horizontal cutoffs:
+
+- **Suggestive line**: p = 1e-5 (often shown as `-log10(p) = 5`)
+- **Genome-wide significance line**: p = 5e-8 (`-log10(p) ≈ 7.3`) — the canonical Bonferroni-corrected threshold for ~1 M independent tests in the human genome.
+
+
+<!-- slide 32 -->
+## Anatomy, Before Any Data {.smaller}
+
+[Manhattan · theory]{.eyebrow}
+
+### Three regions before we even load a file
+
+```{python}
+#| echo: false
+#| fig-width: 6.4
+#| fig-height: 4.4
+
+# CREATE — empty canvas; we draw the three regions a Manhattan splits into
+fig, ax = plt.subplots(figsize=(6.4, 4.4))
+
+# horizontal cutoffs: the two canonical GWAS thresholds
+ax.axhline(5,   color=INK, lw=.9, ls="--")             # suggestive (p = 1e-5)
+ax.axhline(7.3, color=INK, lw=.9, ls="--")             # genome-wide (p = 5e-8)
+
+# shaded zones to name the regions
+ax.axhspan(7.3, 11, alpha=.08, color=RED)              # the "hits"
+ax.axhspan(5,   7.3, alpha=.06, color=AMBER)           # the suggestive zone
+
+# region labels
+ax.text(11, 9.2, "genome-wide\nsignificant",  ha="center", color=RED,   fontweight="bold", fontsize=11)
+ax.text(11, 6.1, "suggestive",                ha="center", color=AMBER, fontweight="bold", fontsize=11)
+ax.text(11, 2.5, "background",                ha="center", color=MUTED, fontsize=11)
+
+# cosmetic frame: cream canvas, no top/right spines
+ax.set_xlim(0, 22); ax.set_ylim(0, 11)
+ax.set_xticks([])                                       # no x-ticks in the cartoon
+ax.set_xlabel("genomic position  (chromosomes 1 → 22)")
+ax.set_ylabel(r"$-\log_{10}(p)$    (significance)")
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+
+
+<!-- slide 33 -->
+## Manhattan · The Data {.smaller}
+
+[Manhattan · data peek]{.eyebrow}
+
+### One row per SNP — chrom, pos, p-value, rsID
+
+`load_gwas("height")` returns a tidy table: 13 475 SNPs across 22 chromosomes, with raw p-values. The simulation seeds a few real-looking peaks so the build has something to point at.
+
+```{python}
+#| echo: true
+#| output-location: column
+
+gwas = load_gwas("height")        # chrom, pos, pval, snp
+gwas.head(5)
+```
+
+
+<!-- slide 34 -->
+## Manhattan · Step 1 — One Chromosome First {.smaller}
+
+[Manhattan · build]{.eyebrow}
+
+### 1 · The cloud, on chromosome 1 only
+
+Before we tile 22 chromosomes, build the **idea** on one. Scatter SNP position vs −log10(p). The shape is already there: a flat cloud with the occasional spike.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-4|6-7|9-12"}
+gwas = load_gwas("height")                       # the whole-genome table
+
+chr1 = gwas[gwas["chrom"] == 1].copy()           # one chromosome only
+chr1["nlog10p"] = -np.log10(chr1["pval"])        # significance axis
+
+fig, ax = plt.subplots(figsize=(6, 4))           # CREATE the canvas
+ax.scatter(chr1["pos"], chr1["nlog10p"],         # CALL: x = bp, y = -log10(p)
+           s=8, color=GREY, alpha=0.5, linewidths=0)
+
+ax.set_xlabel("position on chr1 (bp)")
+ax.set_ylabel(r"$-\log_{10}(p)$")
+ax.spines[["top", "right"]].set_visible(False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6
+#| fig-height: 4
+
+gwas = load_gwas("height")
+chr1 = gwas[gwas["chrom"] == 1].copy()
+chr1["nlog10p"] = -np.log10(chr1["pval"])
+
+fig, ax = plt.subplots(figsize=(6, 4))
+ax.scatter(chr1["pos"], chr1["nlog10p"], s=8, color=GREY, alpha=0.5, linewidths=0)
+ax.set_xlabel("position on chr1 (bp)")
+ax.set_ylabel(r"$-\log_{10}(p)$")
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 35 -->
+## Manhattan · Step 2 — All 22, Alternating Colours {.smaller}
+
+[Manhattan · build]{.eyebrow}
+
+### 2 · Lay every chromosome end-to-end
+
+The trick: replace per-chromosome `pos` with a **cumulative** coordinate so chr2 starts where chr1 ends. Alternate two colours so the eye can tell chromosomes apart without a heavy x-axis.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-7|9-11|13-19|21-24"}
+gwas = load_gwas("height").sort_values(["chrom", "pos"]).copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])
+
+# 1. find each chromosome's length, then offset cumulatively
+chrom_len = gwas.groupby("chrom")["pos"].max()
+offsets = chrom_len.cumsum().shift(fill_value=0)        # chr1→0, chr2→len(chr1), ...
+gwas["cum_pos"] = gwas["pos"] + gwas["chrom"].map(offsets)
+
+# 2. one colour per parity (Economist BLUE / GREEN), painless cycler
+palette = {True: BLUE, False: GREEN}
+gwas["color"] = (gwas["chrom"] % 2 == 0).map(palette)
+
+# 3. scatter once with the precomputed colour column
+fig, ax = plt.subplots(figsize=(8.5, 4))
+ax.scatter(gwas["cum_pos"], gwas["nlog10p"],
+           c=gwas["color"], s=6, alpha=0.7, linewidths=0)
+
+# 4. x-ticks at each chromosome's mid-point, not every megabase
+tick_pos = offsets + chrom_len / 2
+ax.set_xticks(tick_pos); ax.set_xticklabels(chrom_len.index, fontsize=8)
+ax.set_xlabel("chromosome"); ax.set_ylabel(r"$-\log_{10}(p)$")
+ax.spines[["top", "right"]].set_visible(False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8.5
+#| fig-height: 4
+
+gwas = load_gwas("height").sort_values(["chrom", "pos"]).copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])
+
+chrom_len = gwas.groupby("chrom")["pos"].max()
+offsets = chrom_len.cumsum().shift(fill_value=0)
+gwas["cum_pos"] = gwas["pos"] + gwas["chrom"].map(offsets)
+
+palette = {True: BLUE, False: GREEN}
+gwas["color"] = (gwas["chrom"] % 2 == 0).map(palette)
+
+fig, ax = plt.subplots(figsize=(8.5, 4))
+ax.scatter(gwas["cum_pos"], gwas["nlog10p"], c=gwas["color"], s=6, alpha=0.7, linewidths=0)
+
+tick_pos = offsets + chrom_len / 2
+ax.set_xticks(tick_pos); ax.set_xticklabels(chrom_len.index, fontsize=8)
+ax.set_xlabel("chromosome"); ax.set_ylabel(r"$-\log_{10}(p)$")
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 36 -->
+## Manhattan · Step 3 — The Significance Lines {.smaller}
+
+[Manhattan · build]{.eyebrow}
+
+### 3 · Draw the thresholds the field agrees on
+
+Two dashed horizontals turn the cloud into a *test*: suggestive (p = 1e-5) and genome-wide (p = 5e-8). Anything above the upper line is the headline of the paper.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="22-24"}
+gwas = load_gwas("height").sort_values(["chrom", "pos"]).copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])
+
+chrom_len = gwas.groupby("chrom")["pos"].max()
+offsets = chrom_len.cumsum().shift(fill_value=0)
+gwas["cum_pos"] = gwas["pos"] + gwas["chrom"].map(offsets)
+
+palette = {True: BLUE, False: GREEN}
+gwas["color"] = (gwas["chrom"] % 2 == 0).map(palette)
+
+fig, ax = plt.subplots(figsize=(8.5, 4))
+ax.scatter(gwas["cum_pos"], gwas["nlog10p"],
+           c=gwas["color"], s=6, alpha=0.7, linewidths=0)
+
+tick_pos = offsets + chrom_len / 2
+ax.set_xticks(tick_pos); ax.set_xticklabels(chrom_len.index, fontsize=8)
+ax.set_xlabel("chromosome"); ax.set_ylabel(r"$-\log_{10}(p)$")
+ax.spines[["top", "right"]].set_visible(False)
+
+# 5. the thresholds — dashed, annotated on the right edge
+ax.axhline(-np.log10(5e-8), color=RED,   lw=.9, ls="--")   # genome-wide
+ax.axhline(-np.log10(1e-5), color=AMBER, lw=.9, ls="--")   # suggestive
+ax.text(gwas["cum_pos"].max(), -np.log10(5e-8)+0.15, "p = 5e-8",
+        ha="right", va="bottom", color=RED,   fontsize=8)
+ax.text(gwas["cum_pos"].max(), -np.log10(1e-5)+0.15, "p = 1e-5",
+        ha="right", va="bottom", color=AMBER, fontsize=8)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8.5
+#| fig-height: 4
+
+gwas = load_gwas("height").sort_values(["chrom", "pos"]).copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])
+
+chrom_len = gwas.groupby("chrom")["pos"].max()
+offsets = chrom_len.cumsum().shift(fill_value=0)
+gwas["cum_pos"] = gwas["pos"] + gwas["chrom"].map(offsets)
+
+palette = {True: BLUE, False: GREEN}
+gwas["color"] = (gwas["chrom"] % 2 == 0).map(palette)
+
+fig, ax = plt.subplots(figsize=(8.5, 4))
+ax.scatter(gwas["cum_pos"], gwas["nlog10p"], c=gwas["color"], s=6, alpha=0.7, linewidths=0)
+
+tick_pos = offsets + chrom_len / 2
+ax.set_xticks(tick_pos); ax.set_xticklabels(chrom_len.index, fontsize=8)
+ax.set_xlabel("chromosome"); ax.set_ylabel(r"$-\log_{10}(p)$")
+ax.spines[["top", "right"]].set_visible(False)
+
+ax.axhline(-np.log10(5e-8), color=RED,   lw=.9, ls="--")
+ax.axhline(-np.log10(1e-5), color=AMBER, lw=.9, ls="--")
+ax.text(gwas["cum_pos"].max(), -np.log10(5e-8)+0.15, "p = 5e-8",
+        ha="right", va="bottom", color=RED, fontsize=8)
+ax.text(gwas["cum_pos"].max(), -np.log10(1e-5)+0.15, "p = 1e-5",
+        ha="right", va="bottom", color=AMBER, fontsize=8)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 37 -->
+## Manhattan · Step 4 — Highlight & Label the Hits {.smaller}
+
+[Manhattan · build]{.eyebrow}
+
+### 4 · Spotlight the SNPs that crossed the line
+
+Genome-wide significant hits get a **filled red dot on top of the cloud** and an rsID label. The audience finally sees what the paper claims.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="22-29"}
+gwas = load_gwas("height").sort_values(["chrom", "pos"]).copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])
+
+chrom_len = gwas.groupby("chrom")["pos"].max()
+offsets = chrom_len.cumsum().shift(fill_value=0)
+gwas["cum_pos"] = gwas["pos"] + gwas["chrom"].map(offsets)
+
+palette = {True: BLUE, False: GREEN}
+gwas["color"] = (gwas["chrom"] % 2 == 0).map(palette)
+
+fig, ax = plt.subplots(figsize=(8.5, 4.3))
+ax.scatter(gwas["cum_pos"], gwas["nlog10p"],
+           c=gwas["color"], s=6, alpha=0.55, linewidths=0)
+
+ax.axhline(-np.log10(5e-8), color=RED,   lw=.9, ls="--")
+ax.axhline(-np.log10(1e-5), color=AMBER, lw=.9, ls="--")
+
+tick_pos = offsets + chrom_len / 2
+ax.set_xticks(tick_pos); ax.set_xticklabels(chrom_len.index, fontsize=8)
+
+# 6. spotlight — the hits as bigger red dots, on top (high zorder)
+hits = gwas[gwas["pval"] < 5e-8]
+ax.scatter(hits["cum_pos"], hits["nlog10p"],
+           color=RED, s=42, edgecolor="white", linewidths=0.6, zorder=5)
+
+# 7. label the top 3 by significance with their rsIDs
+for _, row in hits.nsmallest(3, "pval").iterrows():
+    ax.annotate(row["snp"], (row["cum_pos"], row["nlog10p"]),
+                xytext=(5, 5), textcoords="offset points", fontsize=8)
+
+ax.set_xlabel("chromosome")
+ax.set_ylabel(r"$-\log_{10}(p)$")
+ax.set_title(f"Height GWAS — {len(hits)} genome-wide significant SNPs")
+ax.spines[["top", "right"]].set_visible(False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8.5
+#| fig-height: 4.3
+
+gwas = load_gwas("height").sort_values(["chrom", "pos"]).copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])
+
+chrom_len = gwas.groupby("chrom")["pos"].max()
+offsets = chrom_len.cumsum().shift(fill_value=0)
+gwas["cum_pos"] = gwas["pos"] + gwas["chrom"].map(offsets)
+
+palette = {True: BLUE, False: GREEN}
+gwas["color"] = (gwas["chrom"] % 2 == 0).map(palette)
+
+fig, ax = plt.subplots(figsize=(8.5, 4.3))
+ax.scatter(gwas["cum_pos"], gwas["nlog10p"], c=gwas["color"], s=6, alpha=0.55, linewidths=0)
+
+ax.axhline(-np.log10(5e-8), color=RED,   lw=.9, ls="--")
+ax.axhline(-np.log10(1e-5), color=AMBER, lw=.9, ls="--")
+
+tick_pos = offsets + chrom_len / 2
+ax.set_xticks(tick_pos); ax.set_xticklabels(chrom_len.index, fontsize=8)
+
+hits = gwas[gwas["pval"] < 5e-8]
+ax.scatter(hits["cum_pos"], hits["nlog10p"],
+           color=RED, s=42, edgecolor="white", linewidths=0.6, zorder=5)
+
+for _, row in hits.nsmallest(3, "pval").iterrows():
+    ax.annotate(row["snp"], (row["cum_pos"], row["nlog10p"]),
+                xytext=(5, 5), textcoords="offset points", fontsize=8)
+
+ax.set_xlabel("chromosome")
+ax.set_ylabel(r"$-\log_{10}(p)$")
+ax.set_title(f"Height GWAS — {len(hits)} genome-wide significant SNPs")
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 38 -->
+## Manhattan · Plotly Variant {.smaller}
+
+[Manhattan · interactive]{.eyebrow}
+
+### Hover for the SNP ID — same plot, browser-native interactivity
+
+For dashboards and exploratory review, plotly gives every dot a tooltip. Same logic as the matplotlib version — cumulative x, parity colour, threshold line — but `hover_data` exposes chrom / pos / rsID.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-9|11-17|19-22"}
+import plotly.express as px
+
+# reuse the prepared frame (cum_pos, nlog10p, color)
+gwas = load_gwas("height").sort_values(["chrom", "pos"]).copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])
+chrom_len = gwas.groupby("chrom")["pos"].max()
+offsets = chrom_len.cumsum().shift(fill_value=0)
+gwas["cum_pos"] = gwas["pos"] + gwas["chrom"].map(offsets)
+gwas["chrom_parity"] = (gwas["chrom"] % 2 == 0).astype(str)
+
+# px.scatter handles colour grouping + hover for us
+fig = px.scatter(
+    gwas, x="cum_pos", y="nlog10p",
+    color="chrom_parity",
+    color_discrete_map={"True": BLUE, "False": GREEN},
+    hover_data=["chrom", "pos", "snp", "pval"],
+    labels={"cum_pos": "genomic position", "nlog10p": "-log10(p)"})
+
+fig.add_hline(y=-np.log10(5e-8), line_dash="dash", line_color=RED)
+fig.add_hline(y=-np.log10(1e-5), line_dash="dash", line_color=AMBER)
+fig.update_traces(marker=dict(size=4, opacity=0.6))
+fig.update_layout(showlegend=False, height=420,
+                  paper_bgcolor=CREAM, plot_bgcolor=CREAM)
+fig
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+import plotly.express as px
+
+gwas = load_gwas("height").sort_values(["chrom", "pos"]).copy()
+gwas["nlog10p"] = -np.log10(gwas["pval"])
+chrom_len = gwas.groupby("chrom")["pos"].max()
+offsets = chrom_len.cumsum().shift(fill_value=0)
+gwas["cum_pos"] = gwas["pos"] + gwas["chrom"].map(offsets)
+gwas["chrom_parity"] = (gwas["chrom"] % 2 == 0).astype(str)
+
+fig = px.scatter(gwas, x="cum_pos", y="nlog10p",
+                 color="chrom_parity",
+                 color_discrete_map={"True": BLUE, "False": GREEN},
+                 hover_data=["chrom", "pos", "snp", "pval"],
+                 labels={"cum_pos": "genomic position", "nlog10p": "-log10(p)"})
+fig.add_hline(y=-np.log10(5e-8), line_dash="dash", line_color=RED)
+fig.add_hline(y=-np.log10(1e-5), line_dash="dash", line_color=AMBER)
+fig.update_traces(marker=dict(size=4, opacity=0.6))
+fig.update_layout(showlegend=False, height=420,
+                  paper_bgcolor=CREAM, plot_bgcolor=CREAM,
+                  font=dict(family="IBM Plex Mono", color=INK, size=11),
+                  margin=dict(l=10, r=10, t=10, b=10))
+fig
+```
+:::
+::::
+
+
+<!-- slide 39 -->
+## Manhattan · Takeaway {.smaller}
+
+[Manhattan · recap]{.eyebrow}
+
+### Four ideas, every time
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **Cumulative position** so chromosomes lay end-to-end.
+2. **Two-colour parity** so neighbours are visually separable without ticks.
+3. **Two threshold lines** — suggestive (1e-5) and genome-wide (5e-8).
+4. **Highlight + label** the hits; the cloud is context, the spikes are the story.
+:::
+
+The same four ideas drive most genome-scale dot plots: methylation Manhattans, peak-significance plots, mutation rate scans. Once you've built one, you've built them all.
