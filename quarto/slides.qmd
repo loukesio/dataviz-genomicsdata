@@ -187,12 +187,6 @@ plt.show()
 
 :::
 
-::: {.takeaway}
-[The bottom line]{.tl}
-Color encodes **direction** — red up, green down — and grey is everything that
-didn't clear the thresholds.
-:::
-
 
 ## 6 · Heatmap {.smaller}
 

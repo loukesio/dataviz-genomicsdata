@@ -1,0 +1,248 @@
+/*-----------------------------------------------------------------------------
+  Genomics Viz with Python — reveal.js theme
+  A warm "Carbon-cream" data-viz theme: cream canvas, harmonized green/purple
+  accents, monospace eyebrow labels + Space Grotesk titles + Asap body.
+
+  Usage in your .qmd front matter:
+    format:
+      revealjs:
+        theme: [default, style.scss]
+        width: 1280
+        height: 720
+-----------------------------------------------------------------------------*/
+
+// Fonts must be imported before the defaults block.
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Asap:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/*-- scss:defaults --*/
+
+// ---- palette ---------------------------------------------------------------
+$cream:        #f6f4ee;
+$surface:      #fdfcf8;
+$paper:        #fbfaf4;
+$code-bg:      #f2f0e8;
+$ink:          #211f1a;
+$ink-2:        #4a473e;
+$muted:        #807b6d;
+$faint:        #a8a395;
+$line:         #e2ddcf;
+
+$green:        #208462;
+$green-deep:   #15614a;
+$green-tint:   #e4efe7;
+$green-mint:   #7ed3a8;
+$purple:       #7754bf;
+$purple-tint:  #ece6f8;
+$red:          #c0473a;
+$blue:         #2b6fb0;
+$amber:        #c98a1a;
+
+// ---- type ------------------------------------------------------------------
+$font-family-sans-serif: 'Asap', system-ui, -apple-system, sans-serif !default;
+$font-family-monospace:  'JetBrains Mono', ui-monospace, monospace !default;
+$presentation-heading-font: 'Space Grotesk', system-ui, sans-serif !default;
+
+// ---- reveal core variables -------------------------------------------------
+$body-bg:                 $cream;
+$body-color:              $ink;
+$link-color:              $green;
+$link-color-hover:        $green-deep;
+$selection-bg:            $green-tint;
+$selection-color:         $ink;
+
+$presentation-font-size-root: 30px;
+$presentation-line-height:    1.5;
+
+$presentation-heading-color:        $ink;
+$presentation-heading-font-weight:  600;
+$presentation-h1-font-size:         2.0em;
+$presentation-h2-font-size:         1.35em;
+$presentation-h3-font-size:         1.05em;
+$presentation-title-slide-text-align: left;
+
+$code-block-bg:        $code-bg;
+$code-block-border-color: $line;
+$code-color:           $ink;
+$code-block-font-size: 0.62em;
+
+/*-- scss:rules --*/
+
+// expose tokens as custom properties so author markup can reuse them
+:root {
+  --gv-cream:#{$cream};      --gv-surface:#{$surface};   --gv-paper:#{$paper};
+  --gv-ink:#{$ink};          --gv-ink-2:#{$ink-2};       --gv-muted:#{$muted};
+  --gv-faint:#{$faint};      --gv-line:#{$line};         --gv-code-bg:#{$code-bg};
+  --gv-green:#{$green};      --gv-green-deep:#{$green-deep}; --gv-green-tint:#{$green-tint};
+  --gv-purple:#{$purple};    --gv-purple-tint:#{$purple-tint};
+  --gv-red:#{$red};          --gv-blue:#{$blue};         --gv-amber:#{$amber};
+  // DNA bases
+  --base-a:#2f8f4e; --base-a-bg:#e6f1e7;
+  --base-c:#2b6fb0; --base-c-bg:#e2ecf5;
+  --base-g:#c98a1a; --base-g-bg:#f6ecd8;
+  --base-t:#c0473a; --base-t-bg:#f6e3df;
+}
+
+.reveal { font-family:$font-family-sans-serif; -webkit-font-smoothing:antialiased; }
+
+.reveal .slides { text-align:left; }
+
+.reveal h1, .reveal h2, .reveal h3 {
+  font-family:$presentation-heading-font;
+  letter-spacing:-.015em; line-height:1.05; text-transform:none;
+  text-wrap:balance; margin-bottom:.4em;
+}
+.reveal p { text-wrap:pretty; max-width:46ch; }
+.reveal .slides section .fragment.highlight-green.visible { color:$green-deep; }
+
+// ---- EYEBROW LABEL  ·  [Differential expression]{.eyebrow} -----------------
+.reveal .eyebrow {
+  font-family:$font-family-monospace; font-size:.46em; font-weight:600;
+  letter-spacing:.2em; text-transform:uppercase; color:$green;
+  display:inline-block; margin-bottom:.2em;
+}
+.reveal .eyebrow .sec { color:$faint; font-weight:500; }
+
+// ---- INLINE HIGHLIGHTS  ·  [up]{.up} [down]{.down} [note]{.key} -------------
+.reveal .up,  .reveal .red    { color:$red;        font-weight:600; }
+.reveal .down,.reveal .key    { color:$green-deep; font-weight:600; }
+.reveal .alt, .reveal .purple { color:$purple;     font-weight:600; }
+.reveal mark {
+  background:linear-gradient(transparent 55%, #{$green-tint} 55%);
+  color:inherit; padding:0 1px;
+}
+.reveal code:not(.sourceCode):not(pre code) {
+  font-family:$font-family-monospace; font-size:.82em; background:$code-bg;
+  border:1px solid $line; border-radius:4px; padding:1px 5px; color:$ink;
+}
+
+// ---- TITLE SLIDE -----------------------------------------------------------
+#title-slide {
+  .title  { font-family:$presentation-heading-font; font-weight:600;
+            font-size:2.6em; line-height:.98; letter-spacing:-.022em; margin-bottom:.2em; }
+  .subtitle { font-size:.85em; color:$ink-2; font-weight:400; max-width:38ch; }
+  .author, .date, .quarto-title-affiliation {
+    font-family:$font-family-monospace; font-size:.5em; letter-spacing:.04em; color:$muted; }
+}
+
+// ---- SECTION DIVIDER  ·  use a level-1 heading: `# Day 01 {.divider}` -------
+.reveal section.divider,
+.reveal .divider {
+  &.slide-background, & { background:$ink !important; }
+}
+.reveal section.divider {
+  color:$cream;
+  h1, h2 { color:$cream; font-size:2.1em; }
+  .eyebrow { color:$green-mint; }
+  em, .accent { color:$green-mint; font-style:normal; }
+}
+
+// ---- FOOTER & RUNNING HEAD -------------------------------------------------
+.reveal .footer {
+  font-family:$font-family-monospace; font-size:.4em; letter-spacing:.14em;
+  text-transform:uppercase; color:$faint;
+}
+.reveal .slide-number { font-family:$font-family-monospace; background:transparent; color:$faint; }
+.reveal .progress { color:$green; height:3px; }
+
+// thin top hairline on content slides (optional .ruled class on a section)
+.reveal section.ruled::before {
+  content:""; position:absolute; left:0; right:0; top:-.6em; height:1.5px; background:$ink;
+}
+
+// ---- CALLOUT / KEY-POINT BOX  ·  ::: {.keybox} … ::: -----------------------
+.reveal .keybox {
+  border-left:3px solid $green; background:$green-tint;
+  padding:.7em 1em; border-radius:0 8px 8px 0; margin:.6em 0;
+  .keylabel { font-family:$font-family-monospace; font-size:.5em; font-weight:600;
+              letter-spacing:.16em; text-transform:uppercase; color:$green-deep;
+              display:block; margin-bottom:.3em; }
+}
+
+// ---- CARD / FIGURE WRAP  ·  ::: {.card} … ::: ------------------------------
+.reveal .card {
+  background:$surface; border:1px solid $line; border-radius:11px;
+  padding:1em 1.1em; box-shadow:0 1px 2px rgba(40,30,10,.04);
+}
+
+// ---- DNA BASE CHIPS  ·  [A]{.b-a} [T]{.b-t} … ------------------------------
+.reveal .b-a,.reveal .b-t,.reveal .b-g,.reveal .b-c {
+  font-family:$font-family-monospace; font-weight:600;
+  display:inline-grid; place-items:center; width:1.5em; height:1.5em;
+  border-radius:5px; margin-right:.15em;
+}
+.reveal .b-a{ color:var(--base-a); background:var(--base-a-bg); }
+.reveal .b-c{ color:var(--base-c); background:var(--base-c-bg); }
+.reveal .b-g{ color:var(--base-g); background:var(--base-g-bg); }
+.reveal .b-t{ color:var(--base-t); background:var(--base-t-bg); }
+
+// ---- CODE BLOCKS -----------------------------------------------------------
+.reveal pre.sourceCode,
+.reveal div.sourceCode {
+  background:$code-bg; border:1px solid $line; border-radius:10px;
+}
+.reveal code.sourceCode { font-family:$font-family-monospace; line-height:1.62; }
+.reveal .sourceCode > pre { padding:.8em 1em; }
+// pandoc / Quarto highlight tokens mapped to the palette
+.reveal code span.kw,
+.reveal code span.cf { color:$purple; }                 // keyword / control flow
+.reveal code span.st { color:$green-deep; }             // strings
+.reveal code span.dv,
+.reveal code span.fl,
+.reveal code span.bn { color:$red; }                    // numbers
+.reveal code span.co { color:$faint; font-style:italic; } // comments
+.reveal code span.fu { color:$ink; font-weight:600; }   // function calls
+.reveal code span.op { color:$muted; }                  // operators
+.reveal code span.at { color:$blue; }                   // attributes / kwargs
+// code-line highlighting (Quarto `code-line-numbers`)
+.reveal .sourceCode .highlight-line,
+.reveal pre code .sourceLine.highlight {
+  background:$green-tint; box-shadow:inset 3px 0 $green;
+}
+.reveal code.sourceCode .co { opacity:1; }
+
+// ---- TABS  ·  ::: {.panel-tabset} … ::: ------------------------------------
+// (matplotlib/plot toggles, language tabs, step-by-step build)
+.reveal .panel-tabset { margin-top:.4em; }
+.reveal .panel-tabset > .nav-tabs {
+  border-bottom:1px solid $line; gap:2px; margin-bottom:0;
+}
+.reveal .panel-tabset > .nav-tabs > li > a,
+.reveal .panel-tabset [role="tab"] {
+  font-family:$font-family-monospace; font-size:.5em; letter-spacing:.06em;
+  text-transform:uppercase; color:$muted; background:none; border:none;
+  padding:.6em 1em .7em; font-weight:500;
+}
+.reveal .panel-tabset [role="tab"][aria-selected="true"],
+.reveal .panel-tabset > .nav-tabs > li > a.active {
+  color:$ink; font-weight:600; border:none;
+  box-shadow:inset 0 -2px 0 $green; background:transparent;
+}
+.reveal .panel-tabset > .tab-content { padding-top:1em; }
+
+// ---- AGENDA / NUMBERED LIST  ·  ::: {.agenda} ------------------------------
+.reveal .agenda ol { list-style:none; counter-reset:t; padding:0; }
+.reveal .agenda li {
+  counter-increment:t; display:flex; gap:.7em; padding:.35em 0;
+  border-bottom:1px solid #ece8dc; font-size:.78em; color:$ink-2;
+}
+.reveal .agenda li::before {
+  content:counter(t,decimal-leading-zero); font-family:$font-family-monospace;
+  font-size:.7em; color:$faint; padding-top:.25em; min-width:1.6em;
+}
+
+// ---- COLUMNS (Quarto .columns/.column) -------------------------------------
+.reveal .columns { display:flex; gap:2.2em; align-items:center; }
+
+// ---- BROWSER / APP FRAME  ·  ::: {.browser} --------------------------------
+.reveal .browser {
+  background:$surface; border:1px solid $line; border-radius:12px; overflow:hidden;
+  box-shadow:0 6px 22px rgba(40,30,10,.07);
+  .bbar { display:flex; align-items:center; gap:.5em; padding:.6em .8em;
+          background:$paper; border-bottom:1px solid $line;
+          font-family:$font-family-monospace; font-size:.45em; color:$muted; }
+}
+
+// reduced motion / print safety: never hide content behind entrance animation
+@media (prefers-reduced-motion: reduce) {
+  .reveal .fragment { opacity:1 !important; visibility:visible !important; }
+}

@@ -1,8 +1,8 @@
 ---
 title: "Genomics Data Visualization"
 subtitle: "<span style='font-size:1.25em;'>with Python</span> · Day 1 · Foundations & differential expression"
-author: "<div style='width: 100%; text-align: center; margin-left: auto; margin-right: auto;'><a href='https://github.com/loukesio' style='color:#208462;font-weight:600;'>Dr. Loukas Theodosiou</a>&ensp;//&ensp;Day 1 &ensp;//&ensp; May 2026</div>"
-date: "2026-06-01"
+author: "<div style='width: 100%; text-align: center; margin-left: auto; margin-right: auto;'><a href='https://github.com/loukesio' style='color:#208462;font-weight:600;'>Dr. Loukas Theodosiou</a>&ensp;//&ensp;Day 1 &ensp;//&ensp; June 2026</div>"
+date: "2026-06-022"
 format:
   revealjs:
     theme: [default, style.scss]

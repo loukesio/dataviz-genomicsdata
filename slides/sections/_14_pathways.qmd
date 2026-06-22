@@ -1,0 +1,391 @@
+<!-- slide 65 -->
+# Pathway & Annotation Plots {.divider}
+
+[Functional enrichment · Day 01]{.eyebrow}
+
+<!-- slide 66 -->
+## Gene Ontology & Pathway Enrichment {.smaller}
+
+[Functional enrichment]{.eyebrow}
+
+### From gene list to biology
+
+:::::: columns
+:::: {.column width="50%"}
+**What enrichment analysis shows:**
+
+- Which biological processes are over-represented in a gene list
+- GO terms: Biological Process, Molecular Function, Cellular Component
+- KEGG / Reactome pathways
+
+**Typical workflow:**
+
+1. Run differential expression
+2. Select significant genes (up / down)
+3. Test for pathway over-representation
+4. Visualize top enriched pathways
+
+**Python tools:**
+
+- `gget enrichr` — simple API to Enrichr database
+- `gprofiler-official` — g:Profiler API
+- `gseapy` — GSEA and over-representation analysis
+::::
+
+::: {.column width="50%"}
+```{python}
+#| echo: false
+#| fig-width: 5.5
+#| fig-height: 5.5
+
+pathways = [
+    'Cell division', 'DNA replication', 'DNA repair',
+    'Apoptosis', 'p53 signaling', 'Notch signaling',
+    'Wnt signaling', 'mTOR pathway', 'MAPK cascade',
+    'Cell migration',
+]
+enrichment = -np.log10(np.random.uniform(1e-15, 0.04, 10))
+gene_count = np.random.randint(10, 120, 10)
+enrichment_sorted = np.argsort(enrichment)
+
+fig, ax = plt.subplots(figsize=(5.5, 5.5))
+bars = ax.barh(
+    range(10), enrichment[enrichment_sorted],
+    color=[BRAND if v > 5 else BRAND_LIGHT for v in enrichment[enrichment_sorted]],
+    alpha=0.85, edgecolor='none',
+)
+ax.set_yticks(range(10))
+ax.set_yticklabels([pathways[i] for i in enrichment_sorted], fontsize=8.5)
+ax.set_xlabel('−log₁₀(adjusted p-value)', fontsize=10)
+ax.set_title('Top Enriched Pathways', fontsize=11, fontweight='bold')
+ax.axvline(x=-np.log10(0.05), color=RED, linewidth=1.2, linestyle='--',
+           alpha=0.7, label='p = 0.05')
+ax.legend(fontsize=8, frameon=False)
+ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+:::
+::::::
+
+<!-- slide 67 -->
+## Pathway Enrichment — Pipeline {.smaller background-color="#f6f4ee"}
+
+[Functional enrichment]{.eyebrow}
+
+### Pipeline
+
+```{python}
+#| echo: false
+pipeline_flowchart([
+    "Significant gene list",
+    "Enrichment vs background",
+    "Adjusted p-values",
+    "Top-N pathways",
+    "Horizontal bars or bubble",
+    "padj 0.05 threshold",
+])
+plt.show()
+```
+
+<!-- slide 68 -->
+## gget: Enrichment in One Line {.smaller .scrollable}
+
+[Functional enrichment]{.eyebrow}
+
+### From gene list to KEGG bars
+
+```{python}
+#| echo: true
+#| eval: false
+#| code-line-numbers: "1-3|5-11|13-28"
+
+# pip install gget
+import gget
+gget.setup('enrichr')   # one-time setup
+
+# Step 1: Run enrichment on a gene list
+gene_list = [
+    'TP53','BRCA1','BRCA2','CDKN1A','MDM2','BAX',
+    'BCL2','CASP3','CASP9','ATM','CHEK2','PTEN',
+    'RB1','E2F1','CDK2','CCND1','MYC','EGFR',
+]
+results = gget.enrichr(
+    genes    = gene_list,
+    database = 'KEGG_2021_Human',
+    plot     = False,
+)
+
+# Step 2: Visualize top 10 enriched pathways
+import matplotlib.pyplot as plt
+import numpy as np
+
+top10 = results.head(10).sort_values('adj_p_val')
+neg_log_p = -np.log10(top10['adj_p_val'])
+
+fig, ax = plt.subplots(figsize=(10, 5))
+bars = ax.barh(range(len(top10)), neg_log_p,
+               color=[BRAND if p < 0.01 else BRAND_LIGHT
+                      for p in top10['adj_p_val']],
+               alpha=0.85, edgecolor='none')
+ax.set_yticks(range(len(top10)))
+ax.set_yticklabels(top10['pathway'], fontsize=9)
+ax.set_xlabel('−log₁₀(adjusted p-value)', fontsize=11, labelpad=8)
+ax.set_title('KEGG Pathway Enrichment', fontsize=13, fontweight='bold')
+ax.axvline(-np.log10(0.05), color=RED, lw=1.2, ls='--', label='p = 0.05')
+ax.legend(frameon=False); ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+
+<!-- slide 69.1 -->
+## Bubble Plot: Enrichment with Gene Counts {.smaller .scrollable}
+
+[Functional enrichment]{.eyebrow}
+
+### Encode size and category, too
+
+```{python}
+#| echo: true
+#| eval: false
+
+np.random.seed(2026)
+
+pathways_data = pd.DataFrame({
+    'pathway'    : [
+        'Cell division', 'DNA replication', 'DNA repair',
+        'Apoptosis', 'p53 signaling', 'Notch signaling',
+        'Wnt signaling', 'mTOR pathway', 'MAPK cascade', 'Cell migration',
+    ],
+    'neg_log10_p': np.random.uniform(2, 12, 10),
+    'gene_count' : np.random.randint(10, 120, 10),
+    'gene_ratio' : np.random.uniform(0.1, 0.6, 10),
+    'category'   : np.random.choice(
+        ['Cell cycle','DNA processes','Signaling','Cell motility'], 10),
+})
+pathways_data = pathways_data.sort_values('neg_log10_p', ascending=True)
+
+cat_colors = {'Cell cycle': BRAND, 'DNA processes': ACCENT_PURP,
+              'Signaling': ACCENT_YLW, 'Cell motility': RED}
+
+fig, ax = plt.subplots(figsize=(10, 5.5))
+for _, row in pathways_data.iterrows():
+    ax.scatter(row['gene_ratio'], row['pathway'],
+               s=row['gene_count'] * 3,
+               c=cat_colors[row['category']],
+               alpha=0.8, zorder=3)
+    ax.text(row['gene_ratio'] + 0.01, row['pathway'],
+            f"  p={10**(-row['neg_log10_p']):.1e}",
+            va='center', fontsize=7.5, color=GRAY_DARK)
+
+from matplotlib.lines import Line2D
+legend_elements = [Line2D([0],[0], marker='o', color='w', markersize=8,
+                           markerfacecolor=c, label=l, alpha=0.85)
+                   for l, c in cat_colors.items()]
+ax.legend(handles=legend_elements, title='Category', fontsize=8,
+          frameon=False, loc='lower right')
+ax.set_xlabel('Gene Ratio (genes hit / pathway size)', fontsize=11, labelpad=8)
+ax.set_title('Pathway Enrichment Bubble Plot', fontsize=13, fontweight='bold')
+ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+
+<!-- slide 69.2 -->
+## Bubble Plot — Result {.plot-slide background-color="#f6f4ee"}
+
+[Functional enrichment]{.eyebrow}
+
+### Pathways · gene ratio · counts
+
+```{python}
+#| echo: false
+#| eval: true
+#| fig-width: 10
+#| fig-height: 5.5
+
+np.random.seed(2026)
+
+pathways_data = pd.DataFrame({
+    'pathway'    : [
+        'Cell division', 'DNA replication', 'DNA repair',
+        'Apoptosis', 'p53 signaling', 'Notch signaling',
+        'Wnt signaling', 'mTOR pathway', 'MAPK cascade', 'Cell migration',
+    ],
+    'neg_log10_p': np.random.uniform(2, 12, 10),
+    'gene_count' : np.random.randint(10, 120, 10),
+    'gene_ratio' : np.random.uniform(0.1, 0.6, 10),
+    'category'   : np.random.choice(
+        ['Cell cycle','DNA processes','Signaling','Cell motility'], 10),
+})
+pathways_data = pathways_data.sort_values('neg_log10_p', ascending=True)
+
+cat_colors = {'Cell cycle': BRAND, 'DNA processes': ACCENT_PURP,
+              'Signaling': ACCENT_YLW, 'Cell motility': RED}
+
+fig, ax = plt.subplots(figsize=(10, 5.5))
+for _, row in pathways_data.iterrows():
+    ax.scatter(row['gene_ratio'], row['pathway'],
+               s=row['gene_count'] * 3,
+               c=cat_colors[row['category']],
+               alpha=0.8, zorder=3)
+    ax.text(row['gene_ratio'] + 0.01, row['pathway'],
+            f"  p={10**(-row['neg_log10_p']):.1e}",
+            va='center', fontsize=7.5, color=GRAY_DARK)
+
+from matplotlib.lines import Line2D
+legend_elements = [Line2D([0],[0], marker='o', color='w', markersize=8,
+                           markerfacecolor=c, label=l, alpha=0.85)
+                   for l, c in cat_colors.items()]
+ax.legend(handles=legend_elements, title='Category', fontsize=8,
+          frameon=False, loc='lower right')
+ax.set_xlabel('Gene Ratio (genes hit / pathway size)', fontsize=11, labelpad=8)
+ax.set_title('Pathway Enrichment Bubble Plot', fontsize=13, fontweight='bold')
+ax.spines[['top','right']].set_visible(False)
+plt.tight_layout(); plt.show()
+```
+
+<!-- slide 70 -->
+## Exercise: Pathway Visualization {.smaller .scrollable}
+
+[Functional enrichment]{.eyebrow}
+
+### Hands-on practice
+
+::: {.exercise}
+**Coding Exercise — Pathway Visualization**
+
+Visualize pathway enrichment for up- and down-regulated gene sets: a horizontal bar chart of the top 10 pathways per direction, and a bubble plot with gene ratio on the x-axis.
+
+::: {.sandbox}
+```{python}
+#| echo: true
+#| eval: false
+
+np.random.seed(2026)
+
+# Simulate enrichment results for two gene sets (up- and down-regulated)
+pathways_up = pd.DataFrame({
+    'pathway'   : [f'Pathway_{i:02d}' for i in range(15)],
+    'p_adj'     : np.random.uniform(1e-10, 0.04, 15),
+    'gene_count': np.random.randint(5, 80, 15),
+    'gene_ratio': np.random.uniform(0.05, 0.5, 15),
+    'direction' : 'up',
+})
+
+pathways_down = pd.DataFrame({
+    'pathway'   : [f'Pathway_{i:02d}' for i in range(10, 25)],
+    'p_adj'     : np.random.uniform(1e-8, 0.04, 15),
+    'gene_count': np.random.randint(5, 80, 15),
+    'gene_ratio': np.random.uniform(0.05, 0.5, 15),
+    'direction' : 'down',
+})
+
+enrichment_results = pd.concat([pathways_up, pathways_down])
+
+# Your tasks:
+# 1. Create a horizontal bar chart for top 10 pathways from each direction
+# 2. Color bars by direction (up = green, down = red)
+# 3. Make a bubble plot with gene_ratio on x-axis, size = gene_count
+# 4. Add a significance threshold line
+
+# Bonus: Create a "back-to-back" bar chart showing up vs down simultaneously
+```
+:::
+
+<details>
+<summary>Show solution</summary>
+
+```{python}
+#| echo: true
+#| eval: true
+
+import numpy as np, pandas as pd
+import matplotlib.pyplot as plt
+
+np.random.seed(2026)
+
+pathways_up = pd.DataFrame({
+    'pathway'   : [f'Pathway_{i:02d}' for i in range(15)],
+    'p_adj'     : np.random.uniform(1e-10, 0.04, 15),
+    'gene_count': np.random.randint(5, 80, 15),
+    'gene_ratio': np.random.uniform(0.05, 0.5, 15),
+    'direction' : 'up',
+})
+pathways_down = pd.DataFrame({
+    'pathway'   : [f'Pathway_{i:02d}' for i in range(10, 25)],
+    'p_adj'     : np.random.uniform(1e-8, 0.04, 15),
+    'gene_count': np.random.randint(5, 80, 15),
+    'gene_ratio': np.random.uniform(0.05, 0.5, 15),
+    'direction' : 'down',
+})
+enrichment_results = pd.concat([pathways_up, pathways_down]).reset_index(drop=True)
+enrichment_results['neg_log10_p'] = -np.log10(enrichment_results['p_adj'])
+
+dir_pal = {'up': COLORS['primary'], 'down': COLORS['secondary']}
+threshold = -np.log10(0.05)
+
+# ── Panel A: horizontal bar chart ─────────────────────────────────────────────
+top_up   = (enrichment_results[enrichment_results.direction == 'up']
+            .nsmallest(10, 'p_adj').sort_values('neg_log10_p'))
+top_down = (enrichment_results[enrichment_results.direction == 'down']
+            .nsmallest(10, 'p_adj').sort_values('neg_log10_p'))
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 6), facecolor="white")
+for ax in axes:
+    ax.set_facecolor("white")
+
+for ax, df_sub, direction in [(axes[0], top_up, 'up'), (axes[1], top_down, 'down')]:
+    color = dir_pal[direction]
+    ax.barh(range(len(df_sub)), df_sub['neg_log10_p'],
+            color=color, alpha=0.8, linewidth=0)
+    ax.axvline(threshold, color=COLORS['zero_line'], lw=1.2, ls='--',
+               label='p = 0.05')
+    ax.set_yticks(range(len(df_sub)))
+    ax.set_yticklabels(df_sub['pathway'], fontsize=9)
+    ax.set_xlabel('−log₁₀(adjusted p-value)', fontsize=10)
+    ax.set_title(f'TOP 10 — {direction.upper()}-REGULATED', fontweight='bold')
+    ax.legend(frameon=False, fontsize=8)
+
+fig.suptitle('PATHWAY ENRICHMENT — HORIZONTAL BAR CHART', fontweight='bold', fontsize=13)
+fig.text(0.01, -0.02,
+         'Top 10 pathways per direction. Dashed line = significance threshold (p = 0.05).',
+         fontsize=8.5, style='italic', color=COLORS['text_light'])
+plt.tight_layout()
+plt.show()
+
+# ── Panel B: bubble plot ───────────────────────────────────────────────────────
+all_top = pd.concat([top_up, top_down]).sort_values('neg_log10_p', ascending=True)
+
+fig2, ax2 = plt.subplots(figsize=(10, 7), facecolor="white")
+ax2.set_facecolor("white")
+
+for _, row in all_top.iterrows():
+    ax2.scatter(row['gene_ratio'], row['pathway'],
+                s=row['gene_count'] * 4,
+                c=dir_pal[row['direction']],
+                alpha=0.75, zorder=3, linewidths=0)
+
+ax2.axvline(0.1, color=COLORS['zero_line'], lw=1, ls='--',
+            label='gene ratio = 0.10')
+ax2.set_xlabel('Gene Ratio (genes hit / pathway size)', fontsize=11)
+ax2.set_title('PATHWAY ENRICHMENT BUBBLE PLOT', fontweight='bold', fontsize=13)
+
+from matplotlib.lines import Line2D
+legend_els = [Line2D([0],[0], marker='o', color='w', markersize=9,
+                     markerfacecolor=v, label=k, alpha=0.8)
+              for k, v in dir_pal.items()]
+for size in [10, 40, 80]:
+    legend_els.append(Line2D([0],[0], marker='o', color='w',
+                             markersize=np.sqrt(size*4),
+                             markerfacecolor=COLORS['text_light'],
+                             label=f'n={size}', alpha=0.7))
+ax2.legend(handles=legend_els, frameon=False, fontsize=8, ncol=2)
+ax2.text(0.01, -0.1,
+         'Bubble size ∝ gene count. Color = regulation direction.',
+         transform=ax2.transAxes, fontsize=8.5, style='italic',
+         color=COLORS['text_light'])
+plt.tight_layout()
+plt.show()
+```
+
+</details>
+:::
+

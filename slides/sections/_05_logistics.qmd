@@ -1,0 +1,41 @@
+<!-- slide 21 -->
+# How are we going to work? {.divider}
+
+[Course logistics · Day 01]{.eyebrow}
+
+<!-- slide 22 -->
+## Course Structure {.smaller}
+
+[Course logistics]{.eyebrow}
+
+### Format and Day-1 timeline
+
+**1. Presentations** – I'll present the material; questions welcome throughout or at the end
+
+- Slides are included in your course materials
+
+::: fragment
+**2. Live demonstrations** – Observe and take notes; practice time follows
+
+- All code is in your course notebook
+:::
+
+::: fragment
+**3. Hands-on practice** – Work through exercises at your own pace
+
+- All tutorials and datasets provided as Quarto/Jupyter notebooks
+- Practical exercises included to reinforce concepts
+:::
+
+::: fragment
+**Day 1 plan (today):**
+
+| Time | Topic |
+|------|-------|
+| 13:00 – 14:00 | Python ecosystem + matplotlib fundamentals |
+| 14:00 – 15:30 | Volcano plots + dimensionality reduction |
+| 15:30 – 15:45 | *Break* |
+| 15:45 – 17:00 | Heatmaps + waffle + waterfall plots |
+| 17:00 – 18:00 | Pathway plots + peak visualization |
+:::
+

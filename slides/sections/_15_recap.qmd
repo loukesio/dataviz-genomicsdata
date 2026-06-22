@@ -1,0 +1,123 @@
+<!-- slide 71 -->
+# Day 1 Recap {.divider}
+
+[Day 01 · wrap]{.eyebrow}
+
+<!-- slide 72 -->
+## What We Covered Today {.smaller}
+
+[Day 01 · wrap]{.eyebrow}
+
+### Today's tour, in two cards
+
+::: {.recap}
+**Python visualization ecosystem**
+
+- matplotlib (figure anatomy, building plots step by step)
+- seaborn (statistical visualizations, clustermap)
+- plotly (interactive counterparts)
+- Setting up a reproducible environment
+:::
+
+::: fragment
+::: {.recap}
+**Genomics plot types**
+
+| Plot | Library | Use case |
+|------|---------|----------|
+| Volcano | matplotlib / DashBio | Differential expression |
+| PCA / t-SNE / UMAP | scikit-learn | Dimensionality reduction |
+| Heatmap | seaborn / PyComplexHeatmap | Expression matrices |
+| Waffle | PyWaffle | Proportions |
+| Waterfall | matplotlib | Mutation burden |
+| Peaks | pyGenomeTracks / matplotlib | ChIP-seq / ATAC-seq |
+| Pathway | gget / gseapy | Enrichment results |
+:::
+:::
+
+<!-- slide 73 -->
+## Looking Ahead {.smaller}
+
+[Day 01 · wrap]{.eyebrow}
+
+### Days 2 and 3 preview
+
+**Day 2 (Tuesday 13:00 – 18:00):**
+
+- Stacked bar plots
+- Time series plots
+- Multiple sequence alignment visualization (`pyMSAviz`)
+- Manhattan plots
+- Genome statistics plots (coverage, gene density)
+
+::: fragment
+**Day 3 (Wednesday 13:00 – 18:00):**
+
+- Phylogenetic trees (`Toytree`, `Bio.Phylo`)
+- Circos plots (`pyCirclize`)
+- Venn diagrams & UpSet plots (`matplotlib-venn`, `UpSetPlot`)
+- Synteny plots (`JCVI / MCscan`)
+- Ideograms
+:::
+
+::: fragment
+**Download today's notebooks:**
+
+```bash
+# All code from today is available in:
+notebooks/day1_python_genomics_viz.ipynb
+```
+:::
+
+::: {.footer style="font-size: 0.7em; color: #606060;"}
+Questions? → loukesio@gmail.com &ensp;|&ensp; Course materials: GitHub/loukesio
+:::
+
+<!-- slide 74 -->
+## Resources {.smaller .center}
+
+[Day 01 · wrap]{.eyebrow}
+
+### Where to go next
+
+:::::: columns
+::: {.column width="50%"}
+**Essential reading:**
+
+::: fragment
+📚 **Documentation:**
+
+- [Matplotlib docs](https://matplotlib.org/)
+- [Seaborn docs](https://seaborn.pydata.org/)
+- [Plotly Python](https://plotly.com/python/)
+- [Python Graph Gallery](https://python-graph-gallery.com/)
+:::
+
+::: fragment
+🎨 **Tutorials:**
+
+- [Scientific Visualization (Rougier)](https://github.com/rougier/scientific-visualization-book)
+- [From Data to Viz](https://www.data-to-viz.com/)
+- [Matplotlib cheatsheet](https://matplotlib.org/cheatsheets/)
+:::
+:::
+
+::: {.column width="50%"}
+::: fragment
+**Genomics-specific:**
+
+- [PyComplexHeatmap docs](https://pyComplexHeatmap.readthedocs.io)
+- [pyCirclize docs](https://moshi4.github.io/pyCirclize/)
+- [pyGenomeTracks docs](https://pygenometracks.readthedocs.io)
+- [gget docs](https://pachterlab.github.io/gget/)
+- [UpSetPlot docs](https://upsetplot.readthedocs.io)
+:::
+
+::: fragment
+**Awesome lists:**
+
+- [Awesome Genome Visualization](https://cmdcolin.github.io/awesome-genome-visualization/)
+- [Awesome Bioinformatics](https://github.com/danielecook/Awesome-Bioinformatics)
+:::
+:::
+::::::

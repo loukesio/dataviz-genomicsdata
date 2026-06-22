@@ -76,7 +76,7 @@ $link-color-hover: $color-brand-primary;
 ═══════════════════════════════════════════════════════════════════════════*/
 
 $presentation-title-slide-text-align: "center";
-$presentation-block-margin: .0375rem;    // Tight spacing for content blocks
+$presentation-block-margin: 12px;        // breathing room between content blocks
 
 /* Slide-level font size — controls all em-based sizing */
 $presentation-font-size-root: 36px;
@@ -137,7 +137,7 @@ h1.title {
   font-size: 1.4em;
   font-style: italic;
   text-align: center;
-  line-height: .6;
+  line-height: 1.1;
 }
 
 /* Subtitle styling */
@@ -145,7 +145,7 @@ p.subtitle {
   color: $color-gray-dark;
   font-weight: 600;
   font-style: italic;
-  line-height: .97;
+  line-height: 1.2;
   text-align: center;
 }
 
@@ -313,71 +313,16 @@ a:hover {
   font-weight: bold;
 }
 
-/* 7.3 Details/Summary — Solution reveal button */
+/* 7.3 Details/Summary Disclosure Widgets */
 
 details {
-  margin: 0.6em 0 0.4em 0;
+  margin-bottom: 5px;
 }
 
 details > summary {
-  /* Reset native marker */
-  list-style: none;
-  cursor: pointer;
-
-  /* Button look */
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-
-  font-family: $font-family-sans-serif;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: #FFFFFF;
-  background: $color-brand-primary;
-  border: none;
-  border-radius: 6px;
-  padding: 0.45em 1.1em;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: background 0.15s ease, transform 0.15s ease;
-}
-
-details > summary::-webkit-details-marker {
-  display: none;
-}
-
-details > summary::before {
-  content: "▶";
-  font-size: 0.7em;
-  transition: transform 0.2s ease;
-}
-
-details[open] > summary::before {
-  transform: rotate(90deg);
-}
-
-details > summary:hover {
-  background: $color-brand-light;
-  color: $color-brand-primary;
-  transform: translateY(-1px);
-}
-
-details[open] > summary {
-  background: $color-brand-light;
-  color: $color-brand-primary;
-  margin-bottom: 0.5em;
-}
-
-/* The code block inside the solution */
-details[open] > div,
-details[open] > pre,
-details[open] > .cell {
-  border-left: 3px solid $color-brand-primary;
-  background: #FFFFFF;
-  padding: 0.6em 0.8em;
-  border-radius: 0 4px 4px 0;
-  margin-top: 0.4em;
+  font-family: $font-family-mono;
+  font-size: 1.25rem;
+  color: $color-gray-light;
 }
 
 
@@ -453,31 +398,45 @@ code > span {
 
 .reveal .slide figure img,
 .reveal .slide .cell-output-display img {
-  max-height: 65vh;
-  max-width: 95%;
+  max-height: 58vh;
+  max-width: 92%;
   object-fit: contain;
   border-radius: 4px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
 }
 
-/* Plot-only slides — use {.plot-slide} for maximum plot visibility */
+/* Plot-only slides — figure fills available space, NEVER drops below fold */
 .reveal section.plot-slide {
-  display: flex;
+  display: flex !important;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  height: 100%;
   padding: 0.3em 0.5em;
 }
 
 .reveal section.plot-slide h2 {
+  flex: 0 0 auto;            /* title takes only what it needs */
   font-size: 1.1em;
-  margin-bottom: 0.3em;
+  margin-bottom: 0.2em;
+}
+
+.reveal section.plot-slide .cell,
+.reveal section.plot-slide figure,
+.reveal section.plot-slide .cell-output-display {
+  flex: 1 1 auto;            /* figure fills the rest */
+  min-height: 0;             /* CRITICAL: lets flex child shrink so it fits */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
 }
 
 .reveal section.plot-slide figure img,
 .reveal section.plot-slide .cell-output-display img {
-  max-height: 78vh;
-  max-width: 98%;
+  max-height: 100%;          /* fit the flex container, not the viewport */
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 /* 10.3 Slide Logo */

@@ -1,0 +1,260 @@
+<!-- slide 9 -->
+# The Python Visualization Ecosystem {.divider}
+
+[The Python viz stack · Day 01]{.eyebrow}
+
+<!-- slide 9.5 -->
+## Make matplotlib publication-ready {.smaller .scrollable}
+
+[Make it publication-ready]{.eyebrow}
+
+### Five small moves take matplotlib from default to glorious
+
+Default matplotlib is functional — gridlines on every axis, a frame around the
+plot, a generic legend. Five small moves replace all of that with a tighter
+look that fits a journal page. The story carries through [color]{.up};
+everything else gets out of the way.
+
+::: {.panel-tabset}
+
+### Code · matplotlib
+
+```{python}
+#| eval: false
+#| code-line-numbers: "5-8|10-12|14-17|19-22|24-28"
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
+import pandas as pd
+
+# 1) STRATEGIC COLOR — one bold, the rest quiet
+#    Spend the loudest colour on the row that carries the message;
+#    everything else becomes background.
+colors = [RED if c == "mixed" else GREY for c in df["category"]]
+ax.barh(df["category"], df["value"], color=colors)
+
+# 2) DROP THE FRAME — only the bottom axis carries scale information
+for side in ["left", "right", "top"]:
+    ax.spines[side].set_visible(False)
+ax.tick_params(left=False)                # no tick marks on the y-axis
+
+# 3) MUTED GRID, X-AXIS ONLY — readable but quiet
+ax.grid(axis="x", alpha=0.3, linewidth=0.6)
+ax.set_axisbelow(True)
+
+# 4) LABEL THE BARS, DROP THE LEGEND
+ax.bar_label(ax.containers[0],
+             labels=[f"{v:.0%}" for v in df["value"]],
+             padding=8, fontsize=10, color=INK)
+ax.xaxis.set_major_formatter(mtick.PercentFormatter(1, decimals=0))
+
+# 5) DESCRIPTIVE TITLE + SUBTITLE — say what the chart shows
+fig.suptitle("Mixed training is gaining in popularity",
+             fontsize=14, fontweight="bold", color=INK, x=0.04, ha="left", y=0.97)
+fig.text(0.04, 0.90, "Share of athletes by primary training mode, 2024",
+         fontsize=10, color="#807b6d")
+```
+
+### Plot
+
+```{python}
+#| echo: false
+#| fig-width: 8.5
+#| fig-height: 4.6
+import matplotlib.ticker as mtick
+import pandas as pd
+
+df = pd.DataFrame({
+    "category": ["speed", "strength", "endurance", "mixed"],
+    "value":    [0.10,    0.21,        0.27,        0.42],
+})
+
+fig, ax = plt.subplots(figsize=(8.5, 4.6))
+colors = [RED if c == "mixed" else GREY for c in df["category"]]
+ax.barh(df["category"], df["value"], color=colors)
+for side in ["left", "right", "top"]:
+    ax.spines[side].set_visible(False)
+ax.tick_params(left=False)
+ax.grid(axis="x", alpha=0.3, linewidth=0.6)
+ax.set_axisbelow(True)
+ax.bar_label(ax.containers[0],
+             labels=[f"{v:.0%}" for v in df["value"]],
+             padding=8, fontsize=10, color=INK)
+ax.xaxis.set_major_formatter(mtick.PercentFormatter(1, decimals=0))
+ax.set_xlim(0, 0.55)
+fig.suptitle("Mixed training is gaining in popularity",
+             fontsize=14, fontweight="bold", color=INK, x=0.04, ha="left", y=0.97)
+fig.text(0.04, 0.90, "Share of athletes by primary training mode, 2024",
+         fontsize=10, color="#807b6d")
+plt.tight_layout(rect=[0, 0, 1, 0.88])
+plt.show()
+```
+
+:::
+
+::: {.takeaway}
+[The bottom line]{.tl}
+**Color carries the story.** Spend the loud colour on the row that matters and
+let everything else fade into context — frames, ticks, and legends disappear.
+:::
+
+<small>Adapted from [*Make Your Charts Look Glorious*](https://medium.com/data-science/make-your-charts-look-glorious-9ce3fa310b70).</small>
+
+<!-- slide 10 -->
+## General-Purpose Libraries {.smaller}
+
+[The Python viz stack]{.eyebrow}
+
+### Matplotlib · Seaborn · Plotly
+
+```{python}
+#| echo: false
+#| fig-width: 10
+#| fig-height: 5
+
+import matplotlib.patches as mpatches
+
+fig, axes = plt.subplots(1, 3, figsize=(10, 5))
+
+# ── matplotlib ────────────────────────────────────────────────────────────────
+np.random.seed(42)
+x = np.linspace(0, 4 * np.pi, 200)
+axes[0].plot(x, np.sin(x), color=BRAND, linewidth=2.5, label='sin(x)')
+axes[0].plot(x, np.cos(x), color=ACCENT_PURP, linewidth=2.5, label='cos(x)')
+axes[0].fill_between(x, np.sin(x), alpha=0.15, color=BRAND)
+axes[0].set_title('Matplotlib\n(low-level control)', fontsize=11)
+axes[0].legend(fontsize=9)
+
+# ── seaborn ───────────────────────────────────────────────────────────────────
+rng = np.random.default_rng(42)
+df  = pd.DataFrame({'x': rng.normal(0, 1, 300), 'y': rng.normal(0, 1, 300),
+                    'group': rng.choice(['A','B','C'], 300)})
+for g, color in zip(['A','B','C'], [BRAND, ACCENT_YLW, ACCENT_PURP]):
+    sub = df[df['group'] == g]
+    axes[1].scatter(sub['x'], sub['y'], color=color, s=25, alpha=0.6, label=g)
+axes[1].set_title('Seaborn\n(statistical plots)', fontsize=11)
+axes[1].legend(fontsize=9)
+
+# ── plotly badge (static preview) ─────────────────────────────────────────────
+categories = ['Control', 'Treatment A', 'Treatment B', 'Treatment C']
+values     = [45, 78, 62, 91]
+bars = axes[2].barh(categories, values,
+                    color=[GRAY_DARK, BRAND, BRAND_LIGHT, ACCENT_YLW])
+axes[2].set_xlim(0, 110)
+for bar, val in zip(bars, values):
+    axes[2].text(val + 2, bar.get_y() + bar.get_height()/2,
+                 f'{val}', va='center', fontsize=9)
+axes[2].set_title('Plotly\n(interactive plots)', fontsize=11)
+
+plt.tight_layout()
+plt.show()
+```
+
+::: {.footer style="font-size: 0.7em; color: #606060;"}
+All three libraries are installed with: `pip install matplotlib seaborn plotly`
+:::
+
+<!-- slide 11 -->
+## Genomics-Specific Libraries {.smaller}
+
+[The Python viz stack]{.eyebrow}
+
+### Two pillars of the genomics ecosystem
+
+```{python}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 5.5
+
+fig, ax = plt.subplots(figsize=(11, 5.5))
+ax.set_xlim(0, 10); ax.set_ylim(0, 10)
+ax.axis('off')
+
+libraries = [
+    # (x, y, name, description, color)
+    (1.2, 8.5, 'PyComplexHeatmap', 'Complex clustered heatmaps\nwith annotations', BRAND),
+    (1.2, 6.8, 'pyCirclize',       'Circos plots for genome-wide\nrelationships',   BRAND),
+    (1.2, 5.1, 'Toytree',          'Phylogenetic tree drawing\nand manipulation',   BRAND),
+    (1.2, 3.4, 'pyMSAviz',         'Multiple sequence alignment\nvisualization',    BRAND),
+    (1.2, 1.7, 'dna_features_viewer', 'Gene maps and genomic\nfeature diagrams',   BRAND),
+
+    (5.8, 8.5, 'DashBio (Plotly)', 'Interactive genomics widgets\n(volcano, Manhattan…)', ACCENT_PURP),
+    (5.8, 6.8, 'pyGenomeTracks',   'Genome browser-style\ntrack visualizations',   ACCENT_PURP),
+    (5.8, 5.1, 'UpSetPlot',        'Visualization of complex\nset intersections',   ACCENT_PURP),
+    (5.8, 3.4, 'PyWaffle',         'Waffle charts for\nproportions',               ACCENT_PURP),
+    (5.8, 1.7, 'gget',             'Gene / pathway enrichment\nqueries',            ACCENT_PURP),
+]
+
+for x, y, name, desc, color in libraries:
+    ax.add_patch(mpatches.FancyBboxPatch(
+        (x - 1.1, y - 0.6), 3.8, 1.1,
+        boxstyle='round,pad=0.1',
+        facecolor=color + '22', edgecolor=color, linewidth=1.5))
+    ax.text(x + 0.8, y + 0.1,  name, fontsize=9.5, fontweight='bold',
+            color=color, ha='center')
+    ax.text(x + 0.8, y - 0.28, desc, fontsize=7.5, color=GRAY_DARK,
+            ha='center')
+
+ax.text(2.7, 9.55, 'Genomics-specific', fontsize=11, fontweight='bold',
+        color=BRAND, ha='center')
+ax.text(7.3, 9.55, 'Interactive / Utility', fontsize=11, fontweight='bold',
+        color=ACCENT_PURP, ha='center')
+
+plt.tight_layout()
+plt.show()
+```
+
+<!-- slide 12 -->
+## Setting Up Your Environment {.smaller .scrollable}
+
+[The Python viz stack]{.eyebrow}
+
+### Reproducible env in a few commands
+
+**Recommended: conda/mamba for reproducibility**
+
+:::::: columns
+::: {.column width="50%"}
+```bash
+# Create dedicated environment
+conda create -n genomeviz python=3.11
+conda activate genomeviz
+
+# Core visualization stack
+pip install matplotlib seaborn plotly
+pip install pandas numpy scipy scikit-learn
+
+# Genomics-specific
+pip install PyComplexHeatmap pyCirclize
+pip install toytree pyMSAviz PyWaffle
+pip install dna_features_viewer UpSetPlot
+pip install gget biopython
+```
+:::
+
+::: {.column width="50%"}
+::: fragment
+```python
+# Verify your installation
+import matplotlib; print(matplotlib.__version__)
+import seaborn;    print(seaborn.__version__)
+import plotly;     print(plotly.__version__)
+import pandas;     print(pandas.__version__)
+import numpy;      print(numpy.__version__)
+
+# Should print version numbers, e.g.:
+# 3.8.x
+# 0.13.x
+# 5.x.x
+# 2.x.x
+# 1.26.x
+```
+:::
+:::
+::::::
+
+::: fragment
+::: {.footer style="font-size: 0.7em; color: #606060;"}
+A complete `environment.yml` file is included in your course materials
+:::
+:::
+
