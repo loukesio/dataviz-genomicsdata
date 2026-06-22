@@ -29,6 +29,11 @@ Thumbs.db
 # Keep the Plot Directory PDF — students download it
 !day1/images/*.pdf
 
+# Keep the rendered Day-1 deck — students download it
+!day1/day1.html
+!day1/day1_files/
+!day1/day1_files/**
+
 # Python build artifacts
 __pycache__/
 *.egg-info/
