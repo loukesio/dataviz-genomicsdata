@@ -29,6 +29,11 @@ dependencies = [
     "umap-learn",
     "squarify",
     "pypalettes",
+    "datashader",
+    "bokeh",
+    "holoviews",
+    "scikit-image",
+    "colorcet",
 ]
 
 [tool.setuptools.packages.find]
