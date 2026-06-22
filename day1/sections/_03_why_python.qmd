@@ -1,9 +1,9 @@
-<!-- slide 40 -->
+<!-- slide 33 -->
 # Why Python for Genomics Visualization? {.divider}
 
 [Why we visualize · scale]{.eyebrow}
 
-<!-- slide 41 -->
+<!-- slide 34 -->
 ## Why Python for Genomics Visualization? {.smaller .scrollable}
 
 [The Python viz stack]{.eyebrow}
@@ -60,7 +60,7 @@ import toytree                 # phylogenetics
 :::
 ::::::
 
-<!-- slide 42 -->
+<!-- slide 35 -->
 ## Where to Find More {.smaller}
 
 [Explore further]{.eyebrow}
@@ -88,8 +88,7 @@ A great place to find inspiration, and the study that produced each figure.
 Catalogue maintained by Colin Diesh: cmdcolin.github.io/awesome-genome-visualization
 :::
 
-
-<!-- slide 43 -->
+<!-- slide 36 -->
 ## From ggplot2 to Python — The Mental Map {.smaller .scrollable}
 
 [From ggplot2 to Python]{.eyebrow}
@@ -131,7 +130,7 @@ Built on the Grammar of Graphics, the same ideas power Python's ecosystem.
 :::
 ::::::
 
-<!-- slide 44 -->
+<!-- slide 37 -->
 ## Same Plot, Three Syntaxes {.smaller}
 
 [From ggplot2 to Python]{.eyebrow}
@@ -153,7 +152,7 @@ print(iris.head())                # raw text, not a rendered table
 Five columns: four measurements plus a `species` label, the column we will map to colour.
 :::
 
-<!-- slide 45 -->
+<!-- slide 38 -->
 ## Same Plot, Three Syntaxes {.smaller}
 
 [From ggplot2 to Python]{.eyebrow}
@@ -207,7 +206,7 @@ matplotlib makes you loop and build the legend. seaborn and ggplot2 just declare
 :::
 :::
 
-<!-- slide 46 -->
+<!-- slide 39 -->
 ## One Plot, Three Libraries {.smaller}
 
 [The Python ecosystem]{.eyebrow}
@@ -337,3 +336,5 @@ fig
 ::: {.footer style="font-size: 0.58em; color: #666666; text-align: center;"}
 Data: Palmer Penguins (Horst, Hill & Gorman, 2020), via seaborn.
 :::
+
+

@@ -2,12 +2,12 @@
 <!-- FUNDAMENTALS OF DATA VISUALIZATION (Act I–III)                   -->
 <!-- ════════════════════════════════════════════════════════════════ -->
 
-<!-- slide 9 -->
+<!-- slide 7 -->
 # Fundamentals of Data Visualization {.divider}
 
 [Chart design principles · Day 01]{.eyebrow}
 
-<!-- slide 10 -->
+<!-- slide 8 -->
 ## The Lie Factor {.smaller}
 
 [Honest charts · baselines]{.eyebrow}
@@ -110,7 +110,7 @@ Bars start at **zero**. Lines and dots can be zoomed, just label the axis.
 After Wilke, *Fundamentals of Data Visualization* (2019), ch. 17.
 :::
 
-<!-- slide 11 -->
+<!-- slide 9 -->
 ## Data-to-Ink Ratio {.smaller}
 
 [Honest charts · simplicity]{.eyebrow}
@@ -206,7 +206,7 @@ plt.show()
 Maximise the share of ink that encodes real data. The right amount lets the data shine.
 :::
 
-<!-- slide 12 -->
+<!-- slide 10 -->
 ## Length Beats Area {.smaller}
 
 [Honest charts · geometric accuracy]{.eyebrow}
@@ -312,7 +312,7 @@ plt.show()
 Cleveland & McGill (1984); Wilke (2019), ch. 17.
 :::
 
-<!-- slide 13 -->
+<!-- slide 11 -->
 ## How We See: Perceptual Ranking {.smaller}
 
 [Honest charts · perception]{.eyebrow}
@@ -458,7 +458,7 @@ Give your audience the easiest channel. Position and length for the headline, co
 Cleveland & McGill (1984), *JASA* 79(387).
 :::
 
-<!-- slide 14 -->
+<!-- slide 12 -->
 ## Pre-attentive Pop-out {.smaller}
 
 [Honest charts · perception]{.eyebrow}
@@ -563,7 +563,7 @@ Colour, size, and orientation pop out pre-attentively. Put your one finding on a
 After Wilke, *Fundamentals of Data Visualization* (2019), ch. 19.
 :::
 
-<!-- slide 15 -->
+<!-- slide 12.1 -->
 ## Pre-attentive: Size {.smaller}
 
 [Honest charts · perception]{.eyebrow}
@@ -665,7 +665,7 @@ After Wilke, *Fundamentals of Data Visualization* (2019), ch. 19.
 :::
 
 
-<!-- slide 16 -->
+<!-- slide 12.2 -->
 ## Pre-attentive: Direction {.smaller}
 
 [Honest charts · perception]{.eyebrow}
@@ -778,7 +778,7 @@ After Wilke, *Fundamentals of Data Visualization* (2019), ch. 7.
 :::
 
 
-<!-- slide 17 -->
+<!-- slide 12.3 -->
 ## Pre-attentive: Direction with Bars {.smaller}
 
 [Honest charts · perception]{.eyebrow}
@@ -869,12 +869,12 @@ After Wilke, *Fundamentals of Data Visualization* (2019), ch. 6.
 :::
 
 
-<!-- slide 18 -->
+<!-- slide 13 -->
 # Colour in Data Visualization {.divider}
 
 [Colour theory for charts · Day 01]{.eyebrow}
 
-<!-- slide 19 -->
+<!-- slide 14 -->
 ## Three Palette Types {.smaller}
 
 [Colour · palette types]{.eyebrow}
@@ -1006,7 +1006,7 @@ plt.show()
 Qualitative = `ECON_QUAL` · sequential = `econ_cmap()` · diverging = `econ_diverging`.
 :::
 
-<!-- slide 20 -->
+<!-- slide 15 -->
 ## The Rainbow Trap & Accessibility {.smaller}
 
 [Colour · accessibility]{.eyebrow}
@@ -1088,7 +1088,7 @@ plt.show()
 Crameri, Shephard & Heron (2020), *Nat. Commun.*
 :::
 
-<!-- slide 21 -->
+<!-- slide 16.3 -->
 ## Colour Pitfall: Too Many Colours {.smaller}
 
 [Colour · pitfalls]{.eyebrow}
@@ -1204,7 +1204,7 @@ When you have too many categories, group them. Colour by pathway, and sort so ea
 After Wilke, *Fundamentals of Data Visualization* (2019), ch. 19.
 :::
 
-<!-- slide 22 -->
+<!-- slide 16.4 -->
 ## Colour Pitfall: Colour for No Reason {.smaller}
 
 [Colour · pitfalls]{.eyebrow}
@@ -1293,7 +1293,7 @@ If the axis already identifies the category, colour is redundant. Spend it on th
 After Wilke, *Fundamentals of Data Visualization* (2019), ch. 19.
 :::
 
-<!-- slide 23 -->
+<!-- slide 16.5 -->
 ## Colour Pitfall: Forgetting Colour-Blindness {.smaller}
 
 [Colour · pitfalls]{.eyebrow}
@@ -1339,7 +1339,7 @@ A red/green pair can vanish for ~5% of readers. Simulate it, and never let colou
 Test palettes: viz-palette · pypalettes · Crameri et al. (2020), *Nat. Commun.*
 :::
 
-<!-- slide 24 -->
+<!-- slide 16.6 -->
 ## Finding Good Palettes {.smaller}
 
 [Colour · resources]{.eyebrow}
@@ -1357,7 +1357,7 @@ Three rules for any palette: enough contrast, colour-blind safe, and only as man
 `pypalettes` brings all these curated palettes into matplotlib: `load_cmap("Darjeeling1")` and you're done.
 :::
 
-<!-- slide 25 -->
+<!-- slide 16.7 -->
 ## Typography for Scientific Figures {.smaller}
 
 [Design · typography]{.eyebrow}
@@ -1459,7 +1459,7 @@ Typography guidance after Ellen Lupton, *Thinking with Type*.
 :::
 
 
-<!-- slide 26 -->
+<!-- slide 16 -->
 ## Grey Is Your Best Friend {.smaller}
 
 [Colour · strategic use]{.eyebrow}
@@ -1559,12 +1559,12 @@ plt.show()
 Colour the 5% that matters, grey the 95% that is context.
 :::
 
-<!-- slide 27 -->
+<!-- slide 17 -->
 # From Chart to Story {.divider}
 
 [Narrative data visualization · Day 01]{.eyebrow}
 
-<!-- slide 28 -->
+<!-- slide 19 -->
 ## The Story Arc {.smaller}
 
 [Storytelling · arc]{.eyebrow}
@@ -1652,7 +1652,7 @@ plt.show()
 Wilke (2019), ch. 29.
 :::
 
-<!-- slide 29 -->
+<!-- slide 21 -->
 ## Build Up Towards Complexity {.smaller}
 
 [Storytelling · progressive disclosure]{.eyebrow}
@@ -1730,7 +1730,7 @@ plt.show()
 
 :::::
 
-<!-- slide 30 -->
+<!-- slide 18 -->
 ## Editorial Thinking: Angle, Frame, Focus {.smaller}
 
 [Storytelling · editorial]{.eyebrow}
@@ -1819,7 +1819,7 @@ Kirk (2019), *Data Visualisation*, 2nd ed.
 :::
 
 
-<!-- slide 31 -->
+<!-- slide 20 -->
 ## Make a Figure for the Generals {.smaller}
 
 [Storytelling · simplicity]{.eyebrow}
@@ -1927,7 +1927,7 @@ If five dimensions are tangential to your point, remove them.
 
 
 
-<!-- slide 32 -->
+<!-- slide 22 -->
 ## Memorability vs Minimalism {.smaller}
 
 [Storytelling · memorability]{.eyebrow}
@@ -2045,7 +2045,7 @@ plt.show()
 Bateman et al. (2010), *ACM CHI*.
 :::
 
-<!-- slide 33 -->
+<!-- slide 16.1 -->
 ## Data Transformations {.smaller}
 
 [Honest charts · scales]{.eyebrow}
@@ -2133,7 +2133,7 @@ plt.show()
 Log for data spanning orders of magnitude, sqrt for counts, linear for a narrow range. Always label the axis as transformed.
 :::
 
-<!-- slide 34 -->
+<!-- slide 16.2 -->
 ## Seeing Through Overplotting {.smaller}
 
 [Honest charts · density]{.eyebrow}
@@ -2273,7 +2273,7 @@ After Wilke, *Fundamentals of Data Visualization* (2019), ch. 18.
 
 
 
-<!-- slide 35 -->
+<!-- slide 23 -->
 ## Don't Repeat Yourself: Vary Chart Types {.smaller}
 
 [Storytelling · variety]{.eyebrow}
@@ -2367,7 +2367,7 @@ plt.show()
 Aim for 3 to 6 figures per story. Wilke (2019), ch. 29.
 :::
 
-<!-- slide 36 -->
+<!-- slide 24 -->
 ## Small Multiples · Step 1: the spaghetti problem {.smaller}
 
 [Storytelling · faceting]{.eyebrow}
@@ -2439,7 +2439,7 @@ plt.show()
 
 :::::
 
-<!-- slide 37 -->
+<!-- slide 25 -->
 ## Small Multiples · Step 2: the faceted fix {.smaller}
 
 [Storytelling · faceting]{.eyebrow}
@@ -2519,7 +2519,7 @@ plt.show()
 Tufte (1983); `facet_wrap()` / `sns.FacetGrid`.
 :::
 
-<!-- slide 38 -->
+<!-- slide 25.5 -->
 ## What We've Covered, What's Next {.smaller}
 
 [Fundamentals · recap]{.eyebrow}
@@ -2566,12 +2566,8 @@ Why we avoid 3D · map the third variable to colour or facets
 
 :::::
 
-::: {.takeaway}
-[The thread]{.tl}
-Every rule serves one goal: let the reader's eye extract the true quantity with the least effort and the least chance of being misled.
-:::
 
-<!-- slide 39 -->
+<!-- slide 26 -->
 ## Read These Next {.smaller}
 
 [Day 01 · further reading]{.eyebrow}

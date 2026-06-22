@@ -1,10 +1,10 @@
-<!-- slide 129 -->
+<!-- slide · dimred divider -->
 # Dimensionality Reduction {.divider}
 
 [Many features into two axes · Day 01]{.eyebrow}
 
 
-<!-- slide 130 -->
+<!-- slide · dimred theory 1 -->
 ## Why Reduce, and Which Method {.smaller}
 
 [Dimensionality reduction · theory]{.eyebrow}
@@ -22,7 +22,7 @@ Genomic data is wide: thousands of genes, hundreds of samples. You can't see 500
 The rule of thumb: **PCA to understand structure and distances, t-SNE / UMAP to see clusters.**
 
 
-<!-- slide 131 -->
+<!-- slide · dimred theory 2 -->
 ## The Three Rules That Save You {.smaller}
 
 [Dimensionality reduction · theory]{.eyebrow}
@@ -36,7 +36,7 @@ The rule of thumb: **PCA to understand structure and distances, t-SNE / UMAP to 
 **Seed everything.** t-SNE and UMAP are stochastic; set `random_state` or the picture changes every run.
 
 
-<!-- slide 132 -->
+<!-- slide · dimred data -->
 ## Dim. Reduction · The Data {.smaller}
 
 [Dimensionality reduction]{.eyebrow}
@@ -55,7 +55,7 @@ adm.head(4)
 ```
 
 
-<!-- slide 133 -->
+<!-- slide · pca step 1 -->
 ## PCA · Step 1 — Project {.smaller}
 
 [Dimensionality reduction · PCA]{.eyebrow}
@@ -88,7 +88,7 @@ plt.show()
 ```
 
 
-<!-- slide 134 -->
+<!-- slide · pca step 2 -->
 ## PCA · Step 2 — Colour by Population {.smaller}
 
 [Dimensionality reduction · PCA]{.eyebrow}
@@ -126,7 +126,7 @@ plt.show()
 ```
 
 
-<!-- slide 135 -->
+<!-- slide · pca scree -->
 ## PCA · How Many Components? {.smaller}
 
 [Dimensionality reduction · PCA]{.eyebrow}
@@ -163,7 +163,7 @@ plt.show()
 ```
 
 
-<!-- slide 136 -->
+<!-- slide · tsne -->
 ## t-SNE · Local Clusters {.smaller}
 
 [Dimensionality reduction · t-SNE]{.eyebrow}
@@ -200,7 +200,7 @@ plt.show()
 ```
 
 
-<!-- slide 137 -->
+<!-- slide · umap -->
 ## UMAP · Local + Some Global {.smaller}
 
 [Dimensionality reduction · UMAP]{.eyebrow}
@@ -237,7 +237,7 @@ plt.show()
 ```
 
 
-<!-- slide 138 -->
+<!-- slide · dimred comparison -->
 ## Side by Side {.smaller}
 
 [Dimensionality reduction]{.eyebrow}
@@ -279,59 +279,33 @@ plt.tight_layout(); plt.show()
 **PCA** keeps real distances and interpretable axes, reach for it first and for population structure. **t-SNE** and **UMAP** trade distance for crisp clusters, reach for them on single-cell. Same five populations here, three different lenses.
 :::
 
+<!-- slide · umap as network -->
+## UMAP Is a Network {.smaller}
 
-<!-- slide 139 -->
-## Your Turn — Project the Data {.smaller .scrollable}
+[Dimensionality reduction · UMAP]{.eyebrow}
 
-[Dimensionality reduction · exercise]{.eyebrow}
+### The embedding is a neighbour graph laid flat
 
-### Pick a dataset, repeat the PCA → t-SNE → UMAP workflow
-
-:::::: columns
-::: {.column width="50%"}
-**Option A · Wine chemistry** *(UCI)*
-
-178 wines × 13 chemistry features, labels hidden. Project, then see whether **clusters emerge on their own**.
+UMAP works in two moves: first it builds a weighted **k-nearest-neighbour graph** (who is close to whom), then it lays that graph out in 2D. `umap.plot.connectivity` draws the graph itself, points plus the edges. Dense clumps are the populations (everyone is everyone's neighbour); the thin threads between clumps are the handful of cross-population links. Seeing the graph explains *why* UMAP clusters: it is a network embedding, not a projection.
 
 ```{python}
 #| echo: true
-#| eval: false
-from genomics_course.data import load_wine
+#| code-line-numbers: "3,8,9"
+#| output-location: column
+#| fig-width: 5.2
+#| fig-height: 4.8
+from genomics_course.data import load_admixture
 from sklearn.preprocessing import StandardScaler
+import umap, umap.plot
 
-df = load_wine()                  # 178 × 13
-X  = StandardScaler().fit_transform(df.values)
-# no labels -- colour points GREY, look for groups
+adm = load_admixture()
+Xs = StandardScaler().fit_transform(adm[["K1", "K2", "K3", "K4", "K5"]].values)
+
+reducer = umap.UMAP(n_neighbors=15, min_dist=0.1, random_state=42).fit(Xs)   # .fit keeps the model
+umap.plot.connectivity(reducer, show_points=True)   # draw the neighbour graph
 ```
-:::
-
-::: {.column width="50%"}
-**Option B · Vitis SNPs** *(synthetic)*
-
-90 vines × 300 SNPs, three grape species (`vinifera`, `labrusca`, `riparia`). Mirrors the admixture workflow — but on **raw genotypes** (0/1/2).
-
-```{python}
-#| echo: true
-#| eval: false
-from genomics_course.data import load_grape_snps
-from sklearn.preprocessing import StandardScaler
-
-df = load_grape_snps()            # 90 × 302 (sample + species + 300 SNPs)
-X  = StandardScaler().fit_transform(df.drop(columns=["sample","species"]).values)
-labels = df.species               # colour by species
-```
-:::
-::::::
-
-### What to do (≈ 10 minutes)
-
-1. **Scale** the feature matrix (`StandardScaler`).
-2. **PCA**: project to 2D, scatter PC1 vs PC2. *Option B*: colour by `species`. *Option A*: leave grey; do clusters appear?
-3. **Scree plot**: bar the per-PC variance + the cumulative line. How many real dimensions does the data have?
-4. **t-SNE** with `perplexity=30`, `init="pca"`, `random_state=42`. Then **UMAP** with `n_neighbors=15`, `min_dist=0.1`, `random_state=42`.
-5. Plot all three side-by-side. Which view shows the clusters most clearly? Which preserves the *between-cluster* distances best?
 
 ::: {.takeaway}
-[Question to bring back]{.tl}
-For the **grape** data: PCA and UMAP give very different "distances" between the three species. If you had to claim *which two are most genetically similar*, which embedding would you trust — and why?
+[The bottom line]{.tl}
+UMAP first builds a **kNN graph**, then embeds it. `connectivity` shows that graph directly: tight knots are clusters, thin bridges are the rare links between them. The 2D scatter you usually see is just this network, flattened.
 :::

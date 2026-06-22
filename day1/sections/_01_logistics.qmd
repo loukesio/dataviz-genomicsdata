@@ -1,9 +1,9 @@
-<!-- slide 7 -->
+<!-- slide 5 -->
 # How are we going to work? {.divider}
 
 [Course logistics · Day 01]{.eyebrow}
 
-<!-- slide 8 -->
+<!-- slide 6 -->
 ## Course Structure {.smaller}
 
 [Course logistics]{.eyebrow}
@@ -24,10 +24,13 @@
 :::
 
 ::: {.column width="54%"}
+::: {.takeaway}
+[Goal]{.tl}
+By the end you can build a **publication-ready** plot, and know **which** plot to reach for.
+:::
+
 ::: fragment
 **Day 1 plan (today)**
-
-By the end you can build a *publication-ready* plot, and know *which* plot to reach for.
 
 | Time | Topic |
 |------|-------|

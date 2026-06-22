@@ -1,430 +1,251 @@
-<!-- slide 188 -->
+<!-- slide · peaks divider -->
 # Peak Visualization {.divider}
 
 [ChIP / ATAC peaks · Day 01]{.eyebrow}
 
-<!-- slide 189 -->
-## What Are Genomic Peaks? {.smaller .scrollable}
+
+<!-- slide · peaks theory -->
+## What Is a Peak {.smaller}
+
+[ChIP / ATAC peaks · theory]{.eyebrow}
+
+### Signal piled up at a genomic position
+
+A peak is a region where sequencing reads pile up: a transcription factor bound there (ChIP-seq), the chromatin was open (ATAC-seq), or a histone carried a mark. The standard view is a **genome browser**: each assay a horizontal signal track, stacked over a shared coordinate, with genes annotated underneath.
+
+The reading skill is combinatorial. **H3K4me3** marks active promoters, **H3K27ac** marks active promoters *and* enhancers, **ATAC** marks any open chromatin. So a region that is open and acetylated but lacks H3K4me3 is an **enhancer**, not a promoter. We'll build that exact comparison.
+
+
+<!-- slide · peaks data -->
+## Peaks · The Data {.smaller}
 
 [ChIP / ATAC peaks]{.eyebrow}
 
-### Signal regions in epigenomics
+### Three signal tracks + a gene table
 
-:::::: columns
-:::: {.column width="50%"}
-**Peaks** are genomic regions with elevated signal in assays such as:
+`load_peaks()` is the signal, one row per genomic position, one column per mark. `load_peak_genes()` is the annotation track: where each gene sits and which strand it's on.
 
-- **ChIP-seq** — transcription factor binding sites, histone marks
-- **ATAC-seq** — open chromatin regions
-- **Cut&Run / CUT&TAG** — protein–DNA interactions
-
-**Key visualization goals:**
-
-- Show signal track across a genomic region
-- Compare peaks between conditions
-- Overlay gene annotations
-- Display multiple marks simultaneously
-
-**Tools in Python:**
-
-- `pyGenomeTracks` — multi-track genome browser plots
-- `pysam` + `matplotlib` — custom signal plots
-- `dna_features_viewer` — gene / feature maps
-::::
-
-::: {.column width="50%"}
 ```{python}
-#| echo: false
-#| fig-width: 6
-#| fig-height: 5.5
+#| echo: true
+#| output-location: column
+from genomics_course.data import load_peaks, load_peak_genes
 
-fig, axes = plt.subplots(4, 1, figsize=(6, 5.5),
-                         sharex=True, gridspec_kw={'height_ratios': [3,3,3,1]})
-np.random.seed(42)
-x = np.linspace(0, 10000, 500)
+sig = load_peaks()              # position, H3K27ac, H3K4me3, ATAC
+genes = load_peak_genes()       # name, start, end, strand
+sig.head(3)
+```
 
-def peak_signal(centers, width=400, noise=0.15):
-    s = noise * np.random.randn(len(x))
-    for c in centers:
-        s += np.exp(-((x - c)**2) / (2 * width**2)) * np.random.uniform(0.7, 1.3)
-    return np.clip(s, 0, None)
 
-s1 = peak_signal([2500, 5000, 7800])
-s2 = peak_signal([2500, 7800])
-s3 = peak_signal([5000])
+<!-- slide · peaks step 1 -->
+## Peaks · Step 1 — One Track {.smaller}
 
-axes[0].fill_between(x, s1, color=BRAND,    alpha=0.8)
-axes[0].set_ylabel('H3K27ac', fontsize=8, labelpad=2)
-axes[0].spines[['top','right','bottom']].set_visible(False)
+[ChIP / ATAC peaks · build]{.eyebrow}
 
-axes[1].fill_between(x, s2, color=ACCENT_PURP, alpha=0.8)
-axes[1].set_ylabel('H3K4me3', fontsize=8, labelpad=2)
-axes[1].spines[['top','right','bottom']].set_visible(False)
+### 1 · Fill the area under one signal
 
-axes[2].fill_between(x, s3, color=ACCENT_YLW, alpha=0.8)
-axes[2].set_ylabel('ATAC-seq', fontsize=8, labelpad=2)
-axes[2].spines[['top','right','bottom']].set_visible(False)
+A signal track is just `fill_between(position, signal)`. Drop the frame so the genomic axis reads cleanly. Three clear H3K27ac peaks appear, two promoters and one enhancer.
 
-# Gene track
-for gene_x, gene_len, strand, name in [
-    (1500, 2000, '+', 'GeneA'), (5500, 3000, '-', 'GeneB')
-]:
-    ax = axes[3]
-    ax.add_patch(plt.Rectangle((gene_x, 0.3), gene_len, 0.4,
-                                color=GRAY_DARK, alpha=0.7))
-    ax.text(gene_x + gene_len/2, 0.5, name, ha='center', va='center',
-            fontsize=7, color='white', fontweight='bold')
-axes[3].set_ylim(0, 1); axes[3].set_ylabel('Genes', fontsize=8, labelpad=2)
-axes[3].spines[['top','right']].set_visible(False)
-axes[3].set_xlabel('Genomic position (bp)', fontsize=9)
+```{python}
+#| echo: true
+#| code-line-numbers: "6-7"
+#| output-location: column
+#| fig-width: 6.6
+#| fig-height: 3.0
+from genomics_course.data import load_peaks
 
-fig.suptitle('Multi-Track Genome Browser', fontsize=10, fontweight='bold')
-plt.tight_layout()
+sig = load_peaks()                                       # position, H3K27ac, H3K4me3, ATAC
+
+fig, ax = plt.subplots(figsize=(6.6, 3.0))
+ax.fill_between(sig.position, sig.H3K27ac, color=GREEN, alpha=.85, lw=0)  # area under the signal
+ax.set_ylabel("H3K27ac"); ax.set_xlabel("genomic position (bp)")
+for s in ["top", "right"]: ax.spines[s].set_visible(False)
 plt.show()
 ```
+
+
+<!-- slide · peaks step 2 -->
+## Peaks · Step 2 — Stack the Marks {.smaller}
+
+[ChIP / ATAC peaks · build]{.eyebrow}
+
+### 2 · One subplot per mark, shared x-axis
+
+Stack the three marks as rows with `sharex=True` so positions line up. Now you compare marks vertically: the middle peak is missing from the H3K4me3 row.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "6-8,11-13"
+#| output-location: column
+#| fig-width: 6.6
+#| fig-height: 4.2
+from genomics_course.data import load_peaks
+
+sig = load_peaks()
+marks = ["H3K27ac", "H3K4me3", "ATAC"]                   # plotting order, top to bottom
+mark_pal = {"H3K27ac": GREEN, "H3K4me3": PURPLE, "ATAC": AMBER}
+
+fig, axes = plt.subplots(len(marks), 1, figsize=(6.6, 4.2),  # one row per mark
+                         sharex=True,                    # align genomic coordinates
+                         gridspec_kw={"hspace": 0.15})
+for ax, m in zip(axes, marks):                           # draw each mark in its row
+    ax.fill_between(sig.position, sig[m], color=mark_pal[m], alpha=.85, lw=0)
+    ax.set_ylabel(m, fontsize=8); ax.set_ylim(bottom=0)
+    for s in ["top", "right", "bottom"]: ax.spines[s].set_visible(False)
+axes[-1].set_xlabel("genomic position (bp)")
+plt.show()
+```
+
+
+<!-- slide · peaks step 3 -->
+## Peaks · Step 3 — The Gene Track {.smaller}
+
+[ChIP / ATAC peaks · build]{.eyebrow}
+
+### 3 · Annotate genes underneath with strand
+
+Add a short track at the bottom and draw each gene as an arrow pointing in its strand direction (`FancyArrow`). Now the peaks have context: which sit over a gene's start (its TSS).
+
+```{python}
+#| echo: true
+#| code-line-numbers: "2,9,16-23"
+#| output-location: column
+#| fig-width: 6.6
+#| fig-height: 4.6
+from genomics_course.data import load_peaks, load_peak_genes
+from matplotlib.patches import FancyArrow                # arrow = gene body + strand
+
+sig = load_peaks(); genes = load_peak_genes()
+marks = ["H3K27ac", "H3K4me3", "ATAC"]
+mark_pal = {"H3K27ac": GREEN, "H3K4me3": PURPLE, "ATAC": AMBER}
+
+fig, axes = plt.subplots(len(marks) + 1, 1, figsize=(6.6, 4.6), sharex=True,
+                         gridspec_kw={"height_ratios": [3, 3, 3, 1.1], "hspace": 0.15})
+for ax, m in zip(axes, marks):
+    ax.fill_between(sig.position, sig[m], color=mark_pal[m], alpha=.85, lw=0)
+    ax.set_ylabel(m, fontsize=8); ax.set_ylim(bottom=0)
+    for s in ["top", "right", "bottom"]: ax.spines[s].set_visible(False)
+gax = axes[-1]                                           # the gene annotation row
+for _, g in genes.iterrows():
+    x0 = g.start if g.strand == "+" else g.end           # arrow tail at the 5' end
+    dx = (g.end - g.start) * (1 if g.strand == "+" else -1)  # points along the strand
+    gax.add_patch(FancyArrow(x0, 0.5, dx, 0, width=0.18, length_includes_head=True,
+                             head_width=0.4, head_length=500, color=MUTED, zorder=3))
+    gax.text((g.start + g.end) / 2, 0.95, g["name"], ha="center", fontsize=7,
+             fontweight="bold", color=INK)
+gax.set_ylim(0, 1.4); gax.set_yticks([]); gax.set_ylabel("genes", fontsize=8)
+gax.set_xlabel("genomic position (bp)")
+for s in ["top", "right"]: gax.spines[s].set_visible(False)
+plt.show()
+```
+
+
+<!-- slide · peaks step 4 -->
+## Peaks · Step 4 — Highlight the Enhancer {.smaller}
+
+[ChIP / ATAC peaks · build]{.eyebrow}
+
+### 4 · Shade the region, name the finding
+
+Draw an `axvspan` across every track at the middle peak and title with the call. The shaded column is high in H3K27ac and ATAC but flat in H3K4me3: an active **enhancer**, not a promoter.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "12,18,25-26"
+#| output-location: column
+#| fig-width: 6.6
+#| fig-height: 4.6
+from genomics_course.data import load_peaks, load_peak_genes
+from matplotlib.patches import FancyArrow
+
+sig = load_peaks(); genes = load_peak_genes()
+marks = ["H3K27ac", "H3K4me3", "ATAC"]
+mark_pal = {"H3K27ac": GREEN, "H3K4me3": PURPLE, "ATAC": AMBER}
+
+fig, axes = plt.subplots(len(marks) + 1, 1, figsize=(6.6, 4.6), sharex=True,
+                         gridspec_kw={"height_ratios": [3, 3, 3, 1.1], "hspace": 0.15})
+for ax, m in zip(axes, marks):
+    ax.fill_between(sig.position, sig[m], color=mark_pal[m], alpha=.85, lw=0)
+    ax.axvspan(8100, 8900, color=AMBER, alpha=.12, zorder=0)   # highlight the enhancer
+    ax.set_ylabel(m, fontsize=8); ax.set_ylim(bottom=0)
+    for s in ["top", "right", "bottom"]: ax.spines[s].set_visible(False)
+gax = axes[-1]
+gax.axvspan(8100, 8900, color=AMBER, alpha=.12, zorder=0)      # same column on the gene track
+for _, g in genes.iterrows():
+    x0 = g.start if g.strand == "+" else g.end
+    dx = (g.end - g.start) * (1 if g.strand == "+" else -1)
+    gax.add_patch(FancyArrow(x0, 0.5, dx, 0, width=0.18, length_includes_head=True,
+                             head_width=0.4, head_length=500, color=MUTED, zorder=3))
+    gax.text((g.start + g.end) / 2, 0.95, g["name"], ha="center", fontsize=7,
+             fontweight="bold", color=INK)
+gax.set_ylim(0, 1.4); gax.set_yticks([]); gax.set_ylabel("genes", fontsize=8)
+gax.set_xlabel("genomic position (bp)")
+for s in ["top", "right"]: gax.spines[s].set_visible(False)
+fig.suptitle("ENHANCER: OPEN + ACETYLATED, NO H3K4me3",       # title = the finding
+             fontweight="bold", color="#333333")
+plt.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+A browser view is **one fill_between per mark → stack with shared x → annotate genes → highlight the region**. The marks read combinatorially: H3K27ac + ATAC + H3K4me3 = active promoter; H3K27ac + ATAC but **no** H3K4me3 = enhancer.
 :::
-::::::
 
-<!-- slide 190 -->
-## pyGenomeTracks: Configuration {.smaller .scrollable}
 
-[ChIP / ATAC peaks]{.eyebrow}
+<!-- slide · peaks pygenometracks -->
+## The Production Tool · pyGenomeTracks {.smaller}
 
-### INI-style multi-track configs
+[ChIP / ATAC peaks · reference]{.eyebrow}
 
-**pyGenomeTracks uses INI-style config files:**
+### Real bigWig/BED, driven by a config
+
+From scratch is great for teaching; for real data you'd use **pyGenomeTracks**, a CLI that renders a browser figure from an INI config pointing at your `.bw`/`.bed`/`.gtf` files. Same mental model, production inputs.
 
 ```{python}
 #| echo: true
 #| eval: false
-
-# tracks.ini  ─ one section per track
+# pip install pyGenomeTracks   (reads real bigWig / BED / GTF, not in-memory arrays)
 config = """
-[bigwig track]
+[H3K27ac]
 file = H3K27ac.bw
+color = #379A8B
 height = 3
-color = #208462
-title = H3K27ac
-
-[spacer]
-height = 0.3
-
-[bigwig track 2]
-file = ATAC.bw
+[H3K4me3]
+file = H3K4me3.bw
+color = #9A607F
 height = 3
-color = #7754bf
-title = ATAC-seq
-
 [genes]
 file = genes.gtf
 height = 1.5
-title = Genes
 """
+open("tracks.ini", "w").write(config)
 
-with open('tracks.ini', 'w') as f:
-    f.write(config)
+# render a region to a figure from the shell:
+#   pyGenomeTracks --tracks tracks.ini --region chr1:1000000-1020000 -o region.pdf
 ```
 
-```{python}
-#| echo: true
-#| eval: false
 
-# Generate the figure from the command line or Python
-import subprocess
-subprocess.run([
-    'pyGenomeTracks',
-    '--tracks', 'tracks.ini',
-    '--region', 'chr1:1000000-1100000',
-    '--outFileName', 'region_plot.pdf',
-    '--dpi', '200',
-])
-```
+<!-- slide · peaks exercise -->
+## Exercise · Read the Marks {.smaller}
 
-::: {.footer style="font-size: 0.55em; color: #808080; white-space: nowrap;"}
-pyGenomeTracks is particularly powerful when overlaying multiple epigenomic datasets. See the [documentation](https://pygenometracks.readthedocs.io) for all track types.
-:::
+[ChIP / ATAC peaks · exercise]{.eyebrow}
 
-<!-- slide 191 -->
-## Peak Visualization — Pipeline {.smaller background-color="#f6f4ee"}
-
-[ChIP / ATAC peaks]{.eyebrow}
-
-### Pipeline
-
-```{python}
-#| echo: false
-pipeline_flowchart([
-    "BigWig or BED",
-    "Slice region",
-    "Per-track fill",
-    "Gene annotation",
-    "Shared peak highlight",
-])
-plt.show()
-```
-
-<!-- slide 192 -->
-## Custom Peak Plot with Matplotlib {.smaller .scrollable}
-
-[ChIP / ATAC peaks]{.eyebrow}
-
-### Stacked tracks from scratch
-
-```{python}
-#| echo: true
-#| eval: false
-
-np.random.seed(42)
-x = np.linspace(0, 10000, 500)
-
-def make_track(centers, noise=0.08):
-    s = noise * np.abs(np.random.randn(len(x)))
-    for c in centers:
-        s += np.exp(-((x - c)**2) / (2 * 300**2)) * np.random.uniform(0.9, 1.1)
-    return np.clip(s, 0, None)
-
-tracks = {
-    'H3K27ac (active enhancer)' : (make_track([2500, 5100, 7800]), BRAND),
-    'H3K4me3 (active promoter)' : (make_track([2500, 7800]),        ACCENT_PURP),
-    'ATAC-seq (open chromatin)' : (make_track([2500, 5100, 7800]), ACCENT_YLW),
-}
-
-fig, axes = plt.subplots(
-    len(tracks) + 1, 1, figsize=(10, 5.5), sharex=True,
-    gridspec_kw={'height_ratios': [3, 3, 3, 1.2]},
-)
-
-for ax, (label, (signal, color)) in zip(axes, tracks.items()):
-    ax.fill_between(x, signal, color=color, alpha=0.85)
-    ax.set_ylabel(label, fontsize=8, labelpad=4)
-    ax.set_ylim(bottom=0); ax.spines[['top','right','bottom']].set_visible(False)
-    ax.tick_params(labelsize=7)
-
-# Gene annotation track
-gene_ax = axes[-1]
-for start, length, name in [(1200,2200,'GeneA'),(5800,2800,'GeneB')]:
-    gene_ax.add_patch(plt.Rectangle((start, 0.25), length, 0.5,
-                                     color=GRAY_DARK, alpha=0.8, clip_on=False))
-    gene_ax.text(start + length/2, 0.5, name, ha='center', va='center',
-                 fontsize=7, color='white', fontweight='bold')
-gene_ax.set_ylim(0, 1); gene_ax.set_ylabel('Genes', fontsize=8)
-gene_ax.set_xlabel('Genomic position (bp)', fontsize=10, labelpad=8)
-gene_ax.spines[['top','right']].set_visible(False)
-
-fig.suptitle('Epigenomic Signal Tracks — chr1:0-10 kb', fontsize=11, fontweight='bold')
-plt.tight_layout(); plt.show()
-```
-
-<!-- slide 193 -->
-## Custom Peak Plot — Result {.plot-slide background-color="#f6f4ee"}
-
-[ChIP / ATAC peaks]{.eyebrow}
-
-### Multi-track browser view
-
-```{python}
-#| echo: false
-#| eval: true
-#| fig-width: 10
-#| fig-height: 5.5
-
-np.random.seed(42)
-x = np.linspace(0, 10000, 500)
-
-def make_track(centers, noise=0.08):
-    s = noise * np.abs(np.random.randn(len(x)))
-    for c in centers:
-        s += np.exp(-((x - c)**2) / (2 * 300**2)) * np.random.uniform(0.9, 1.1)
-    return np.clip(s, 0, None)
-
-tracks = {
-    'H3K27ac (active enhancer)' : (make_track([2500, 5100, 7800]), BRAND),
-    'H3K4me3 (active promoter)' : (make_track([2500, 7800]),        ACCENT_PURP),
-    'ATAC-seq (open chromatin)' : (make_track([2500, 5100, 7800]), ACCENT_YLW),
-}
-
-fig, axes = plt.subplots(
-    len(tracks) + 1, 1, figsize=(10, 5.5), sharex=True,
-    gridspec_kw={'height_ratios': [3, 3, 3, 1.2]},
-)
-
-for ax, (label, (signal, color)) in zip(axes, tracks.items()):
-    ax.fill_between(x, signal, color=color, alpha=0.85)
-    ax.set_ylabel(label, fontsize=8, labelpad=4)
-    ax.set_ylim(bottom=0); ax.spines[['top','right','bottom']].set_visible(False)
-    ax.tick_params(labelsize=7)
-
-gene_ax = axes[-1]
-for start, length, name in [(1200,2200,'GeneA'),(5800,2800,'GeneB')]:
-    gene_ax.add_patch(plt.Rectangle((start, 0.25), length, 0.5,
-                                     color=GRAY_DARK, alpha=0.8, clip_on=False))
-    gene_ax.text(start + length/2, 0.5, name, ha='center', va='center',
-                 fontsize=7, color='white', fontweight='bold')
-gene_ax.set_ylim(0, 1); gene_ax.set_ylabel('Genes', fontsize=8)
-gene_ax.set_xlabel('Genomic position (bp)', fontsize=10, labelpad=8)
-gene_ax.spines[['top','right']].set_visible(False)
-
-fig.suptitle('Epigenomic Signal Tracks — chr1:0-10 kb', fontsize=11, fontweight='bold')
-plt.tight_layout(); plt.show()
-```
-
-<!-- slide 194 -->
-## Exercise: Peak Visualization {.smaller .scrollable}
-
-[ChIP / ATAC peaks]{.eyebrow}
-
-### Hands-on practice
+### Classify each peak
 
 ::: {.exercise}
-**Coding Exercise — Peak Visualization**
+[Real scenario]{.xl}
+Use the data, not your eyes. For each peak centre (≈1800, 8500, 13800 bp), pull the signal of all three marks and decide: **promoter** (all three present) or **enhancer** (H3K27ac + ATAC, no H3K4me3)?
 
-Build a multi-track genome browser from scratch: four ChIP/ATAC signal tracks with filled areas, a gene annotation track at the bottom with strand arrows, and a shaded shared-peak region.
-
-::: {.sandbox}
 ```{python}
 #| echo: true
 #| eval: false
+from genomics_course.data import load_peaks
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+sig = load_peaks()                   # position, H3K27ac, H3K4me3, ATAC
 
-np.random.seed(2026)
-region_size = 20000          # 20 kb window
-x = np.linspace(0, region_size, 1000)
-
-def simulate_signal(peak_centers, peak_width=500, noise=0.05):
-    """Return a ChIP/ATAC-like signal track."""
-    s = noise * np.abs(np.random.randn(len(x)))
-    for c in peak_centers:
-        height = np.random.uniform(0.7, 1.5)
-        s += height * np.exp(-((x - c)**2) / (2 * peak_width**2))
-    return np.clip(s, 0, None)
-
-tracks = {
-    'H3K27ac'   : simulate_signal([3000, 8500, 15000]),
-    'H3K4me3'   : simulate_signal([3000, 15000]),
-    'CTCF'      : simulate_signal([8500, 12000]),
-    'ATAC-seq'  : simulate_signal([3000, 8500, 12000, 15000], peak_width=300),
-}
-
-genes = pd.DataFrame({
-    'name'  : ['GeneA', 'GeneB', 'GeneC'],
-    'start' : [1500,     7000,    13500],
-    'end'   : [4500,    10500,   17000],
-    'strand': ['+',      '-',     '+'],
-})
-
-# Your tasks:
-# 1. Plot each track in a separate subplot sharing the x-axis
-# 2. Fill the area under each signal curve with a distinct color
-# 3. Draw the gene annotation track at the bottom
-#    - Use rectangles for gene bodies
-#    - Add strand arrows (→ for +, ← for –)
-#    - Label gene names
-# 4. Add a vertical shaded region at a shared peak (e.g. 8200–8800 bp)
-# 5. Polish: y-axis labels, shared x-axis label, overall title
-
-# Bonus: Use pyGenomeTracks to replicate the same plot from an INI config
+# 1. for each centre c in [1800, 8500, 13800]:
+#    row = sig.iloc[(sig.position - c).abs().argmin()]   # nearest position
+# 2. print row.H3K27ac, row.H3K4me3, row.ATAC
+# 3. rule: H3K4me3 high → promoter ; H3K4me3 low but H3K27ac+ATAC high → enhancer
+# 4. which of the three peaks is the enhancer?
 ```
 :::
-
-<details>
-<summary>Show solution</summary>
-
-```{python}
-#| echo: false
-#| eval: true
-
-import numpy as np, pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-
-np.random.seed(2026)
-region_size = 20000
-x = np.linspace(0, region_size, 1000)
-
-def simulate_signal(peak_centers, peak_width=500, noise=0.05):
-    s = noise * np.abs(np.random.randn(len(x)))
-    for c in peak_centers:
-        height = np.random.uniform(0.7, 1.5)
-        s += height * np.exp(-((x - c)**2) / (2 * peak_width**2))
-    return np.clip(s, 0, None)
-
-track_data = {
-    'H3K27ac' : (simulate_signal([3000, 8500, 15000]),          COLORS['primary']),
-    'H3K4me3' : (simulate_signal([3000, 15000]),                COLORS['secondary']),
-    'CTCF'    : (simulate_signal([8500, 12000]),                COLORS['tertiary']),
-    'ATAC-seq': (simulate_signal([3000, 8500, 12000, 15000],
-                                  peak_width=300),               COLORS['quaternary']),
-}
-
-genes = pd.DataFrame({
-    'name'  : ['GeneA', 'GeneB', 'GeneC'],
-    'start' : [1500,     7000,    13500],
-    'end'   : [4500,    10500,   17000],
-    'strand': ['+',      '-',     '+'],
-})
-
-n_tracks = len(track_data)
-height_ratios = [3] * n_tracks + [1.5]
-fig, axes = plt.subplots(
-    n_tracks + 1, 1,
-    figsize=(12, 8),
-    sharex=True,
-    gridspec_kw={'height_ratios': height_ratios, 'hspace': 0.05},
-    facecolor="white",
-)
-for ax in axes:
-    ax.set_facecolor("white")
-
-# Signal tracks
-for ax, (label, (signal, color)) in zip(axes, track_data.items()):
-    ax.fill_between(x, signal, color=color, alpha=0.75, linewidth=0)
-    ax.plot(x, signal, color=color, lw=0.6, alpha=0.9)
-    # why: shade shared peak region for all signal tracks
-    ax.axvspan(8200, 8800, color=COLORS['highlight_bg'], alpha=0.6, zorder=0)
-    ax.set_ylabel(label, fontsize=9, labelpad=4)
-    ax.set_ylim(bottom=0)
-    ax.spines[['top', 'right', 'bottom']].set_visible(False)
-    ax.tick_params(labelsize=7)
-
-# Gene annotation track
-gene_ax = axes[-1]
-gene_ax.axvspan(8200, 8800, color=COLORS['highlight_bg'], alpha=0.6, zorder=0)
-for _, row in genes.iterrows():
-    mid = (row['start'] + row['end']) / 2
-    gene_ax.add_patch(mpatches.FancyArrow(
-        row['start'] if row['strand'] == '+' else row['end'],
-        0.5,
-        row['end'] - row['start'] if row['strand'] == '+' else row['start'] - row['end'],
-        0,
-        width=0.35, length_includes_head=True,
-        head_width=0.35, head_length=400,
-        color=COLORS['text_mid'], zorder=3,
-    ))
-    gene_ax.text(mid, 0.85, row['name'],
-                 ha='center', va='bottom', fontsize=8,
-                 color=COLORS['text_dark'], fontweight='bold')
-
-gene_ax.set_ylim(0, 1.3)
-gene_ax.set_ylabel('Genes', fontsize=9, labelpad=4)
-gene_ax.set_xlabel('Genomic position (bp)', fontsize=10, labelpad=8)
-gene_ax.spines[['top', 'right']].set_visible(False)
-gene_ax.set_yticks([])
-
-fig.suptitle('EPIGENOMIC SIGNAL TRACKS — 20 KB WINDOW', fontweight='bold', fontsize=13)
-fig.text(0.01, -0.01,
-         'Shaded region (8 200–8 800 bp) marks a shared peak across all marks.',
-         fontsize=8.5, style='italic', color=COLORS['text_light'])
-plt.tight_layout()
-plt.show()
-```
-
-</details>
-:::
-
-::: fragment
-**Expected time:** 20 minutes
-:::
-

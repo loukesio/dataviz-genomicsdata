@@ -1,269 +1,383 @@
-<!-- slide 65 -->
-# Introduction to Matplotlib & Seaborn {.divider}
+---
+# first_plots.qmd
+# assumes the deck setup chunk has run:  from genomics_course.theme import *
+# (brings in plt, np, pd, GREEN/BLUE/…, and the plotly "econ" template)
+---
 
-[The Python viz stack · Day 01]{.eyebrow}
+<!-- slide · theme coverage -->
+## Does the Theme Cover Seaborn & Plotly? {.smaller}
+
+[First plots · setup]{.eyebrow}
+
+### One rule: matplotlib and anything built on it
+
+Your `rcParams` are matplotlib's defaults, so **seaborn inherits them for free**, it draws on matplotlib. The one trap: `sns.set_theme()` overwrites your rcParams with seaborn's grey style, so don't call it (or re-import your theme after).
+
+**Plotly is a different engine** and ignores rcParams completely. You theme it once with a *template*, which `theme.py` registers, so the single import covers all three.
+
+```{python}
+#| echo: true
+#| output-location: column
+import seaborn as sns, matplotlib.pyplot as plt
+import plotly.express as px
+
+# matplotlib + seaborn → inherit rcParams (cream canvas), no styling needed
+fig, ax = plt.subplots(figsize=(5, 2.2))
+sns.barplot(x=["A", "B", "C"], y=[3, 5, 4], ax=ax, color=GREEN)  # seaborn rides on rcParams
+ax.set_title("seaborn inherits the theme"); plt.show()
+
+# plotly → needs the template (registered in theme.py)
+px.bar(x=["A", "B", "C"], y=[3, 5, 4], template="econ").show()    # matches via template
+```
 
 
-<!-- slide 66 -->
-## Building a Plot · Step 1 — The Canvas {.smaller}
+<!-- slide · anatomy intro -->
+## Anatomy of a Plot {.smaller}
 
-[The Python viz stack · building a figure]{.eyebrow}
+[First plots · the skeleton]{.eyebrow}
 
-### 1 · Canvas
+### Every matplotlib plot is the same five lines
 
-Every matplotlib plot starts with a **figure** (the page) and an **axes** (the panel you draw on). Nothing is plotted yet, you have only declared the surface.
+Before three libraries, learn the one skeleton they all echo: **import → get data → make a figure → draw → label → show**. Master this and every later plot is a variation on it.
+
+```{python}
+#| echo: true
+#| eval: false
+import matplotlib.pyplot as plt          # 1. the plotting library
+from genomics_course.data import load_timecourse
+
+tc = load_timecourse()                   # 2. get your data (gene, time, tpm, sem)
+
+fig, ax = plt.subplots()                 # 3. fig = whole image, ax = the plot area inside
+ax.plot(tc.time, tc.tpm)                 # 4. draw x vs y onto the axes
+ax.set_xlabel("time"); ax.set_ylabel("TPM")   # 5. label, then...
+plt.show()                               #    ...render it
+```
+
+
+<!-- slide · anatomy step 1 -->
+## Anatomy · Step 1 — The Canvas {.smaller}
+
+[First plots · build]{.eyebrow}
+
+### 1 · A figure and an axes
+
+`plt.subplots()` hands back two things: the **figure** (the whole image) and the **axes** (the rectangle you draw inside). Nothing's plotted yet, it's a blank canvas.
 
 ```{python}
 #| echo: true
 #| code-line-numbers: "3"
 #| output-location: column
-#| fig-width: 5.2
-#| fig-height: 4.4
+#| fig-width: 5.6
+#| fig-height: 4.0
 import matplotlib.pyplot as plt
 
-fig, ax = plt.subplots(figsize=(5.2, 4.4))   # one figure, one axes
-ax.spines[["top", "right"]].set_visible(False)
+fig, ax = plt.subplots(figsize=(5.6, 4.0))   # fig = whole image, ax = the area you draw in
+plt.show()                                    # empty for now — just the axes
+```
+
+
+<!-- slide · anatomy step 2 -->
+## Anatomy · Step 2 — Draw the Data {.smaller}
+
+[First plots · build]{.eyebrow}
+
+### 2 · Put x and y on the axes
+
+Load the data, take one gene to keep it simple, and `ax.plot(x, y)` draws it. `marker="o"` puts a dot at each timepoint so you see the measurements.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "4-5,8"
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.0
+import matplotlib.pyplot as plt
+from genomics_course.data import load_timecourse
+
+tc = load_timecourse()                       # gene, time, tpm, sem
+one = tc[tc.gene == tc.gene.iloc[0]]          # just the first gene, to start simple
+
+fig, ax = plt.subplots(figsize=(5.6, 4.0))
+ax.plot(one.time, one.tpm, marker="o")       # draw time (x) against expression (y)
 plt.show()
 ```
 
 
-<!-- slide 67 -->
-## Building a Plot · Step 2 — Load & Plot Data {.smaller}
+<!-- slide · anatomy step 3 -->
+## Anatomy · Step 3 — Label & Show {.smaller}
 
-[The Python viz stack · building a figure]{.eyebrow}
+[First plots · build]{.eyebrow}
 
-### 2 · Data
+### 3 · Always label; then render
 
-Load the demo dataset and drop it onto the canvas with `ax.scatter()`. Default colour, default size, the shape of the data is now visible.
-
-```{python}
-#| echo: true
-#| code-line-numbers: "2,4,7"
-#| output-location: column
-#| fig-width: 5.2
-#| fig-height: 4.4
-import matplotlib.pyplot as plt
-from genomics_course.data import load_scatter_demo
-
-df = load_scatter_demo()                       # 120 genes: log2fc, expression, group
-
-fig, ax = plt.subplots(figsize=(5.2, 4.4))
-ax.scatter(df.log2fc, df.expression, color=GREY, s=45, alpha=.75)   # the points
-ax.spines[["top", "right"]].set_visible(False)
-plt.show()
-```
-
-
-<!-- slide 68 -->
-## Building a Plot · Step 3 — Colour by Group {.smaller}
-
-[The Python viz stack · building a figure]{.eyebrow}
-
-### 3 · Colour
-
-Loop over the groups, one pass each, one palette colour each. The two conditions separate visually.
+An unlabelled plot is a puzzle. Name the axes, add a title that says what it shows, then `plt.show()`. That's a complete plot, and the template for everything after.
 
 ```{python}
 #| echo: true
-#| code-line-numbers: "7-10"
+#| code-line-numbers: "9-11"
 #| output-location: column
-#| fig-width: 5.2
-#| fig-height: 4.4
+#| fig-width: 5.6
+#| fig-height: 4.0
 import matplotlib.pyplot as plt
-from genomics_course.data import load_scatter_demo
+from genomics_course.data import load_timecourse
 
-df = load_scatter_demo()
+tc = load_timecourse()
+one = tc[tc.gene == tc.gene.iloc[0]]
 
-fig, ax = plt.subplots(figsize=(5.2, 4.4))
-for name, c in zip(["Control", "Treatment"], [GREEN, AMBER]):   # one colour each
-    sub = df[df.group == name]
-    ax.scatter(sub.log2fc, sub.expression, label=name, color=c, s=45, alpha=.75)
-ax.legend(frameon=False)                     # name the groups
-ax.spines[["top", "right"]].set_visible(False)
-plt.show()
-```
-
-
-<!-- slide 69 -->
-## Building a Plot · Step 4 — Polish & Labels {.smaller}
-
-[The Python viz stack · building a figure]{.eyebrow}
-
-### 4 · Polish
-
-A trend line, axis labels, and a title turn a scatter into a figure someone can read without you in the room.
-
-```{python}
-#| echo: true
-#| code-line-numbers: "3,12-14,16-18"
-#| output-location: column
-#| fig-width: 5.2
-#| fig-height: 4.4
-import matplotlib.pyplot as plt
-from genomics_course.data import load_scatter_demo
-from scipy.stats import linregress            # for the trend line
-
-df = load_scatter_demo()
-
-fig, ax = plt.subplots(figsize=(5.2, 4.4))
-for name, c in zip(["Control", "Treatment"], [GREEN, AMBER]):
-    sub = df[df.group == name]
-    ax.scatter(sub.log2fc, sub.expression, label=name, color=c, s=45, alpha=.75)
-
-b, a, *_ = linregress(df.log2fc, df.expression)   # fit y = b*x + a
-xs = np.linspace(df.log2fc.min(), df.log2fc.max(), 100)
-ax.plot(xs, b * xs + a, color=INK, lw=1.5, ls="--")   # draw the fit
-
-ax.set_xlabel("log2 fold change")            # tell the reader the axes
-ax.set_ylabel("expression")
-ax.set_title("Control vs Treatment", color="#333333")
-ax.legend(frameon=False)
-ax.spines[["top", "right"]].set_visible(False)
-plt.show()
-```
-
-
-<!-- slide 70 -->
-## Building a Plot · Step 5 — Style Once, Reuse Everywhere {.smaller}
-
-[The Python viz stack · building a figure]{.eyebrow}
-
-### 5 · House style
-
-Bundle your spine and grid choices into one style block. Apply it and the per-axes polish disappears, every plot inherits the same look.
-
-```{python}
-#| echo: true
-#| code-line-numbers: "6-13"
-#| output-location: column
-#| fig-width: 5.2
-#| fig-height: 4.4
-import matplotlib.pyplot as plt
-from genomics_course.data import load_scatter_demo
-
-df = load_scatter_demo()
-
-house = {                                    # define the house style ONCE
-    "axes.spines.top":   False,
-    "axes.spines.right": False,
-    "axes.grid":         True,
-    "grid.linestyle":    "--",
-    "grid.color":        LINE,
-}
-with plt.rc_context(house):                  # apply it: no per-axes polish below
-    fig, ax = plt.subplots(figsize=(5.2, 4.4))
-    for name, c in zip(["Control", "Treatment"], [GREEN, AMBER]):
-        sub = df[df.group == name]
-        ax.scatter(sub.log2fc, sub.expression, label=name, color=c, s=45, alpha=.75)
-    ax.set_xlabel("log2 fold change")
-    ax.set_ylabel("expression")
-    ax.set_title("styled once, applies everywhere", color="#333333")
-    ax.legend(frameon=False)
-plt.show()
+fig, ax = plt.subplots(figsize=(5.6, 4.0))
+ax.plot(one.time, one.tpm, marker="o")
+ax.set_xlabel("time")                        # what the x-axis is
+ax.set_ylabel("expression (TPM)")            # what the y-axis is
+ax.set_title("One gene over time")           # what the whole plot shows
+plt.show()                                    # render it to the slide
 ```
 
 ::: {.takeaway}
 [The bottom line]{.tl}
-Build a figure in layers: **canvas → data → colour → polish**. Then lift the polish into a **style block you set once**, so every later plot starts publication-ready instead of being hand-tuned.
+Every plot is **figure → axes → draw → label → show**. The next three slides make this exact plot in matplotlib, seaborn, and Plotly, so you'll recognise the same skeleton under each.
 :::
 
 
-<!-- slide 71 -->
-## Common Plot Types in Matplotlib & Seaborn {.plot-slide background-color="#f6f4ee"}
+<!-- slide · first time series -->
+## First Plots · Time Series {.smaller}
 
-[The Python viz stack]{.eyebrow}
+[First plots · line]{.eyebrow}
 
-### Eight common artists at a glance
+### A gene's expression over time, three ways
+
+::: {.panel-tabset}
+
+### Matplotlib
 
 ```{python}
-#| echo: false
-#| fig-width: 12
-#| fig-height: 5.5
+#| echo: true
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.0
+from genomics_course.data import load_timecourse
 
-np.random.seed(42)
-cats  = ['A','B','C','D']
-vals  = [23, 45, 31, 58]
-x_sc  = np.random.normal(0, 1, 150)
-y_sc  = 0.7*x_sc + np.random.normal(0, 0.6, 150)
-g_sc  = np.random.choice(['Ctrl','Treat'], 150)
-ts    = np.arange(50)
-tsv   = np.cumsum(np.random.normal(0.2, 1, 50))
-bx    = [np.random.normal(m, 1.2, 60) for m in [3, 5, 4, 6]]
-
-fig, axes = plt.subplots(2, 4, figsize=(12, 5.5), constrained_layout=True)
-
-# Bar
-axes[0,0].bar(cats, vals, color=[BRAND, ACCENT_YLW, BRAND_LIGHT, ACCENT_PURP])
-axes[0,0].set_title('ax.bar()\nComparisons', fontsize=9)
-
-# Scatter
-for g, c in zip(['Ctrl','Treat'], [BRAND, RED]):
-    m = g_sc == g
-    axes[0,1].scatter(x_sc[m], y_sc[m], color=c, s=18, alpha=0.6, label=g)
-axes[0,1].legend(fontsize=7); axes[0,1].set_title('ax.scatter()\nRelationships', fontsize=9)
-
-# Line
-axes[0,2].plot(ts, tsv, color=BRAND, linewidth=2)
-axes[0,2].fill_between(ts, tsv, alpha=0.15, color=BRAND)
-axes[0,2].set_title('ax.plot()\nTime series', fontsize=9)
-
-# Hist
-axes[0,3].hist(np.random.normal(50, 10, 500), bins=25, color=BRAND, alpha=0.8, edgecolor='white')
-axes[0,3].set_title('ax.hist()\nDistributions', fontsize=9)
-
-# Box
-bp = axes[1,0].boxplot(bx, patch_artist=True, medianprops={'color':'white','linewidth':2})
-for patch, c in zip(bp['boxes'], [BRAND, ACCENT_YLW, BRAND_LIGHT, ACCENT_PURP]):
-    patch.set_facecolor(c); patch.set_alpha(0.7)
-axes[1,0].set_title('ax.boxplot()\nDistributions', fontsize=9)
-
-# Heatmap (seaborn)
-mat = np.random.randn(8, 8)
-sns.heatmap(mat, ax=axes[1,1], cmap='RdYlGn', center=0, linewidths=0.3,
-            cbar_kws={'shrink': 0.7})
-axes[1,1].set_title('sns.heatmap()\nExpression', fontsize=9)
-
-# Violin
-vp = axes[1,2].violinplot(bx, showmedians=True)
-for pc, c in zip(vp['bodies'], [BRAND, ACCENT_YLW, BRAND_LIGHT, ACCENT_PURP]):
-    pc.set_facecolor(c); pc.set_alpha(0.7)
-axes[1,2].set_title('ax.violinplot()\nDensity', fontsize=9)
-
-# Pairplot placeholder
-from matplotlib.patches import FancyBboxPatch
-axes[1,3].add_patch(FancyBboxPatch((0.05,0.05), 0.9, 0.9,
-                    boxstyle='round', facecolor=BRAND+'22', edgecolor=BRAND))
-axes[1,3].text(0.5, 0.5, 'sns.pairplot()\nMultivariate', ha='center', va='center',
-               fontsize=9, fontweight='bold', color=BRAND, transform=axes[1,3].transAxes)
-axes[1,3].set_xlim(0,1); axes[1,3].set_ylim(0,1); axes[1,3].axis('off')
-
-for ax in axes.flat:
-    ax.spines[['top','right']].set_visible(False)
-
-plt.suptitle('Common Plot Types', fontsize=12, fontweight='bold')
+tc = load_timecourse()                          # gene, time, tpm, sem
+fig, ax = plt.subplots(figsize=(5.6, 4.0))
+for g, d in tc.groupby("gene"):                 # one line per gene
+    ax.plot(d.time, d.tpm, marker="o", label=g) # connect timepoints
+ax.set_xlabel("time"); ax.set_ylabel("TPM")
+ax.legend(fontsize=7, frameon=False)
 plt.show()
 ```
 
+### Seaborn
 
-<!-- slide 72 -->
-## A Map of the Plot Garden {.smaller .scrollable}
+```{python}
+#| echo: true
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.0
+import seaborn as sns
+from genomics_course.data import load_timecourse
 
-[The Python viz stack · what to plot when]{.eyebrow}
+tc = load_timecourse()                          # gene, time, tpm, sem
+fig, ax = plt.subplots(figsize=(5.6, 4.0))
+sns.lineplot(tc, x="time", y="tpm", hue="gene", # hue draws one line per gene
+             marker="o", ax=ax)
+ax.legend(fontsize=7, frameon=False)
+plt.show()
+```
 
-### One menu, seven aisles
+### Plotly
 
-| Category | | | | When to reach for it |
-|:---|:---:|:---:|:---:|:---|
-| **Amounts** | ![](images/plot-icons/01-amounts/01-bars.svg){height=2.4em} | ![](images/plot-icons/01-amounts/03-dots.svg){height=2.4em} | ![](images/plot-icons/01-amounts/04-grouped-bars.svg){height=2.4em} | One number per group (counts, means, sums). |
-| **Distributions** | ![](images/plot-icons/02-distributions/01-histogram.svg){height=2.4em} | ![](images/plot-icons/02-distributions/03-boxplot.svg){height=2.4em} | ![](images/plot-icons/02-distributions/04-violins.svg){height=2.4em} | Shape of one variable, often across groups. |
-| **Proportions** | ![](images/plot-icons/03-proportions/03-stacked-bar.svg){height=2.4em} | ![](images/plot-icons/03-proportions/05-mosaic.svg){height=2.4em} | ![](images/plot-icons/03-proportions/06-treemap.svg){height=2.4em} | Part-to-whole composition. |
-| **Relationships** | ![](images/plot-icons/04-relationships/01-scatter.svg){height=2.4em} | ![](images/plot-icons/04-relationships/03-line.svg){height=2.4em} | ![](images/plot-icons/04-relationships/06-hex-bins.svg){height=2.4em} | Two variables together. |
-| **Uncertainty** | ![](images/plot-icons/05-uncertainty/01-error-bars.svg){height=2.4em} | ![](images/plot-icons/05-uncertainty/05-confidence-strip.svg){height=2.4em} | ![](images/plot-icons/05-uncertainty/06-eyes.svg){height=2.4em} | "How sure are we?" |
-| **Genomics** | ![](images/plot-icons/06-genomics/01-volcano.svg){height=2.4em} | ![](images/plot-icons/06-genomics/02-clustered-heatmap.svg){height=2.4em} | ![](images/plot-icons/06-genomics/06-ideogram.svg){height=2.4em} | Domain-specific reads (DE, peaks, ancestry). |
-| **ML** | ![](images/plot-icons/07-ml/01-confusion-matrix.svg){height=2.4em} | ![](images/plot-icons/07-ml/02-roc-curve.svg){height=2.4em} | ![](images/plot-icons/07-ml/06-learning-curve.svg){height=2.4em} | Model output, not raw data. |
+```{python}
+#| echo: true
+#| output-location: column
+import plotly.express as px
+from genomics_course.data import load_timecourse
 
-::: {.takeaway}
-[Cheat sheet]{.tl}
-Full reference — 78 thumbnails of every plot type, indexed: [Plot Directory — Genomics Viz with Python (PDF)](images/Plot%20Directory%20%E2%80%94%20Genomics%20Viz%20with%20Python.pdf)
+tc = load_timecourse()                          # gene, time, tpm, sem
+fig = px.line(tc, x="time", y="tpm", color="gene",  # color = one trace per gene
+              markers=True, template="econ")    # template matches the deck
+fig.update_layout(height=400)
+fig.show()
+```
+
 :::
 
+
+<!-- slide · first plots exercise 1 -->
+## Exercise · Your First Plot {.smaller}
+
+[First plots · exercise]{.eyebrow}
+
+### Build the skeleton yourself
+
+::: {.exercise}
+[Coding exercise]{.xl}
+Use the **figure → draw → label → show** skeleton on a new dataset. `load_reads_per_sample()` gives sequencing depth per sample; make a bar chart of it in whichever library you like best.
+
+```{python}
+#| echo: true
+#| eval: false
+from genomics_course.data import load_reads_per_sample
+
+rps = load_reads_per_sample()        # sample, reads
+
+# 1. make a figure:    fig, ax = plt.subplots()
+# 2. draw bars:        ax.bar(rps.sample, rps.reads)   (or sns.barplot / px.bar)
+# 3. label the y-axis: "reads (millions)"
+# 4. add a title that says what the chart shows
+# 5. plt.show()   (or fig.show() for plotly)
+```
+:::
+
+
+<!-- slide · first barplot -->
+## First Plots · Bar Chart {.smaller}
+
+[First plots · bar]{.eyebrow}
+
+### Expression per tissue, three ways
+
+::: {.panel-tabset}
+
+### Matplotlib
+
+```{python}
+#| echo: true
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.0
+from genomics_course.data import load_tissue_expression
+
+te = load_tissue_expression()                   # tissue, tpm
+fig, ax = plt.subplots(figsize=(5.6, 4.0))
+ax.bar(te.tissue, te.tpm, color=GREEN)          # one bar per tissue
+ax.set_ylabel("TPM")
+plt.show()
+```
+
+### Seaborn
+
+```{python}
+#| echo: true
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.0
+import seaborn as sns
+from genomics_course.data import load_tissue_expression
+
+te = load_tissue_expression()                   # tissue, tpm
+fig, ax = plt.subplots(figsize=(5.6, 4.0))
+sns.barplot(te, x="tissue", y="tpm", ax=ax,     # bars straight from the dataframe
+            color=GREEN)
+plt.show()
+```
+
+### Plotly
+
+```{python}
+#| echo: true
+#| output-location: column
+import plotly.express as px
+from genomics_course.data import load_tissue_expression
+
+te = load_tissue_expression()                   # tissue, tpm
+fig = px.bar(te, x="tissue", y="tpm",           # interactive bars
+             template="econ")
+fig.update_layout(height=400)
+fig.show()
+```
+
+:::
+
+
+<!-- slide · first scatter -->
+## First Plots · Scatter {.smaller}
+
+[First plots · scatter]{.eyebrow}
+
+### Co-expression of two genes, three ways
+
+::: {.panel-tabset}
+
+### Matplotlib
+
+```{python}
+#| echo: true
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.0
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()                        # tissue, gene_x, gene_y
+fig, ax = plt.subplots(figsize=(5.6, 4.0))
+for t, d in co.groupby("tissue"):               # colour by tissue (loop)
+    ax.scatter(d.gene_x, d.gene_y, label=t, alpha=.7)
+ax.set_xlabel("gene X"); ax.set_ylabel("gene Y")
+ax.legend(fontsize=7, frameon=False)
+plt.show()
+```
+
+### Seaborn
+
+```{python}
+#| echo: true
+#| output-location: column
+#| fig-width: 5.6
+#| fig-height: 4.0
+import seaborn as sns
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()                        # tissue, gene_x, gene_y
+fig, ax = plt.subplots(figsize=(5.6, 4.0))
+sns.scatterplot(co, x="gene_x", y="gene_y",     # hue colours by tissue automatically
+                hue="tissue", alpha=.7, ax=ax)
+ax.legend(fontsize=7, frameon=False)
+plt.show()
+```
+
+### Plotly
+
+```{python}
+#| echo: true
+#| output-location: column
+import plotly.express as px
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()                        # tissue, gene_x, gene_y
+fig = px.scatter(co, x="gene_x", y="gene_y",    # hover shows each point
+                 color="tissue", template="econ")
+fig.update_layout(height=400)
+fig.show()
+```
+
+:::
+
+
+<!-- slide · first plots exercise 2 -->
+## Exercise · Pick Your Library {.smaller}
+
+[First plots · exercise]{.eyebrow}
+
+### Same data, your choice of tool
+
+::: {.exercise}
+[Coding exercise]{.xl}
+You've now seen all three libraries. Plot the `load_coexpression()` scatter again in the **one library you'd actually reach for**, and add a title that names the relationship. If you pick Plotly, hover a point to read its values.
+
+```{python}
+#| echo: true
+#| eval: false
+from genomics_course.data import load_coexpression
+
+co = load_coexpression()             # tissue, gene_x, gene_y
+
+# 1. scatter gene_x vs gene_y, coloured by tissue
+#    matplotlib (loop) · seaborn (hue=) · or plotly (color=, template="econ")
+# 2. title it, e.g. "gene X and gene Y are co-expressed"
+# 3. which library felt fastest for this? that's your default from now on
+```
+:::
+
+::: {.takeaway}
+[The bottom line]{.tl}
+Same data, three libraries, one identity. **Matplotlib** for control, **seaborn** for one-line statistical plots (both inherit your rcParams), **Plotly** for interactivity (themed by the `econ` template). Reach for the one that fits the job; the look stays constant.
+:::

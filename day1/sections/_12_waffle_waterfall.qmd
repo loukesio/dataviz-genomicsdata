@@ -1,378 +1,286 @@
-<!-- slide 178 -->
-# Waffle & Waterfall Plots {.divider}
+<!-- slide · ww divider -->
+# Waffle & Waterfall {.divider}
 
 [Cohort summaries · Day 01]{.eyebrow}
 
-<!-- slide 179 -->
-## Waffle Charts: Proportions at a Glance {.smaller}
+
+<!-- slide · waffle theory -->
+## Waffle Charts {.smaller}
+
+[Cohort summaries · theory]{.eyebrow}
+
+### Part-to-whole as a grid of squares
+
+A waffle is a 10×10-ish grid where each square is one unit and each colour block is a category, more honest than a pie because you can *count* the squares. Use it for whole-number compositions: variant classifications, cohort cell types, genotype counts.
+
+It works best with a handful of categories that sum to a round total. Here: the outcome of a clinical variant panel, where the punchline is how much grey (VUS) there is.
+
+
+<!-- slide · waffle data -->
+## Waffle · The Data {.smaller}
 
 [Cohort summaries]{.eyebrow}
 
-### Part-to-whole as a grid
+### Variant interpretations from a panel screen
 
-**Purpose:** Show part-to-whole relationships as a grid of squares — more intuitive than pie charts for proportions.
-
-**When to use:**
-
-- Sample composition (cell types, genotypes)
-- Cohort demographics
-- Variant classification counts
-- Any whole-number percentage summary
-
-**Library:** `PyWaffle` — `pip install pywaffle`
-
-<!-- slide 180 -->
-## Waffle Charts — Result {.plot-slide background-color="#f6f4ee"}
-
-[Cohort summaries]{.eyebrow}
-
-### PBMC cell-type composition
-
-```{python}
-#| echo: false
-#| fig-width: 6
-#| fig-height: 5
-
-from pywaffle import Waffle
-
-cell_counts = {
-    'T cells'    : 38,
-    'B cells'    : 22,
-    'NK cells'   : 15,
-    'Monocytes'  : 14,
-    'Other'      : 11,
-}
-
-fig = plt.figure(
-    FigureClass = Waffle,
-    rows        = 10,
-    values      = cell_counts,
-    colors      = [BRAND, ACCENT_YLW, ACCENT_PURP, RED, GRAY_DARK],
-    title       = {'label': 'PBMC Cell-Type Composition', 'fontsize': 11,
-                   'fontweight': 'bold'},
-    legend      = {'loc': 'lower left', 'bbox_to_anchor': (0, -0.3),
-                   'ncol': 3, 'fontsize': 8},
-    figsize     = (6, 5),
-    block_aspect_ratio = 1,
-)
-plt.tight_layout()
-plt.show()
-```
-
-<!-- slide 181 -->
-## Waffle Chart — Pipeline {.smaller background-color="#f6f4ee"}
-
-[Cohort summaries]{.eyebrow}
-
-### Pipeline
-
-```{python}
-#| echo: false
-pipeline_flowchart([
-    "Category counts",
-    "Compute proportions",
-    "10x10 grid",
-    "Icons by category",
-    "Final waffle",
-])
-plt.show()
-```
-
-<!-- slide 182 -->
-## Waffle Chart: Code Walkthrough {.smaller .scrollable}
-
-[Cohort summaries]{.eyebrow}
-
-### Waffle in PyWaffle
+`load_variant_classes()` is a tiny table: each ACMG category and how many variants fell into it. They sum to 150, a clean number to tile.
 
 ```{python}
 #| echo: true
-#| eval: false
-#| code-line-numbers: "1-9|11-23|25-30"
+#| output-location: column
+from genomics_course.data import load_variant_classes
 
-from pywaffle import Waffle
-import matplotlib.pyplot as plt
-
-# Step 1: Define counts (absolute or relative)
-cell_composition = {
-    'T cells'    : 38,
-    'B cells'    : 22,
-    'NK cells'   : 15,
-    'Monocytes'  : 14,
-    'Other'      : 11,
-}
-
-# Step 2: Build the figure
-fig = plt.figure(
-    FigureClass = Waffle,
-    rows        = 10,           # number of rows in the grid
-    values      = cell_composition,
-    colors      = [COLORS['primary'], '#E8A838', COLORS['quinary'], COLORS['primary'], '#606060'],
-    icons       = 'circle',     # or 'person', 'square' (Font Awesome icons)
-    icon_size   = 12,
-    title       = {'label' : 'PBMC Cell-Type Composition',
-                   'fontsize': 12, 'fontweight': 'bold'},
-    legend      = {'loc': 'lower left', 'bbox_to_anchor': (0, -0.28),
-                   'ncol': 3, 'fontsize': 9,
-                   'frameon': False},
-    figsize     = (8, 5),
-)
-
-# Step 3: Save / show
-plt.tight_layout()
-plt.savefig('waffle_pbmc.pdf', bbox_inches='tight')
-plt.show()
+vc = load_variant_classes()   # classification, n
+vc
 ```
 
-<!-- slide 183 -->
-## Waterfall Plots: Mutation Landscapes {.smaller}
 
-[Cohort summaries]{.eyebrow}
+<!-- slide · waffle step 1 -->
+## Waffle · Step 1 — Tile the Counts {.smaller}
 
-### Mutation burden as ranked bars
+[Cohort summaries · build]{.eyebrow}
 
-**Purpose:** Display somatic mutation burden across a patient cohort — a staple of cancer genomics papers.
+### 1 · Counts to squares
 
-**What the plot shows:**
-
-- Each bar = one patient, height = tumor mutation burden (TMB)
-- Bars sorted by TMB (descending)
-- Color can encode cancer subtype, treatment response, or driver mutation
-- Often paired with an **OncoPrint** (mutation matrix below)
-
-<!-- slide 184 -->
-## Waterfall Plot — Result {.plot-slide background-color="#f6f4ee"}
-
-[Cohort summaries]{.eyebrow}
-
-### TMB ranked, coloured by subtype
-
-```{python}
-#| echo: false
-#| fig-width: 7
-#| fig-height: 5
-
-np.random.seed(42)
-n_patients = 60
-tmb = np.sort(np.random.lognormal(3, 1.2, n_patients))[::-1]
-subtypes = np.random.choice(['Luminal A','Luminal B','HER2+','TNBC'], n_patients)
-color_map_st = {'Luminal A': BRAND, 'Luminal B': ACCENT_YLW,
-                'HER2+': ACCENT_PURP, 'TNBC': RED}
-colors = [color_map_st[s] for s in subtypes]
-
-fig, ax = plt.subplots(figsize=(7, 5))
-ax.bar(range(n_patients), tmb, color=colors, width=1.0, edgecolor='none')
-ax.set_xlabel('Patient (sorted by TMB)', fontsize=11)
-ax.set_ylabel('Tumor Mutation Burden\n(mutations / Mb)', fontsize=10)
-ax.set_title('Waterfall Plot: Mutation Burden', fontsize=11, fontweight='bold')
-ax.spines[['top','right']].set_visible(False)
-ax.set_xticks([])
-
-from matplotlib.patches import Patch
-legend_elements = [Patch(facecolor=c, label=l)
-                   for l, c in color_map_st.items()]
-ax.legend(handles=legend_elements, fontsize=8, frameon=False,
-          loc='upper right')
-plt.tight_layout(); plt.show()
-```
-
-<!-- slide 185 -->
-## Waterfall Plot — Pipeline {.smaller background-color="#f6f4ee"}
-
-[Cohort summaries]{.eyebrow}
-
-### Pipeline
-
-```{python}
-#| echo: false
-pipeline_flowchart([
-    "Patient table",
-    "Sort by TMB",
-    "Colour by cancer type",
-    "Bar plot",
-    "Star markers MSI-H",
-])
-plt.show()
-```
-
-<!-- slide 186 -->
-## Waterfall Plot: Code {.smaller .scrollable}
-
-[Cohort summaries]{.eyebrow}
-
-### From TMB table to ranked bars
+`PyWaffle` plugs into matplotlib via `FigureClass=Waffle`. Give it `rows` and a `values` dict of category → count; it lays one square per unit, block by block.
 
 ```{python}
 #| echo: true
-#| eval: false
-#| code-line-numbers: "1-11|13-23|25-35"
+#| code-line-numbers: "5-9"
+#| output-location: column
+#| fig-width: 6.6
+#| fig-height: 3.6
+# pip install pywaffle
+from pywaffle import Waffle
+from genomics_course.data import load_variant_classes
 
-# Step 1: Simulate TMB data
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
-
-np.random.seed(42)
-n = 80
-patients = pd.DataFrame({
-    'patient'  : [f'P{i:03d}' for i in range(n)],
-    'TMB'      : np.random.lognormal(3, 1.2, n),
-    'subtype'  : np.random.choice(['Luminal A','Luminal B','HER2+','TNBC'], n),
-    'response' : np.random.choice(['CR','PR','SD','PD'], n,
-                                  p=[0.15, 0.35, 0.30, 0.20]),
-})
-
-# Step 2: Sort and assign colors
-patients = patients.sort_values('TMB', ascending=False).reset_index(drop=True)
-color_map = {'Luminal A':COLORS['primary'],'Luminal B':'#E8A838',
-             'HER2+':COLORS['quinary'],'TNBC':COLORS['primary']}
-colors = patients['subtype'].map(color_map)
-
-# Step 3: Plot
-fig, ax = plt.subplots(figsize=(12, 5))
-ax.bar(range(n), patients['TMB'], color=colors, width=1.0, edgecolor='none')
-ax.set_yscale('log')   # log scale common for TMB
-ax.set_xlabel('Patient (sorted by TMB)', fontsize=12, labelpad=8)
-ax.set_ylabel('Tumor Mutation Burden (log scale)', fontsize=12, labelpad=8)
-ax.set_title('Somatic Mutation Landscape', fontsize=14, fontweight='bold')
-ax.spines[['top','right']].set_visible(False)
-ax.set_xticks([])
-legend_elements = [Patch(facecolor=c, label=l) for l, c in color_map.items()]
-ax.legend(handles=legend_elements, frameon=False, loc='upper right')
-plt.tight_layout(); plt.show()
+vc = load_variant_classes()                              # classification, n
+pal = [RED, AMBER, GREY, BLUE, GREEN]                    # colour per ACMG class
+fig = plt.figure(FigureClass=Waffle, rows=10,            # 10 rows → 15 cols for 150 squares
+                 values=dict(zip(vc.classification, vc.n)),  # category → count
+                 colors=pal, figsize=(6.6, 3.6),
+                 block_aspect_ratio=1)                   # square blocks
+plt.show()
 ```
 
-<!-- slide 187 -->
-## Exercise: Waffle & Waterfall {.smaller .scrollable}
+
+<!-- slide · waffle step 2 -->
+## Waffle · Step 2 — Legend & Finding {.smaller}
+
+[Cohort summaries · build]{.eyebrow}
+
+### 2 · Name the categories and the message
+
+Add a legend outside the grid and a title that states the takeaway. The grey expanse needs no explanation: most variants are of uncertain significance.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "10-12"
+#| output-location: column
+#| fig-width: 6.6
+#| fig-height: 3.6
+from pywaffle import Waffle
+from genomics_course.data import load_variant_classes
+
+vc = load_variant_classes()                              # classification, n
+pal = [RED, AMBER, GREY, BLUE, GREEN]                    # colour per ACMG class
+fig = plt.figure(FigureClass=Waffle, rows=10,
+                 values=dict(zip(vc.classification, vc.n)),
+                 colors=pal, figsize=(6.6, 3.6),
+                 block_aspect_ratio=1,
+                 legend={"loc": "upper left", "bbox_to_anchor": (1, 1),   # key, outside right
+                         "fontsize": 8, "frameon": False},
+                 title={"label": "Most variants are VUS",                 # title = the finding
+                        "fontsize": 12, "fontweight": "bold"})
+plt.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+A waffle turns counts into countable squares: **`values` dict → tile → legend → title**. Reach for it over a pie when categories are few and the total is a round number, here, the wall of grey says "VUS dominates" instantly.
+:::
+
+
+<!-- slide · waterfall theory -->
+## Waterfall Plots {.smaller}
+
+[Cohort summaries · theory]{.eyebrow}
+
+### A cohort ranked into a skyline
+
+A waterfall is a bar per sample, sorted by the value, so the cohort reads as a descending skyline. It's the staple cancer-genomics view of **tumour mutation burden**: who carries the most mutations, and does a subtype or marker cluster at the top.
+
+The moves: sort descending, colour the bars by a categorical (subtype), and overlay a marker for a second variable (here MSI status) so two facts share one axis.
+
+
+<!-- slide · waterfall data -->
+## Waterfall · The Data {.smaller}
 
 [Cohort summaries]{.eyebrow}
 
-### Hands-on practice
+### TMB across a 60-patient cohort
+
+`load_tmb_cohort()` gives one row per patient: their TMB, breast-cancer `subtype`, and microsatellite status (`msi`). MSI-H tumours are biologically hypermutated, we expect them high.
+
+```{python}
+#| echo: true
+#| output-location: column
+from genomics_course.data import load_tmb_cohort
+
+co = load_tmb_cohort()   # patient, tmb, subtype, msi
+co.head(4)
+```
+
+
+<!-- slide · waterfall step 1 -->
+## Waterfall · Step 1 — Rank into Bars {.smaller}
+
+[Cohort summaries · build]{.eyebrow}
+
+### 1 · Sort, then one bar each
+
+Sort by TMB descending and draw a bar per patient with `width=1.0` so they form a continuous skyline. The shape, a steep head and a long tail, is the whole point.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "3,6-7"
+#| output-location: column
+#| fig-width: 6.6
+#| fig-height: 4.2
+from genomics_course.data import load_tmb_cohort
+
+co = load_tmb_cohort().sort_values("tmb", ascending=False).reset_index(drop=True)  # rank desc
+
+fig, ax = plt.subplots(figsize=(6.6, 4.2))
+ax.bar(range(len(co)), co.tmb, color=GREY, width=1.0, linewidth=0)  # one bar per patient
+ax.set_xticks([])                                                  # individual ids aren't useful
+ax.set_xlabel("patients (ranked by TMB)"); ax.set_ylabel("TMB (mut/Mb)")
+for s in ["top", "right"]: ax.spines[s].set_visible(False)
+plt.show()
+```
+
+
+<!-- slide · waterfall step 2 -->
+## Waterfall · Step 2 — Colour by Subtype {.smaller}
+
+[Cohort summaries · build]{.eyebrow}
+
+### 2 · Map a colour to each subtype
+
+Build a subtype → colour dict and map it onto the sorted bars. Now you can scan whether any subtype clusters in the high-TMB head.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "5,9"
+#| output-location: column
+#| fig-width: 6.6
+#| fig-height: 4.2
+from genomics_course.data import load_tmb_cohort
+
+co = load_tmb_cohort().sort_values("tmb", ascending=False).reset_index(drop=True)
+sub_pal = {"Luminal A": GREEN, "Luminal B": BLUE,        # one colour per subtype
+           "HER2+": AMBER, "TNBC": RED}
+
+fig, ax = plt.subplots(figsize=(6.6, 4.2))
+ax.bar(range(len(co)), co.tmb, width=1.0, linewidth=0,
+       color=co.subtype.map(sub_pal))                    # colour each bar by its subtype
+ax.set_xticks([])
+ax.set_xlabel("patients (ranked by TMB)"); ax.set_ylabel("TMB (mut/Mb)")
+for s in ["top", "right"]: ax.spines[s].set_visible(False)
+plt.show()
+```
+
+
+<!-- slide · waterfall step 3 -->
+## Waterfall · Step 3 — Flag MSI-H, Title It {.smaller}
+
+[Cohort summaries · build]{.eyebrow}
+
+### 3 · A second variable, and the finding
+
+Drop a star above each MSI-H patient's bar, build a combined legend (subtype patches + the star), and title with the result. The stars cluster in the head, MSI-H tumours are the hypermutators.
+
+```{python}
+#| echo: true
+#| code-line-numbers: "2,12-14,19-21"
+#| output-location: column
+#| fig-width: 6.6
+#| fig-height: 4.2
+from genomics_course.data import load_tmb_cohort
+from matplotlib.patches import Patch                     # for the legend swatches
+
+co = load_tmb_cohort().sort_values("tmb", ascending=False).reset_index(drop=True)
+sub_pal = {"Luminal A": GREEN, "Luminal B": BLUE, "HER2+": AMBER, "TNBC": RED}
+
+fig, ax = plt.subplots(figsize=(6.6, 4.2))
+ax.bar(range(len(co)), co.tmb, width=1.0, linewidth=0, color=co.subtype.map(sub_pal))
+ax.set_xticks([])
+ax.set_xlabel("patients (ranked by TMB)"); ax.set_ylabel("TMB (mut/Mb)")
+msi = co.msi == "MSI-H"                                   # boolean mask of MSI-H patients
+ax.scatter(co.index[msi], co.tmb[msi] + co.tmb.max() * .03,  # a star just above each MSI-H bar
+           marker="*", color=INK, s=55, zorder=5)
+for s in ["top", "right"]: ax.spines[s].set_visible(False)
+ax.set_title("MSI-H TUMOURS ARE HYPERMUTATED", color="#333333", fontweight="bold", loc="left")
+handles = [Patch(color=c, label=k) for k, c in sub_pal.items()]      # subtype swatches...
+handles += [plt.Line2D([0], [0], marker="*", color=INK, ls="none", label="MSI-H")]  # ...plus the star
+ax.legend(handles=handles, frameon=False, fontsize=8, ncol=2)
+plt.show()
+```
+
+::: {.takeaway}
+[The bottom line]{.tl}
+A waterfall ranks a cohort into a skyline: **sort descending → colour by subtype → overlay a second variable → title the finding**. Here the MSI-H stars pile up in the high-TMB head, exactly the biology you'd expect.
+:::
+
+
+<!-- slide · ww exercise 1 -->
+## Exercise · Waffle {.smaller}
+
+[Cohort summaries · exercise]{.eyebrow}
+
+### Compose a cohort
 
 ::: {.exercise}
-**Coding Exercise — Waffle & Waterfall**
+[Coding exercise]{.xl}
+`load_assay_counts()` lists datasets per assay type. Waffle it: one square per (scaled) dataset, a legend outside the grid, and a title naming the most common assay.
 
-Task A: visualize cohort cell-type proportions as a waffle chart. Task B: build a waterfall mutation landscape sorted by SNV count, colored by cancer type, with MSI-H patients flagged.
-
-::: {.sandbox}
 ```{python}
 #| echo: true
 #| eval: false
+from pywaffle import Waffle
+from genomics_course.data import load_assay_counts
 
-np.random.seed(2026)
+ac = load_assay_counts()             # assay, n_datasets
 
-# Dataset 1: Cohort cell-type composition
-cohort = {
-    'CD4+ T cells' : 312,
-    'CD8+ T cells' : 198,
-    'B cells'      : 145,
-    'NK cells'     : 87,
-    'Macrophages'  : 132,
-    'Dendritic'    : 64,
-    'Other'        : 62,
-}
-
-# Dataset 2: Somatic mutations in 100 cancer patients
-n = 100
-mutations = pd.DataFrame({
-    'patient'   : [f'P{i:03d}' for i in range(n)],
-    'SNV_count' : np.random.lognormal(4.5, 1.0, n).astype(int),
-    'cancer'    : np.random.choice(
-        ['BRCA','LUAD','COAD','PRAD'], n, p=[0.3, 0.3, 0.2, 0.2]),
-    'MSI'       : np.random.choice(['MSI-H','MSS'], n, p=[0.15, 0.85]),
-})
-
-# Your tasks:
-# Task A – Waffle chart
-#   1. Create a waffle chart of cohort cell-type composition
-#   2. Use Font Awesome icons (icons='circle')
-
-# Task B – Waterfall plot
-#   1. Sort patients by SNV_count descending
-#   2. Color bars by cancer type
-#   3. Add a horizontal line at the MSI-H / MSS boundary
-#   4. Mark MSI-H patients with a star marker on top of their bar
-
-# Bonus: Combine both plots into one figure with subplots
+# 1. values = dict(zip(ac.assay, ac.n_datasets))   (scale down if counts are large)
+# 2. plt.figure(FigureClass=Waffle, rows=10, values=..., colors=[GREEN, BLUE, AMBER, RED])
+# 3. legend outside right; block_aspect_ratio=1
+# 4. title that names the leading assay
 ```
 :::
 
-<details>
-<summary>Show solution</summary>
+
+<!-- slide · ww exercise 2 -->
+## Exercise · Waterfall {.smaller}
+
+[Cohort summaries · exercise]{.eyebrow}
+
+### Rank a different cohort
+
+::: {.exercise}
+[Real scenario]{.xl}
+Re-rank the same cohort, but colour by **MSI status** instead of subtype, and add a dashed line at the cohort's 85th-percentile TMB (a rough hypermutator threshold). Which side of the line do the MSI-H bars fall on?
 
 ```{python}
-#| echo: false
-#| eval: true
+#| echo: true
+#| eval: false
+from genomics_course.data import load_tmb_cohort
 
-import numpy as np, pandas as pd
-import matplotlib.pyplot as plt
-from pywaffle import Waffle
+co = load_tmb_cohort().sort_values("tmb", ascending=False).reset_index(drop=True)
 
-np.random.seed(42)
-cell_types = {'T cells': 35, 'B cells': 20, 'NK cells': 15,
-              'Monocytes': 18, 'Dendritic': 12}
-cancer_types = ['LUAD','BRCA','COAD','PRAD','SKCM']
-n_patients = 100
-mut_data = pd.DataFrame({
-    'patient'    : [f'P{i:03d}' for i in range(n_patients)],
-    'SNV_count'  : np.random.negative_binomial(5, 0.05, n_patients),
-    'cancer_type': np.random.choice(cancer_types, n_patients),
-    'MSI'        : np.random.choice(['MSI-H','MSS'], n_patients, p=[0.15, 0.85]),
-})
-
-cancer_pal = {ct: c for ct, c in zip(cancer_types,
-    [COLORS['primary'], COLORS['secondary'], COLORS['tertiary'],
-     COLORS['quaternary'], COLORS['quinary']])}
-
-# Task A — Waffle chart
-cell_pal_list = [COLORS['primary'], COLORS['secondary'], COLORS['tertiary'],
-                 COLORS['quaternary'], COLORS['quinary']]
-fig_waffle = plt.figure(
-    FigureClass=Waffle, rows=10,
-    values=cell_types,
-    colors=cell_pal_list,
-    legend={'loc': 'lower left', 'bbox_to_anchor': (0, -0.4),
-            'ncol': 3, 'frameon': False, 'fontsize': 9},
-    figsize=(8, 5),
-    facecolor="white",
-)
-fig_waffle.suptitle('COHORT CELL-TYPE COMPOSITION', fontweight='bold')
-plt.show()
-
-# Task B — Waterfall plot
-msi_boundary = mut_data['SNV_count'].quantile(0.85)
-df_sorted = mut_data.sort_values('SNV_count', ascending=False).reset_index(drop=True)
-
-fig2, ax = plt.subplots(figsize=(14, 5), facecolor="white")
-ax.set_facecolor("white")
-
-bars = ax.bar(range(n_patients),
-              df_sorted['SNV_count'],
-              color=[cancer_pal[c] for c in df_sorted['cancer_type']],
-              width=1.0, linewidth=0)
-ax.axhline(msi_boundary, color=COLORS['zero_line'], lw=1.2,
-           ls='--', label=f'MSI-H boundary ({msi_boundary:.0f} SNVs)')
-
-msi_mask = df_sorted['MSI'] == 'MSI-H'
-ax.scatter(df_sorted.index[msi_mask],
-           df_sorted.loc[msi_mask, 'SNV_count'] + 2,
-           marker='*', color=COLORS['risk'], s=60, zorder=5, label='MSI-H')
-
-from matplotlib.patches import Patch
-legend_els = [Patch(color=v, label=k) for k, v in cancer_pal.items()]
-legend_els += [plt.Line2D([0],[0], marker='*', color=COLORS['risk'],
-                          ls='none', ms=8, label='MSI-H')]
-ax.legend(handles=legend_els, frameon=False, ncol=3, fontsize=9)
-ax.set_title('SOMATIC MUTATION LANDSCAPE', fontweight='bold')
-ax.set_xlabel('Patients (sorted by SNV count)')
-ax.set_ylabel('SNV count')
-ax.text(0.01, -0.15, '★ = MSI-H patients. Dashed line = MSI-H/MSS boundary.',
-        transform=ax.transAxes, fontsize=8.5, style='italic', color=COLORS['text_light'])
-plt.tight_layout()
-plt.show()
+# 1. colour bars by msi: {"MSI-H": RED, "MSS": GREY}
+# 2. cut = co.tmb.quantile(0.85)
+# 3. ax.axhline(cut, ls="--", color=INK)   # hypermutator threshold
+# 4. title it; read whether MSI-H sits above the line
 ```
-
-</details>
 :::
-
