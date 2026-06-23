@@ -1,0 +1,352 @@
+<!-- slide 63 -->
+# PyWaffle {.divider}
+
+[Composition as small squares]{.eyebrow}
+
+
+<!-- slide 64 -->
+## Install & Import {.smaller}
+
+[PyWaffle · setup]{.eyebrow}
+
+### Part-of-whole, when the audience needs to *count*
+
+A pie chart asks the eye to compare **angles**; a stacked bar asks it to compare **lengths against a shared baseline**. A **waffle** does neither — it draws **discrete tiles** and lets the eye **count units**. With a 10×10 grid, each square is exactly **1%** of the whole. Think election seats, MPs, samples in a cohort — anywhere the audience naturally counts in heads.
+
+```bash
+pip install pywaffle
+```
+
+```{.python code-line-numbers="1"}
+# the only object you need from the package — pass it as FigureClass to plt.figure(...)
+from pywaffle import Waffle
+```
+
+Where to reach for it: small **integer-like compositions** (5 ancestry components, 8 cell types, 6 mutation classes). Where to avoid it: continuous-like multi-sample composition with many tiny slices — use a stacked bar there instead.
+
+
+<!-- slide 65 -->
+## The Data {.smaller}
+
+[PyWaffle · data peek]{.eyebrow}
+
+### One row per population, mean K1..K5 ancestry proportion
+
+`load_admixture()` returns 120 individuals × 5 K-components. We collapse to **one row per population** by averaging, then turn each row into a waffle.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-6|8-9"}
+admix = load_admixture()                            # individual, population, K1..K5
+K_cols = ["K1", "K2", "K3", "K4", "K5"]             # the five ancestry components
+
+# collapse to population means: each row sums to ~1.0
+pop_mean = admix.groupby("population")[K_cols].mean()
+pop_mean = pop_mean.loc[["EUR", "AFR", "EAS", "SAS", "AMR"]]   # stable plot order
+
+# convert proportions -> integer percentages (each row sums to ~100)
+pop_pct = (pop_mean * 100).round().astype(int)
+pop_pct
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+admix = load_admixture()
+K_cols = ["K1", "K2", "K3", "K4", "K5"]
+pop_mean = admix.groupby("population")[K_cols].mean()
+pop_mean = pop_mean.loc[["EUR", "AFR", "EAS", "SAS", "AMR"]]
+pop_pct = (pop_mean * 100).round().astype(int)
+pop_pct
+```
+
+**Read it:** EUR row ≈ {K1=high, K2..K5=low}. Each row is one waffle.
+:::
+::::
+
+
+<!-- slide 66 -->
+## Step 1 · One Waffle for EUR {.smaller}
+
+[PyWaffle · build]{.eyebrow}
+
+### 100 squares in a 5×20 grid — each square = 1% of EUR ancestry
+
+`plt.figure(FigureClass=Waffle, ...)` is the special incantation: matplotlib creates the figure, but `pywaffle` takes over the drawing. We feed it the EUR percentages as a dict, five Economist colours, and a legend below the grid.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-15"}
+# pull one population row and convert to a {component: percent} dict
+eur = pop_pct.loc["EUR"].to_dict()                       # {"K1": ..., "K2": ..., ...}
+colors = [GREEN, BLUE, AMBER, RED, PURPLE]               # one Economist colour per K
+
+fig = plt.figure(                                         # CREATE — Waffle takes over
+    FigureClass=Waffle,                                   # matplotlib hands drawing to pywaffle
+    rows=5, columns=20,                                   # 5 × 20 = 100 squares, 1% each
+    values=eur,                                           # CALL: counts dict
+    colors=colors,                                        # one colour per K-component
+    legend={"loc": "lower center",                        # legend below the grid
+            "bbox_to_anchor": (0.5, -0.15),
+            "ncol": 5, "framealpha": 0},
+    title={"label": "EUR — ancestry composition",
+           "loc": "left"},
+    figsize=(7, 3))
+```
+
+The trick to read: the legend sits **below** the waffle (the chart itself is the visual), so the colours map straight onto the labels without crowding the squares.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 3
+from pywaffle import Waffle
+
+admix = load_admixture()
+K_cols = ["K1", "K2", "K3", "K4", "K5"]
+pop_mean = admix.groupby("population")[K_cols].mean()
+pop_mean = pop_mean.loc[["EUR", "AFR", "EAS", "SAS", "AMR"]]
+pop_pct = (pop_mean * 100).round().astype(int)
+
+eur = pop_pct.loc["EUR"].to_dict()
+colors = [GREEN, BLUE, AMBER, RED, PURPLE]
+
+fig = plt.figure(
+    FigureClass=Waffle,
+    rows=5, columns=20,
+    values=eur,
+    colors=colors,
+    legend={"loc": "lower center", "bbox_to_anchor": (0.5, -0.15),
+            "ncol": 5, "framealpha": 0},
+    title={"label": "EUR — ancestry composition", "loc": "left"},
+    figsize=(7, 3))
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 67 -->
+## Step 2 · Small Multiples — One Waffle Per Population {.smaller}
+
+[PyWaffle · build]{.eyebrow}
+
+### The `plots` kwarg packs many waffles into one figure
+
+Instead of one big waffle, we pass `plots={…}` — a dict where each key is a subplot location (3-digit code or tuple) and each value is the kwargs for that sub-waffle. All share the same colours, so the eye can read **across rows**: K1 dominates EUR, K2 dominates AFR, and so on.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-19"}
+colors = [GREEN, BLUE, AMBER, RED, PURPLE]               # shared palette across panels
+pops = ["EUR", "AFR", "EAS", "SAS", "AMR"]               # one panel per population
+
+# build the per-subplot kwargs dict; key = "151", "152", ... = 1 row × 5 cols, slot i
+panels = {                                                # one entry per population
+    150 + i + 1: {                                         # 1 row, 5 cols, slot i+1
+        "values": pop_pct.loc[p].to_dict(),               # this pop's K dict
+        "title": {"label": p, "loc": "left"},             # subplot title
+    }
+    for i, p in enumerate(pops)
+}
+
+fig = plt.figure(                                         # CREATE — Waffle handles layout
+    FigureClass=Waffle,                                   # CALL via FigureClass
+    plots=panels,                                         # all 5 sub-waffles
+    rows=5, columns=10,                                   # default for every sub-panel
+    colors=colors,                                        # shared colour map
+    figsize=(11, 3))
+```
+
+By driving the panel dict with a comprehension we keep the build vectorised and **no manual `for-add_subplot` loop**.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 3
+from pywaffle import Waffle
+
+admix = load_admixture()
+K_cols = ["K1", "K2", "K3", "K4", "K5"]
+pop_mean = admix.groupby("population")[K_cols].mean()
+pop_mean = pop_mean.loc[["EUR", "AFR", "EAS", "SAS", "AMR"]]
+pop_pct = (pop_mean * 100).round().astype(int)
+
+colors = [GREEN, BLUE, AMBER, RED, PURPLE]
+pops = ["EUR", "AFR", "EAS", "SAS", "AMR"]
+panels = {
+    150 + i + 1: {
+        "values": pop_pct.loc[p].to_dict(),
+        "title": {"label": p, "loc": "left"},
+    }
+    for i, p in enumerate(pops)
+}
+
+fig = plt.figure(
+    FigureClass=Waffle,
+    plots=panels,
+    rows=5, columns=10,
+    colors=colors,
+    figsize=(11, 3))
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 68 -->
+## Step 3 · Replace Squares With Icons {.smaller}
+
+[PyWaffle · variant]{.eyebrow}
+
+### FontAwesome icons turn the grid into a pictogram
+
+Swap `icons="user"` and `font_size` for the square — now each tile is a person glyph. Reach for this when the unit *is* a person, a sample, a tree. PyWaffle ships the FontAwesome free font, so no extra download is needed once `pip install pywaffle` is done.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-16"}
+eur = pop_pct.loc["EUR"].to_dict()                        # one population row
+colors = [GREEN, BLUE, AMBER, RED, PURPLE]                # shared palette
+
+fig = plt.figure(                                          # CREATE
+    FigureClass=Waffle,                                    # CALL via FigureClass
+    rows=5, columns=20,                                    # 100 icons total
+    values=eur,
+    colors=colors,
+    icons="user",                                          # FontAwesome glyph name
+    icon_legend=True,                                      # show the icon in the legend
+    font_size=14,                                          # icon size in points
+    legend={"loc": "lower center",
+            "bbox_to_anchor": (0.5, -0.15),
+            "ncol": 5, "framealpha": 0},
+    title={"label": "EUR — ancestry, one icon = 1%",
+           "loc": "left"},
+    figsize=(7.5, 3))
+```
+
+Other ready-to-use glyphs that fit biology: `"tree"`, `"leaf"`, `"seedling"`, `"dna"`, `"flask"`, `"microscope"`. Browse the FontAwesome free set for more.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7.5
+#| fig-height: 3
+from pywaffle import Waffle
+
+admix = load_admixture()
+K_cols = ["K1", "K2", "K3", "K4", "K5"]
+pop_mean = admix.groupby("population")[K_cols].mean()
+pop_mean = pop_mean.loc[["EUR", "AFR", "EAS", "SAS", "AMR"]]
+pop_pct = (pop_mean * 100).round().astype(int)
+
+eur = pop_pct.loc["EUR"].to_dict()
+colors = [GREEN, BLUE, AMBER, RED, PURPLE]
+
+fig = plt.figure(
+    FigureClass=Waffle,
+    rows=5, columns=20,
+    values=eur,
+    colors=colors,
+    icons="user",
+    icon_legend=True,
+    font_size=14,
+    legend={"loc": "lower center", "bbox_to_anchor": (0.5, -0.15),
+            "ncol": 5, "framealpha": 0},
+    title={"label": "EUR — ancestry, one icon = 1%", "loc": "left"},
+    figsize=(7.5, 3))
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 69 -->
+## Variant · Snake-Block Arrangement {.smaller}
+
+[PyWaffle · variant]{.eyebrow}
+
+### The same data, different fill order
+
+By default, pywaffle fills the grid **column by column from left**. Setting `block_arranging_style="snake"` makes each colour fill a contiguous *snake* before the next one starts. The picture's *meaning* doesn't change (same totals), but the **clustering of like-colours** reads differently — bigger continuous blocks of each colour, easier to see where one category dominates.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-15"}
+afr = pop_pct.loc["AFR"].to_dict()                         # pick a population with a clear K dominance
+colors = [GREEN, BLUE, AMBER, RED, PURPLE]                 # same palette as before
+
+fig = plt.figure(                                           # CREATE
+    FigureClass=Waffle,                                     # CALL via FigureClass
+    rows=5, columns=20,
+    values=afr,
+    colors=colors,
+    block_arranging_style="snake",                          # new: contiguous-block fill
+    legend={"loc": "lower center",
+            "bbox_to_anchor": (0.5, -0.15),
+            "ncol": 5, "framealpha": 0},
+    title={"label": "AFR — snake fill (one big block per K)",
+           "loc": "left"},
+    figsize=(7, 3))
+```
+
+If `block_arranging_style="snake"` is not recognised on older pywaffle versions, try the default mode (no kwarg) and compare side-by-side. The intent is the same: make the dominant category one big contiguous slab.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 3
+from pywaffle import Waffle
+
+admix = load_admixture()
+K_cols = ["K1", "K2", "K3", "K4", "K5"]
+pop_mean = admix.groupby("population")[K_cols].mean()
+pop_mean = pop_mean.loc[["EUR", "AFR", "EAS", "SAS", "AMR"]]
+pop_pct = (pop_mean * 100).round().astype(int)
+
+afr = pop_pct.loc["AFR"].to_dict()
+colors = [GREEN, BLUE, AMBER, RED, PURPLE]
+
+try:
+    fig = plt.figure(
+        FigureClass=Waffle, rows=5, columns=20,
+        values=afr, colors=colors,
+        block_arranging_style="snake",
+        legend={"loc": "lower center", "bbox_to_anchor": (0.5, -0.15),
+                "ncol": 5, "framealpha": 0},
+        title={"label": "AFR — snake fill (one big block per K)", "loc": "left"},
+        figsize=(7, 3))
+except TypeError:
+    # older pywaffle: fall back to default arrangement
+    fig = plt.figure(
+        FigureClass=Waffle, rows=5, columns=20,
+        values=afr, colors=colors,
+        legend={"loc": "lower center", "bbox_to_anchor": (0.5, -0.15),
+                "ncol": 5, "framealpha": 0},
+        title={"label": "AFR — default fill", "loc": "left"},
+        figsize=(7, 3))
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 70 -->
+## PyWaffle · Takeaway {.smaller}
+
+[PyWaffle · recap]{.eyebrow}
+
+### Squares the audience can count.
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **Prep one row of counts** per panel — a `{category: integer}` dict that sums near 100.
+2. **`plt.figure(FigureClass=Waffle, rows=..., columns=..., values=..., colors=...)`** — that's the chart.
+3. **Small multiples via `plots={...}`** — one sub-waffle per group, shared colours.
+4. **`icons="user"`** to turn squares into FontAwesome pictograms when the unit is a person/sample/tree.
+
+**When to reach for it.** Part-of-whole, categories are **non-ordinal**, and the audience naturally **counts in units** (seats, MPs, samples). Compare with the **stacked bar** from day-2 `_01`: a stacked bar is the right tool when you need to compare composition **across many individuals** along a shared axis; a waffle is for telling **one composition's story** with weight.
+:::

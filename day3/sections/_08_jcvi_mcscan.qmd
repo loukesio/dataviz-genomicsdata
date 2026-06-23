@@ -1,0 +1,238 @@
+<!-- slide 71 -->
+# JCVI / MCscan {.divider}
+
+[Comparative genomics in Python]{.eyebrow}
+
+
+<!-- slide 72 -->
+## What Is JCVI / MCscan? {.smaller}
+
+[jcvi · theory]{.eyebrow}
+
+### The canonical Python toolkit for synteny + comparative figures
+
+```{.bash}
+pip install jcvi              # pulls in pyfaidx, gffutils, ete4, pysam, ...
+```
+
+```{.python}
+from jcvi.graphics.dotplot   import dotplot            # the dot-plot renderer
+from jcvi.graphics.synteny   import Synteny            # ribbon figure (layout-driven)
+from jcvi.graphics.karyotype import Karyotype          # multi-genome karyotype
+from jcvi.formats.bed        import Bed                # .bed parser
+```
+
+[**JCVI**](https://github.com/tanghaibao/jcvi) is the Python toolkit behind **MCscan**, the standard pipeline for finding **syntenic anchor blocks** between two genomes. The compute path is LAST-based alignment → MCscan clustering → `.anchors` / `.simple` files. The **graphics** subpackage then renders those anchors as the canonical figures the field expects: dot plots, ribbon figures, multi-genome karyotypes.
+
+The compute path needs **LAST/BLAST binaries**, which are not on a fresh Colab. The *graphics* path works on **any pre-computed anchor file** — so today we skip the alignment step and feed `jcvi.graphics.dotplot` synthetic anchors, just to see the figure it produces.
+
+
+<!-- slide 73 -->
+## The Pipeline · What We Skip, What We Do {.smaller}
+
+[jcvi · workflow]{.eyebrow}
+
+### Five steps from FASTA to figure
+
+:::: {.columns}
+::: {.column width="46%"}
+::: {.keybox}
+**MCscan canonical pipeline**
+
+```
+1. FASTA + GFF
+        |
+        v   (CLI: python -m jcvi.formats.gff bed)
+2. *.bed  (gene coordinates, one per genome)
+        |
+        v   (CLI: python -m jcvi.compara.catalog ortholog
+                  q s --no_strip_names    needs LAST!)
+3. q.s.last + q.s.lifted
+        |
+        v   (MCscan clustering)
+4. q.s.anchors   <- pairwise gene anchors, block-grouped
+   q.s.simple    <- five-field block summaries
+        |
+        v   (jcvi.graphics)
+5. dot plot / ribbon / karyotype figure
+```
+:::
+:::
+::: {.column width="54%"}
+**Compute steps (1 → 4)** require LAST or BLAST installed in `$PATH` plus a working `jcvi.compara.catalog` CLI invocation. They are *not* notebook-friendly — run them on a workstation or HPC, save the resulting `.anchors` file, then ship that file to a notebook.
+
+**Graphics step (4 → 5)** is pure Python + matplotlib. It needs **only the `.bed` files and the `.anchors` file**, no aligner. That is the part we demo on the next slides — we hand-synthesise the anchor file rather than computing it.
+
+**Why this matters:** once you have the anchor file (from MCscan, or any custom orthology pipeline you trust), the canonical published JCVI figures are one function call away.
+:::
+::::
+
+
+<!-- slide 74 -->
+## JCVI · Synthesise the Anchor Files {.smaller}
+
+[jcvi · data]{.eyebrow}
+
+### One BED per genome, one `.anchors` of paired genes
+
+JCVI's graphics modules read three files written to disk: a **query BED** (`q.bed`), a **subject BED** (`s.bed`), and an **anchors** file. Each BED row is `chrom start end name score strand`. The anchors file is **plain text**: `qname<TAB>sname<TAB>score`, with `###` lines separating synteny blocks. We build all three in `/tmp` so the renderer has something real to open.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-4|6-16|18-31|33-38"}
+import tempfile                                       # write demo files to /tmp
+from pathlib import Path
+TMP = Path(tempfile.mkdtemp(prefix="jcvi_demo_"))     # isolated scratch dir
+N = 40                                                # genes per chromosome
+
+def write_bed(path, chrom, n=N, step=10_000):
+    """Write a minimal 6-col BED — JCVI parses chrom/start/end/name."""
+    rows = []
+    for i in range(n):
+        s = i * step                                  # gene start
+        # cols: chrom, start, end, name, score, strand
+        rows.append(f"{chrom}\t{s}\t{s + 5000}\tg{i}\t0\t+")
+    path.write_text("\n".join(rows) + "\n")
+
+qbed = TMP / "q.bed";  write_bed(qbed, "qchr1")       # genome Q
+sbed = TMP / "s.bed";  write_bed(sbed, "schr1")       # genome S
+
+# anchors: blocks separated by '###'.  Three blocks here:
+#   1. collinear g0..g19  -> diagonal main band
+#   2. inversion g20..g29 -> antidiagonal (g_i pairs g_{49-i})
+#   3. duplication g30..g39 also maps to g5..g14  -> off-diagonal echo
+anchors = TMP / "q.s.anchors"
+with anchors.open("w") as f:
+    f.write("###\n")
+    for i in range(0, 20):                            # collinear block
+        f.write(f"g{i}\tg{i}\t100\n")
+    f.write("###\n")
+    for i in range(20, 30):                           # inversion block
+        f.write(f"g{i}\tg{49 - i}\t100\n")
+    f.write("###\n")
+    for i in range(30, 40):                           # duplicated block
+        f.write(f"g{i}\tg{i - 25}\t100\n")
+
+# quick sanity peek
+print("BED rows :", sum(1 for _ in qbed.open()))
+print("Anchors  :", sum(1 for _ in anchors.open()),
+      "lines (incl. 3 block separators)")
+print("scratch  :", TMP)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+import tempfile
+from pathlib import Path
+
+TMP = Path(tempfile.mkdtemp(prefix="jcvi_demo_"))
+N = 40
+
+def write_bed(path, chrom, n=N, step=10_000):
+    rows = []
+    for i in range(n):
+        s = i * step
+        rows.append(f"{chrom}\t{s}\t{s + 5000}\tg{i}\t0\t+")
+    path.write_text("\n".join(rows) + "\n")
+
+qbed = TMP / "q.bed"; write_bed(qbed, "qchr1")
+sbed = TMP / "s.bed"; write_bed(sbed, "schr1")
+
+anchors = TMP / "q.s.anchors"
+with anchors.open("w") as f:
+    f.write("###\n")
+    for i in range(0, 20):
+        f.write(f"g{i}\tg{i}\t100\n")
+    f.write("###\n")
+    for i in range(20, 30):
+        f.write(f"g{i}\tg{49 - i}\t100\n")
+    f.write("###\n")
+    for i in range(30, 40):
+        f.write(f"g{i}\tg{i - 25}\t100\n")
+
+print("BED rows :", sum(1 for _ in qbed.open()))
+print("Anchors  :", sum(1 for _ in anchors.open()),
+      "lines (incl. 3 block separators)")
+print("scratch  :", TMP)
+```
+:::
+::::
+
+
+<!-- slide 75 -->
+## JCVI · The Dot Plot {.smaller}
+
+[jcvi · build]{.eyebrow}
+
+### `jcvi.graphics.dotplot` — anchors in, figure out
+
+The dot plot is the headline JCVI figure: query genome on the x-axis, subject on the y-axis, one **dot per anchor pair**. Collinear blocks become diagonal streaks, inversions become antidiagonals, duplications become parallel off-diagonal copies. The call signature looks heavy but most arguments have sensible defaults — pass the anchor file, the two `Bed` objects, and a `fig / root / ax` triple.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-6|8-12|14-19"}
+from jcvi.graphics.dotplot import dotplot             # the renderer
+from jcvi.formats.bed      import Bed                 # bed parser
+
+# parse the two BEDs we wrote in /tmp on the previous slide
+qb = Bed(str(qbed))                                   # query genome
+sb = Bed(str(sbed))                                   # subject genome
+
+# JCVI needs three axes: a figure, a "root" axes filling it,
+# and the inner `ax` where the dot grid actually lives.
+fig  = plt.figure(figsize=(5.6, 5.6))                 # CREATE
+root = fig.add_axes([0, 0, 1, 1]);  root.set_axis_off()
+ax   = fig.add_axes([0.12, 0.12, 0.78, 0.78])         # inner axes
+
+# CALL: dotplot reads anchors, places one square per pair.
+#   usetex=False -> no LaTeX runtime needed
+#   sepcolor=LINE -> chromosome separators on-palette
+dotplot(str(anchors), qb, sb, fig, root, ax,
+        usetex=False, sepcolor=LINE,
+        title="Q vs S - 3 anchor blocks",
+        cmap="copper")
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 5.6
+#| fig-height: 5.6
+
+from jcvi.graphics.dotplot import dotplot
+from jcvi.formats.bed      import Bed
+
+qb = Bed(str(qbed))
+sb = Bed(str(sbed))
+
+fig  = plt.figure(figsize=(5.6, 5.6))
+root = fig.add_axes([0, 0, 1, 1]); root.set_axis_off()
+ax   = fig.add_axes([0.12, 0.12, 0.78, 0.78])
+
+dotplot(str(anchors), qb, sb, fig, root, ax,
+        usetex=False, sepcolor=LINE,
+        title="Q vs S - 3 anchor blocks",
+        cmap="copper")
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 76 -->
+## JCVI · Takeaway {.smaller}
+
+[jcvi · recap]{.eyebrow}
+
+### Compute once, plot many times
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **JCVI is the canonical Python toolkit** for MCscan-style comparative figures — dot plots, ribbon synteny, multi-genome karyotypes.
+2. **The compute path needs LAST / BLAST** binaries. Run it on a workstation, save the `.anchors` file, then move to a notebook.
+3. **The graphics path is pure Python** — `dotplot()`, `Synteny()`, `Karyotype()` all take pre-computed anchor + BED files and render in matplotlib.
+4. **`###` lines separate blocks** in the anchors file; that is how the renderer knows where one synteny block ends and the next begins.
+:::
+
+**Compare with:** day-2 `_07_synteny.qmd` builds the same ribbon figure from `matplotlib.patches.Rectangle` + `Polygon` primitives — full control over every vertex. JCVI gives you the same visual *when you already have anchor files*, with sensible defaults baked in. **Use JCVI when** you have a real `.anchors` output from MCscan and want the canonical, paper-ready figure; **use the day-2 primitives when** you have a custom homology table and need to bend the geometry.

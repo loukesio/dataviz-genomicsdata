@@ -1,0 +1,71 @@
+<!-- slide 1 -->
+# Welcome to Day 3 {.divider}
+
+[Production-grade tools · Day 03]{.eyebrow}
+
+
+<!-- slide 2 -->
+## Why Reach for a Package? {.smaller}
+
+[The build-vs-buy decision]{.eyebrow}
+
+### Days 1-2 built every chart from matplotlib primitives. Today we use the libraries.
+
+:::: {.columns}
+::: {.column width="50%"}
+The Python primitives we used on days 1-2 (`ax.scatter`, `mpatches.Polygon`, `Rectangle`) **teach** what every chart is made of — but for a paper figure, a polished publication-grade package is faster, more robust, and battle-tested.
+
+Today, **one package per chart**:
+
+- **PyComplexHeatmap** — clustered heatmaps with annotations
+- **pyCirclize** — circular genome plots (cross-ref to day 2)
+- **Toytree** — phylogenetic trees
+- **pyMSAviz** — MSA viewers
+- **DashBio** — interactive Plotly widgets
+- **pyGenomeTracks** — config-driven genome tracks
+:::
+::: {.column width="50%"}
+- **dna_features_viewer** — gene / plasmid maps
+- **JCVI / MCscan** — synteny and comparative
+- **UpSetPlot** — set intersections
+- **PyWaffle** — waffle compositions
+- **gget** — gene + pathway lookups
+- **Biopython** — Bio.Phylo, Bio.Graphics
+
+::: {.takeaway}
+[The trade-off]{.tl}
+You know how a heatmap works from matplotlib. Now learn the **package that does it in 3 lines** — and how it falls down when you push it.
+:::
+:::
+::::
+
+
+<!-- slide 3 -->
+## The Setup Cell {.smaller}
+
+[Logistics · Day 03]{.eyebrow}
+
+### One install pulls every package today needs
+
+```bash
+pip install -q "git+https://github.com/loukesio/dataviz-genomicsdata.git@Python_2026"
+```
+
+```{.python code-line-numbers="1-3|5-10|12-14"}
+# the theme: Economist palette + IBM Plex Mono rcParams, applied on import
+from genomics_course.theme import *
+
+# loaders bundled with the course package — no network needed
+from genomics_course.data import (
+    load_deseq2, load_admixture, load_gwas,
+    load_timecourse, load_coexpression, load_expression,
+    load_expression_meta, load_microbiome, load_peaks,
+    load_peak_genes, load_qc, load_variant_classes, load_enrichment,
+)
+
+import numpy as np, pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+
+Each section below opens with its **own import line** for the package it teaches, so you can copy a single section into Colab and run it in isolation.

@@ -1,0 +1,205 @@
+<!-- slide 50 -->
+# dna_features_viewer {.divider}
+
+[Gene maps and plasmid features]{.eyebrow}
+
+
+<!-- slide 51 -->
+## Install & Import {.smaller}
+
+[dna_features_viewer · setup]{.eyebrow}
+
+### Matplotlib-native gene maps, with strand arrows out of the box
+
+`dna_features_viewer` is the cleanest Python tool for drawing **gene maps** and **plasmid diagrams**. Each gene/feature becomes a labelled rounded box with a strand-arrow tip on one end. The output is a normal matplotlib `Axes`, so it composes with the rest of a multi-panel figure exactly like any other matplotlib chart.
+
+```bash
+pip install dna_features_viewer
+```
+
+```{.python code-line-numbers="1-2|4-5"}
+# the three classes that cover 90 % of usage
+from dna_features_viewer import GraphicFeature, GraphicRecord, CircularGraphicRecord
+
+# (Biopython integration — for genbank files — is also bundled but we won't demo it:)
+# from dna_features_viewer import BiopythonTranslator   # rendering directly from .gb
+```
+
+`GraphicFeature` is one annotation (start / end / strand / colour / label). `GraphicRecord` is the linear container; `CircularGraphicRecord` is the plasmid container. Same features list works in either — only the layout changes.
+
+
+<!-- slide 52 -->
+## Step 1 · Build the Features {.smaller}
+
+[dna_features_viewer · data]{.eyebrow}
+
+### Six features — three forward genes, two reverse genes, one small CDS
+
+A `GraphicFeature` is just a dataclass of kwargs. We hand-build six features for a 5 kb pseudo-plasmid: three on the forward strand (`strand=+1`), two on the reverse (`strand=-1`), and one short CDS with no arrow (`strand=0`). Colours are pulled straight from the Economist palette so the diagram lives in the same world as every other day-3 figure.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-21"}
+from dna_features_viewer import GraphicFeature      # one feature per gene/CDS
+import matplotlib.pyplot as plt                     # for the canvas around it
+
+# six features describing a synthetic 5 kb construct
+features = [
+    GraphicFeature(start=200,  end=900,  strand=+1, # forward gene A
+                   color=GREEN,  label="GeneA"),
+    GraphicFeature(start=1100, end=1900, strand=+1, # forward gene B
+                   color=BLUE,   label="GeneB"),
+    GraphicFeature(start=2100, end=2900, strand=+1, # forward gene C
+                   color=PURPLE, label="GeneC"),
+    GraphicFeature(start=3100, end=3800, strand=-1, # reverse gene D
+                   color=RED,    label="GeneD"),
+    GraphicFeature(start=4000, end=4600, strand=-1, # reverse gene E
+                   color=AMBER,  label="GeneE"),
+    GraphicFeature(start=4700, end=4850, strand=0,  # small CDS (no arrow tip)
+                   color=AMBER,  label="cds"),
+]
+
+# peek at one to remind ourselves of the shape
+features[0]                                         # repr shows all the kwargs
+```
+
+`strand=+1` draws the arrow pointing right; `strand=-1` flips it left; `strand=0` draws a plain rounded box with no tip. The `label` is rendered just above the feature and auto-leadered when boxes get too close together.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+from dna_features_viewer import GraphicFeature      # feature class
+
+features = [
+    GraphicFeature(start=200,  end=900,  strand=+1, color=GREEN,  label="GeneA"),
+    GraphicFeature(start=1100, end=1900, strand=+1, color=BLUE,   label="GeneB"),
+    GraphicFeature(start=2100, end=2900, strand=+1, color=PURPLE, label="GeneC"),
+    GraphicFeature(start=3100, end=3800, strand=-1, color=RED,    label="GeneD"),
+    GraphicFeature(start=4000, end=4600, strand=-1, color=AMBER,  label="GeneE"),
+    GraphicFeature(start=4700, end=4850, strand=0,  color=AMBER,  label="cds"),
+]
+
+# show a small table of the kwargs so the audience can see the shape
+import pandas as pd                                 # tidy table from the dataclass
+peek = pd.DataFrame([{"start": f.start, "end": f.end, "strand": f.strand,
+                      "color": f.color, "label": f.label} for f in features])
+peek
+```
+:::
+::::
+
+
+<!-- slide 53 -->
+## Step 2 · Linear `GraphicRecord` {.smaller}
+
+[dna_features_viewer · linear]{.eyebrow}
+
+### One call draws every box, arrow tip, and label on a single axis
+
+`GraphicRecord(sequence_length, features).plot(...)` is the whole API. It returns the `Axes` it drew on plus a per-feature offsets dict, so you can layer custom annotations on top if you want. We let it pick the layout and just hand the result back to matplotlib for the surround.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-7|9-13"}
+from dna_features_viewer import GraphicRecord      # linear container
+import matplotlib.pyplot as plt                    # canvas helper
+
+# CREATE the record — the features list + the total sequence length
+record = GraphicRecord(
+    sequence_length=5000,                          # 5 kb construct
+    features=features)                             # the six features from step 1
+
+# CALL .plot() — returns (ax, plot_offsets); we keep the ax for styling
+ax, _ = record.plot(figure_width=12)               # wide canvas, auto height
+ax.set_title("Synthetic 5 kb construct — linear map",
+             color=INK, loc="left")                # editorial headline
+plt.show()
+```
+
+`figure_width` is the only sizing knob you usually touch — the height is computed from the number of rows needed to lay the features out without overlap. The label-leadering is automatic; you don't manage that yourself.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 12
+#| fig-height: 2.4
+from dna_features_viewer import GraphicRecord      # linear container
+
+record = GraphicRecord(                            # CREATE
+    sequence_length=5000,
+    features=features)
+ax, _ = record.plot(figure_width=12)               # CALL
+ax.set_title("Synthetic 5 kb construct — linear map",
+             color=INK, loc="left", fontsize=12)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 54 -->
+## Step 3 · Circular Plasmid Layout {.smaller}
+
+[dna_features_viewer · circular]{.eyebrow}
+
+### Same features, `CircularGraphicRecord` — the plasmid map view
+
+For a plasmid, swap `GraphicRecord` for `CircularGraphicRecord`. Same features list, same `.plot()` API; the layout becomes a ring and the genes wrap with the construct. A title at the centre via `ax.text` is the canonical finishing touch — it usually carries the plasmid name and total length.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-7|9-15"}
+from dna_features_viewer import CircularGraphicRecord  # ring container
+import matplotlib.pyplot as plt                         # canvas helper
+
+# CREATE the circular record — same kwargs as the linear one
+record = CircularGraphicRecord(
+    sequence_length=5000,                               # 5 kb plasmid
+    features=features)                                  # same six features
+
+# CALL .plot() — returns (ax, _); figure_width is the *diameter*
+ax, _ = record.plot(figure_width=6)                     # square-ish canvas
+ax.text(0, 0, "pSYN-1\n5 000 bp",                       # centre label
+        ha="center", va="center",
+        fontsize=12, color=INK, fontweight="bold")
+plt.show()
+```
+
+`CircularGraphicRecord` is at its best in the **2–10 kb** range. Above ~20 kb the ring becomes crowded and a linear browser-style view (or pyGenomeTracks) is the better choice.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6
+#| fig-height: 6
+from dna_features_viewer import CircularGraphicRecord  # ring container
+
+record = CircularGraphicRecord(                        # CREATE
+    sequence_length=5000,
+    features=features)
+ax, _ = record.plot(figure_width=6)                    # CALL
+ax.text(0, 0, "pSYN-1\n5 000 bp",
+        ha="center", va="center",
+        fontsize=12, color=INK, fontweight="bold")
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 55 -->
+## dna_features_viewer · Takeaway {.smaller}
+
+[dna_features_viewer · recap]{.eyebrow}
+
+### Two record types, one features list
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **Build a list of `GraphicFeature(start, end, strand, color, label)`** — one per gene / CDS / promoter / terminator.
+2. **`GraphicRecord(sequence_length, features).plot(figure_width=...)`** for the linear browser-style map.
+3. **`CircularGraphicRecord(sequence_length, features).plot(figure_width=...)`** for the plasmid ring. Same features, different layout.
+4. **From a `.gb` file**: `from dna_features_viewer import BiopythonTranslator` and let it convert Biopython `SeqRecord` objects directly — useful when you already have a real annotated GenBank file.
+
+**Compare with day-3 `_12` (Bio.Graphics):** `dna_features_viewer` is the **matplotlib-native** choice — it returns a normal `Axes`, integrates with the deck theme out of the box, and the API is one features list. `Bio.Graphics.GenomeDiagram` is older, more configurable for very long genomes, and outputs PDF/PNG directly — reach for it when you're rendering chromosome-scale maps for a paper.
+:::

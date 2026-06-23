@@ -1,0 +1,342 @@
+<!-- slide 32 -->
+# DashBio {.divider}
+
+[Interactive Plotly widgets for genomics]{.eyebrow}
+
+
+<!-- slide 33 -->
+## Install & Import {.smaller}
+
+[DashBio · setup]{.eyebrow}
+
+### Plotly figure-generators built for bioinformatics — no Dash server needed
+
+`dash-bio` is Plotly's bioinformatics widget collection. It ships inside Dash apps, but every widget is **also** a standalone *figure generator*: each call returns a regular `plotly.graph_objects.Figure`, which renders inline in Quarto / Jupyter exactly like any other Plotly chart. Hover for SNP IDs, scroll-zoom into peaks, no server required.
+
+```bash
+pip install dash-bio
+```
+
+```{.python code-line-numbers="1-2|4-7"}
+# the canonical alias in the docs and tutorials
+import dash_bio as dashbio
+
+# we'll reuse loaders from the deck setup chunk:
+#   load_gwas("height")     -> Manhattan widget
+#   load_deseq2("drought")  -> Volcano widget
+#   load_expression()       -> Clustergram widget
+```
+
+Reach for `dash-bio` when you want **interactivity** (hover tooltips, zoom, pan) and you'd rather assemble the chart in one line than rebuild the day-2 matplotlib version. For static, paper-ready figures the day-2 matplotlib sections still win on control.
+
+
+<!-- slide 34 -->
+## The Catalogue {.smaller}
+
+[DashBio · catalogue]{.eyebrow}
+
+### Six widgets we'll touch — each one parallels a day-1 or day-2 chart
+
+::: {.keybox}
+[The widgets]{.tl}
+
+- **`ManhattanPlot`** — interactive Manhattan with hover-for-SNP. Parallels day-2 `_04_manhattan.qmd`.
+- **`VolcanoPlot`** — interactive volcano with effect-size + significance cutoffs. Parallels day-1 `_07_volcano.qmd`.
+- **`Clustergram`** — heatmap + row/column dendrograms (Plotly's `sns.clustermap`). Parallels day-3 `_01_pycomplexheatmap.qmd`.
+- **`Circos`** — link diagram on a circular ideogram. Parallels day-2 `_06_pycirclize.qmd`.
+- **`AlignmentChart`** — multiple-sequence alignment viewer. Parallels day-3 `_04_pymsaviz.qmd`.
+- **`NeedlePlot`** — lollipops for variant effects along a protein. Parallels day-1 lollipop variants.
+:::
+
+The pattern is the same for every widget: hand it a dataframe (or string), name the columns / kwargs, and the call returns a Plotly `Figure`. Whatever you can do with a Plotly figure — `update_layout`, `update_traces`, `to_html` — works on the DashBio output.
+
+
+<!-- slide 35 -->
+## ManhattanPlot · One-Line Build {.smaller}
+
+[DashBio · Manhattan]{.eyebrow}
+
+### Hand it the GWAS table, name the four columns, done
+
+DashBio's `ManhattanPlot` takes the same GWAS table we built up by hand in day-2 (`chrom`, `pos`, `pval`, `snp`). The horizontal threshold lines and the two-tone chromosome colours are drawn **for you**; hover tooltips expose every SNP's rsID.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-5|7-13"}
+import dash_bio as dashbio                          # the package alias
+import numpy as np                                  # for -log10 threshold
+
+gwas = load_gwas("height")                          # chrom, pos, pval, snp
+gwas.head(3)                                        # quick peek at the columns
+
+# CALL the widget — every kwarg names a column
+fig = dashbio.ManhattanPlot(
+    dataframe=gwas,                                 # tidy GWAS table
+    chrm="chrom",                                   # chromosome column
+    bp="pos",                                       # base-pair position
+    p="pval",                                       # raw p-value
+    snp="snp",                                      # hover label per dot
+    gene=None)                                      # no gene column in our table
+fig                                                 # render inline (no .show())
+```
+
+`ManhattanPlot` handles the cumulative position offset, the two-tone parity colouring, and the genome-wide / suggestive threshold lines on its own — all four steps from the day-2 build, collapsed into one call.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+import dash_bio as dashbio                          # widget library
+
+gwas = load_gwas("height")                          # tidy GWAS frame
+fig = dashbio.ManhattanPlot(                        # CALL: one-line widget
+    dataframe=gwas,
+    chrm="chrom", bp="pos", p="pval", snp="snp", gene=None)
+fig.update_layout(                                  # match the deck theme
+    paper_bgcolor=CREAM, plot_bgcolor=CREAM,
+    font=dict(family="IBM Plex Mono", color=INK, size=11),
+    height=420, margin=dict(l=10, r=10, t=30, b=10))
+fig
+```
+:::
+::::
+
+
+<!-- slide 36 -->
+## ManhattanPlot · Style on Palette {.smaller}
+
+[DashBio · Manhattan polish]{.eyebrow}
+
+### Move the thresholds, recolour the hits, match the Economist look
+
+The widget exposes a small but useful set of style kwargs: `genomewideline_value` and `suggestiveline_value` to relocate the dashed thresholds; `highlight_color` to recolour the dots that cross the genome-wide line. We point both colour args at the deck palette so the figure lives in the same world as the day-2 matplotlib version.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-13|15-18"}
+import dash_bio as dashbio                          # widget library
+import numpy as np                                  # for -log10()
+gwas = load_gwas("height")                          # same GWAS table
+
+# CALL the widget with explicit style args
+fig = dashbio.ManhattanPlot(
+    dataframe=gwas,
+    chrm="chrom", bp="pos", p="pval", snp="snp", gene=None,
+    genomewideline_value=-np.log10(5e-8),           # canonical Bonferroni line
+    suggestiveline_value=-np.log10(1e-5),           # softer 1e-5 cutoff
+    highlight_color=RED,                            # the spotlight on hits
+    point_size=6,                                   # smaller dots, less crowding
+    title="Height GWAS — interactive")              # editorial headline
+
+# match the deck theme (cream paper, plex mono)
+fig.update_layout(
+    paper_bgcolor=CREAM, plot_bgcolor=CREAM,
+    font=dict(family="IBM Plex Mono", color=INK, size=11))
+```
+
+Compared with the day-2 hand-built version: same picture, ~5 lines instead of ~25, plus hover-for-rsID out of the box. The trade-off is control — you can't easily re-style individual dots the way matplotlib lets you.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+import dash_bio as dashbio                          # widget library
+gwas = load_gwas("height")                          # GWAS table
+fig = dashbio.ManhattanPlot(                        # CALL with styling
+    dataframe=gwas,
+    chrm="chrom", bp="pos", p="pval", snp="snp", gene=None,
+    genomewideline_value=-np.log10(5e-8),
+    suggestiveline_value=-np.log10(1e-5),
+    highlight_color=RED,
+    point_size=6,
+    title="Height GWAS — interactive")
+fig.update_layout(
+    paper_bgcolor=CREAM, plot_bgcolor=CREAM,
+    font=dict(family="IBM Plex Mono", color=INK, size=11),
+    height=420, margin=dict(l=10, r=10, t=40, b=10))
+fig
+```
+:::
+::::
+
+
+<!-- slide 37 -->
+## VolcanoPlot · One-Line Build {.smaller}
+
+[DashBio · Volcano]{.eyebrow}
+
+### log2FoldChange vs −log10(p), with the four-quadrant story drawn for you
+
+`VolcanoPlot` is the same pattern: hand it the DESeq2 table, name the columns, and the dashed effect-size + significance lines are drawn for you. Hover shows the gene name on every dot.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-6|8-15"}
+import dash_bio as dashbio                          # widget library
+import numpy as np                                  # for -log10 threshold
+de = load_deseq2("drought")                         # gene, log2FoldChange, pvalue, padj
+
+# quick peek at the columns the widget needs
+de[["gene", "log2FoldChange", "pvalue"]].head(3)
+
+# CALL the widget — every kwarg names a column or threshold
+fig = dashbio.VolcanoPlot(
+    dataframe=de,                                   # the DE results
+    effect_size="log2FoldChange",                   # x-axis column
+    p="pvalue",                                     # y-axis column (raw p)
+    snp="gene",                                     # hover label per dot
+    gene=None,                                      # no separate gene column
+    effect_size_line=[-1, 1],                       # |log2FC| > 1 cutoff
+    genomewideline_value=-np.log10(0.05))           # p < 0.05 line
+fig                                                 # render inline
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+import dash_bio as dashbio                          # widget library
+de = load_deseq2("drought")                         # DE results
+fig = dashbio.VolcanoPlot(                          # CALL
+    dataframe=de,
+    effect_size="log2FoldChange",
+    p="pvalue",
+    snp="gene",
+    gene=None,
+    effect_size_line=[-1, 1],
+    genomewideline_value=-np.log10(0.05))
+fig.update_layout(                                  # match deck theme
+    paper_bgcolor=CREAM, plot_bgcolor=CREAM,
+    font=dict(family="IBM Plex Mono", color=INK, size=11),
+    height=420, margin=dict(l=10, r=10, t=30, b=10))
+fig
+```
+:::
+::::
+
+
+<!-- slide 38 -->
+## Clustergram · Heatmap + Dendrograms {.smaller}
+
+[DashBio · Clustergram]{.eyebrow}
+
+### A 20 × 12 slice of the expression matrix so the labels are readable
+
+`Clustergram` is Plotly's interactive `sns.clustermap`. It runs hierarchical clustering on both axes, draws dendrograms top + left, and exposes `color_threshold` to cut clades into coloured branches. We slice the matrix down to **20 genes × 12 samples** so the labels stay legible on a deck slide.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-6|8-16"}
+import dash_bio as dashbio                          # widget library
+expr = load_expression()                            # 40 × 24 log2 TPM
+
+# take the most variable 20 genes and the first 12 samples to keep it readable
+top20 = expr.var(axis=1).nlargest(20).index         # most variable genes
+m = expr.loc[top20, expr.columns[:12]]              # 20 × 12 slice
+
+# CALL the widget — column_labels / row_labels feed the axis ticks
+fig = dashbio.Clustergram(
+    data=m.values,                                  # numpy matrix
+    column_labels=list(m.columns),                  # sample IDs (top)
+    row_labels=list(m.index),                       # gene names (right)
+    color_threshold={"row": 1.2, "col": 1.2},       # where to cut dendrograms
+    height=460, width=620,                          # widget dimensions
+    color_map=[[0.0, BLUE], [0.5, CREAM],           # diverging blue↔cream↔red
+               [1.0, RED]])
+fig                                                 # render inline
+```
+
+`color_threshold` is the one knob that pays for itself: pick a height in the dendrogram and every branch below it gets its own colour, so coordinated clusters jump out.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+import dash_bio as dashbio                          # widget library
+
+expr = load_expression()                            # 40 × 24 log2 TPM
+top20 = expr.var(axis=1).nlargest(20).index         # most variable genes
+m = expr.loc[top20, expr.columns[:12]]              # 20 × 12 slice
+
+fig = dashbio.Clustergram(                          # CALL
+    data=m.values,
+    column_labels=list(m.columns),
+    row_labels=list(m.index),
+    color_threshold={"row": 1.2, "col": 1.2},
+    height=460, width=620,
+    color_map=[[0.0, BLUE], [0.5, CREAM], [1.0, RED]])
+fig.update_layout(                                  # match deck theme
+    paper_bgcolor=CREAM, plot_bgcolor=CREAM,
+    font=dict(family="IBM Plex Mono", color=INK, size=9),
+    margin=dict(l=10, r=10, t=10, b=10))
+fig
+```
+:::
+::::
+
+
+<!-- slide 39 -->
+## AlignmentChart · A Brief Aside {.smaller}
+
+[DashBio · AlignmentChart]{.eyebrow}
+
+### MSA viewer that eats Clustal / FASTA strings
+
+`AlignmentChart` reads a **string** in Clustal or FASTA format and renders the alignment with per-residue colouring, a consensus row, and a coverage track. Hover any column for the per-position counts. It's the lightweight cousin of pyMSAviz — full coverage of MSAs is in `_04_pymsaviz.qmd`.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-10|12-17"}
+import dash_bio as dashbio                          # widget library
+
+# a tiny synthetic MSA in FASTA format (5 sequences × 30 columns)
+fasta = (
+    ">seq1\nMKTIIALSYIFCLVFADYKDDDDK--AAGGT\n"
+    ">seq2\nMKTIIALSYIFCLVFADYKDDDDK--AAGGT\n"
+    ">seq3\nMKTILALSYIFCLVFADYKDDDDK--AAGGT\n"
+    ">seq4\nMKTIIALSYAFCLVFADYKDDDDK--ARGGT\n"
+    ">seq5\nMKTIVALSYIFCLVFADYKDDDDK--AAGGT\n")
+
+# CALL the widget — `data=` is the alignment string itself
+fig = dashbio.AlignmentChart(
+    data=fasta,                                     # FASTA string
+    height=320,                                     # widget pixel height
+    showconsensus=True,                             # consensus row underneath
+    showconservation=True)                          # per-column conservation bar
+fig                                                 # render inline
+```
+
+For a single quick look at a small alignment, this is the cheapest possible viewer. For publication MSAs with custom colour schemes and feature overlays, pyMSAviz is the better choice (see day-3 `_04`).
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+import dash_bio as dashbio                          # widget library
+fasta = (                                           # tiny synthetic MSA
+    ">seq1\nMKTIIALSYIFCLVFADYKDDDDK--AAGGT\n"
+    ">seq2\nMKTIIALSYIFCLVFADYKDDDDK--AAGGT\n"
+    ">seq3\nMKTILALSYIFCLVFADYKDDDDK--AAGGT\n"
+    ">seq4\nMKTIIALSYAFCLVFADYKDDDDK--ARGGT\n"
+    ">seq5\nMKTIVALSYIFCLVFADYKDDDDK--AAGGT\n")
+fig = dashbio.AlignmentChart(                       # CALL
+    data=fasta,
+    height=320,
+    showconsensus=True,
+    showconservation=True)
+fig
+```
+:::
+::::
+
+
+<!-- slide 40 -->
+## DashBio · Takeaway {.smaller}
+
+[DashBio · recap]{.eyebrow}
+
+### Plotly figures, one line each
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **`import dash_bio as dashbio`** — every widget lives behind one alias.
+2. **Hand it a dataframe** and name the columns (`chrm`, `bp`, `p`, `snp` for Manhattan; `effect_size`, `p`, `snp` for Volcano; raw `data` array for Clustergram).
+3. **The return value is a Plotly `Figure`** — `update_layout`, `update_traces`, hover, zoom all work out of the box.
+
+**Compare with day-2:** reach for `dash-bio` when you want **interactivity** (hover tooltips, scroll-zoom) and you're happy with the default Plotly look. For **publication-grade static** figures with bespoke colouring and labels, the day-2 matplotlib builds (`_04_manhattan`, `_07_volcano` from day-1) still win on control.
+:::

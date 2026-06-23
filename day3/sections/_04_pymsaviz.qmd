@@ -1,0 +1,304 @@
+<!-- slide 24 -->
+# pyMSAviz {.divider}
+
+[Production MSA viewer]{.eyebrow}
+
+
+<!-- slide 25 -->
+## pyMSAviz · Install + Theory {.smaller}
+
+[pyMSAviz · setup]{.eyebrow}
+
+### Five lines for a Clustal-style alignment figure
+
+```bash
+pip install pyMSAviz
+```
+
+```{.python}
+from pymsaviz import MsaViz       # the one class that does everything
+```
+
+**Theory.** `pyMSAviz` reads **FASTA / Clustal / PHYLIP / Stockholm** alignment
+files (or a Biopython `MultipleSeqAlignment`), applies a **standard colour
+scheme** (`Clustal`, `Zappo`, `Taylor`, `Nucleotide`, …), draws a **consensus
+track** at the bottom, prints **per-column letter counts**, and **wraps** long
+alignments across multiple rows. The output is a matplotlib `Figure`, so
+the cream-canvas rcParams and IBM Plex Mono apply automatically. Day-2 `_03`
+taught the primitives; this is the same picture, in five lines.
+
+
+<!-- slide 26 -->
+## pyMSAviz · The Data {.smaller}
+
+[pyMSAviz · data peek]{.eyebrow}
+
+### Synthesise 8 DNA sequences × 80 cols, write FASTA
+
+`MsaViz` expects a file path or a biopython object. We build a small toy
+alignment in numpy (same approach as day-2 `_03`), then dump it to a temporary
+FASTA file. Print the first few sequences as a sanity check.
+
+```{python}
+#| echo: true
+from pathlib import Path                                        # for temp file path
+import tempfile                                                 # cross-platform temp dir
+
+# build a small DNA alignment: 8 seqs x 80 cols, ~5% mutation, one indel
+n_rows, n_cols = 8, 80                                          # alignment shape
+bases  = np.array(list("ACGT"))                                 # alphabet
+base   = rng.choice(bases, size=n_cols)                         # ancestor sequence
+aln    = np.tile(base, (n_rows, 1))                             # 8 copies of ancestor
+mutate = rng.random((n_rows, n_cols)) < 0.05                    # 5% substitution mask
+mutate[0] = False                                               # keep seq0 as ancestor
+aln[mutate] = rng.choice(bases, size=mutate.sum())              # apply substitutions
+aln[5, 30:36] = "-"                                             # 6-col deletion in seq5
+
+# write to a temp FASTA file so MsaViz can read it
+fasta_path = Path(tempfile.gettempdir()) / "toy_msa.fasta"      # OS-temp FASTA path
+with open(fasta_path, "w") as fh:                               # plain FASTA writer
+    for i, row in enumerate(aln):                               # one record per row
+        fh.write(f">seq{i}\n" + "".join(row) + "\n")            # header + sequence
+
+print("wrote:", fasta_path)                                     # confirm file location
+print("first 2 sequences:")
+for i in range(2):                                              # print 2 records
+    print(f">seq{i}", "".join(aln[i, :60]), "...")              # header + first 60 bases
+```
+
+
+<!-- slide 27 -->
+## pyMSAviz · Step 1 — Simplest Viz {.smaller}
+
+[pyMSAviz · build]{.eyebrow}
+
+### 1 · `MsaViz(fasta).plotfig()` returns a matplotlib Figure
+
+`MsaViz(path)` parses the alignment, picks a default colour scheme, and lays out
+the figure. `.plotfig()` returns the **matplotlib `Figure`** — the cream-canvas
+rcParams set in the theme apply automatically. Two lines.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-4|6-9"}
+from pymsaviz import MsaViz                             # the one class
+
+# fasta_path was written in the previous slide
+mv = MsaViz(str(fasta_path))                            # CREATE — parse + lay out
+
+# CALL — render to a matplotlib Figure (cream rcParams apply)
+fig = mv.plotfig()                                      # returns plt.Figure
+fig.set_size_inches(9.5, 3.0)                           # fit our two-column width
+plt.show()                                              # render in the slide
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+from pathlib import Path
+import tempfile
+from pymsaviz import MsaViz
+
+n_rows, n_cols = 8, 80
+bases  = np.array(list("ACGT"))
+base   = rng.choice(bases, size=n_cols)
+aln    = np.tile(base, (n_rows, 1))
+mutate = rng.random((n_rows, n_cols)) < 0.05
+mutate[0] = False
+aln[mutate] = rng.choice(bases, size=mutate.sum())
+aln[5, 30:36] = "-"
+fasta_path = Path(tempfile.gettempdir()) / "toy_msa.fasta"
+with open(fasta_path, "w") as fh:
+    for i, row in enumerate(aln):
+        fh.write(f">seq{i}\n" + "".join(row) + "\n")
+
+mv = MsaViz(str(fasta_path))
+fig = mv.plotfig()
+fig.set_size_inches(9.5, 3.0)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 28 -->
+## pyMSAviz · Step 2 — Colour Scheme {.smaller}
+
+[pyMSAviz · build]{.eyebrow}
+
+### 2 · `color_scheme="Nucleotide"` for DNA
+
+The default scheme is Clustal (protein-tuned). For DNA, switch to
+`color_scheme="Nucleotide"` — A/C/G/T get distinct hues and gaps stay neutral.
+For protein alignments use `"Clustal"`, `"Zappo"`, or `"Taylor"`. The scheme
+choice is the single most visible knob in the whole library.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="3-6"}
+from pymsaviz import MsaViz                             # the one class
+
+# only one new keyword vs step 1 — explicit colour scheme for DNA
+mv = MsaViz(
+    str(fasta_path),                                    # the same toy alignment
+    color_scheme="Nucleotide",                          # A/C/G/T-specific colours
+)
+
+fig = mv.plotfig()                                      # CALL — render Figure
+fig.set_size_inches(9.5, 3.0)                           # match our column width
+plt.show()
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+from pathlib import Path
+import tempfile
+from pymsaviz import MsaViz
+
+fasta_path = Path(tempfile.gettempdir()) / "toy_msa.fasta"
+# fasta written in the previous slide; reuse the file
+mv = MsaViz(str(fasta_path), color_scheme="Nucleotide")
+fig = mv.plotfig()
+fig.set_size_inches(9.5, 3.0)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 29 -->
+## pyMSAviz · Step 3 — Consensus + Counts + Wrap {.smaller}
+
+[pyMSAviz · build]{.eyebrow}
+
+### 3 · The canonical Clustal viewer look
+
+Three keyword arguments turn the bare grid into the full Clustal-viewer layout:
+`show_consensus=True` adds the consensus row, `show_count=True` shows per-column
+letter counts on the right axis, and `wrap_length=40` breaks the alignment
+across multiple rows so 80 columns become two 40-wide stripes.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="3-9"}
+from pymsaviz import MsaViz                             # the one class
+
+# add three knobs: wrap, consensus row, per-column counts
+mv = MsaViz(
+    str(fasta_path),                                    # same toy alignment
+    color_scheme="Nucleotide",                          # DNA colours
+    wrap_length=40,                                     # wrap every 40 cols
+    show_consensus=True,                                # bottom consensus row
+    show_count=True,                                    # column number ticks
+)
+
+fig = mv.plotfig()                                      # CALL — render Figure
+fig.set_size_inches(9.5, 4.2)                           # taller — wrapped layout
+plt.show()
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+from pathlib import Path
+import tempfile
+from pymsaviz import MsaViz
+
+fasta_path = Path(tempfile.gettempdir()) / "toy_msa.fasta"
+mv = MsaViz(
+    str(fasta_path),
+    color_scheme="Nucleotide",
+    wrap_length=40,
+    show_consensus=True,
+    show_count=True,
+)
+fig = mv.plotfig()
+fig.set_size_inches(9.5, 4.2)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 30 -->
+## pyMSAviz · Step 4 — Highlight a Region {.smaller}
+
+[pyMSAviz · build]{.eyebrow}
+
+### 4 · `set_highlight_pos([(start, end)])` to spotlight a motif
+
+`set_highlight_pos` takes a list of `(start_col, end_col)` tuples (1-indexed,
+inclusive) and draws a box around each region. Use it to mark a motif, an
+indel block, a primer site, anything you want the reader to look at first. We
+spotlight the deletion block at columns 31–36.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="3-9|11-13"}
+from pymsaviz import MsaViz                             # the one class
+
+# rebuild with the same wrapped, consensus look from step 3
+mv = MsaViz(
+    str(fasta_path),                                    # same alignment file
+    color_scheme="Nucleotide",                          # DNA colours
+    wrap_length=40,                                     # two rows of 40 cols
+    show_consensus=True,                                # bottom consensus
+    show_count=True,                                    # column counts axis
+)
+
+# box the indel region — columns 31..36 (1-indexed, inclusive)
+mv.set_highlight_pos([(31, 36)])                        # one or many (start,end) pairs
+
+fig = mv.plotfig()                                      # CALL — render Figure
+fig.set_size_inches(9.5, 4.2)                           # match step 3 height
+plt.show()
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+from pathlib import Path
+import tempfile
+from pymsaviz import MsaViz
+
+fasta_path = Path(tempfile.gettempdir()) / "toy_msa.fasta"
+mv = MsaViz(
+    str(fasta_path),
+    color_scheme="Nucleotide",
+    wrap_length=40,
+    show_consensus=True,
+    show_count=True,
+)
+mv.set_highlight_pos([(31, 36)])
+fig = mv.plotfig()
+fig.set_size_inches(9.5, 4.2)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 31 -->
+## pyMSAviz · Takeaway {.smaller}
+
+[pyMSAviz · recap]{.eyebrow}
+
+### When an MSA needs to look like an MSA viewer
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **`MsaViz(fasta)`** parses any FASTA / Clustal / PHYLIP / Stockholm file.
+2. **`color_scheme=`** picks Clustal / Zappo / Taylor (proteins) or Nucleotide
+   (DNA).
+3. **`wrap_length=`, `show_consensus=`, `show_count=`** add the canonical
+   Clustal-viewer scaffolding in three keyword arguments.
+4. **`set_highlight_pos([(s,e)])`** boxes the regions the audience must look at.
+5. **`.plotfig()` returns a matplotlib `Figure`** — cream-canvas rcParams and
+   IBM Plex Mono apply for free.
+:::
+
+**Compare with:** the day-2 `_03_msa` build teaches the **primitives** — letter
+grid, `imshow` colour grid, conservation bar, zoom — so you understand what
+every pixel is. Reach for **pyMSAviz** when the alignment **is** the figure and
+you want the production output without rebuilding the wheel.

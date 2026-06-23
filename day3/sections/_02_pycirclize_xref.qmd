@@ -1,0 +1,119 @@
+<!-- slide 12 -->
+# pyCirclize · Recap {.divider}
+
+[Cross-reference · already covered]{.eyebrow}
+
+
+<!-- slide 13 -->
+## What We Already Built {.smaller}
+
+[pyCirclize · day-2 recap]{.eyebrow}
+
+### The five-step Circos walkthrough — done in day-2 `_06`
+
+:::: {.columns}
+::: {.column width="46%"}
+::: {.keybox}
+**Day-2 `_06_pycirclize.qmd` — five-step build**
+
+1. **Sectors** — `{name: length}` defines the wedges.
+2. **Axis + ticks** — `sector.axis()` and `sector.xticks_by_interval()`.
+3. **Scatter track** — Manhattan-on-a-ring, `track.scatter(pos, -log10(p))`.
+4. **Threshold ring** — dashed `track.line()` at `p = 5e-8`, hits redrawn red.
+5. **Chord links** — `circos.link((sector_a, s, e), (sector_b, s, e))`.
+:::
+:::
+::: {.column width="54%"}
+**Reach for pyCirclize when** the story lives in *relationships across chromosomes* — translocations, Hi-C contacts, regulator-target pairs, microbial replicons — rather than within a single linear interval. Each ring trades per-chromosome zoom for cross-chromosome reach.
+
+Three primitives carry the whole library:
+
+- **Sectors** — wedges.
+- **Tracks** — concentric data bands.
+- **Links** — chords through the centre.
+
+This section is a cross-reference only — go back to day-2 `_06` for the full walkthrough.
+:::
+::::
+
+
+<!-- slide 14 -->
+## One New Pattern · `Circos.chord_diagram` {.smaller}
+
+[pyCirclize · matrix-driven chords]{.eyebrow}
+
+### A symmetric matrix → a full chord diagram in one call
+
+Day-2 built links one at a time. The classmethod `Circos.chord_diagram(matrix, ...)` takes the opposite path: hand it a **symmetric `DataFrame`** of pairwise weights (row label = sector, column label = sector, cell = chord thickness) and it auto-creates the sectors, draws every non-zero link, and scales each chord's width to the cell value. Perfect for tissue × tissue co-expression strengths, gene-family migration tables, or co-occurrence networks.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-5|7-12|14-15|17-23"}
+from pycirclize import Circos                      # the same class
+
+# six tissues — sector labels for both rows and columns
+tissues = ["liver", "brain", "heart",
+           "kidney", "lung", "muscle"]
+
+# synthesise a co-expression strength matrix:
+#   - rng integers from the day-3 seed (rng = default_rng(23))
+#   - symmetrise so chord A->B == chord B->A
+#   - zero the diagonal (no self-loops)
+M = rng.integers(5, 80, size=(6, 6))               # raw asymmetric draws
+M = (M + M.T) // 2                                 # symmetric half-sum
+np.fill_diagonal(M, 0)                             # drop self-links
+
+# wrap as a labelled DataFrame — labels become sector names
+mat = pd.DataFrame(M, index=tissues, columns=tissues)
+
+# CREATE+CALL in one shot: chord_diagram is a classmethod that builds
+# sectors from the row/col labels and links from every non-zero cell.
+circos = Circos.chord_diagram(mat,
+                              space=4,             # 4deg gap between sectors
+                              cmap="tab10",        # one colour per sector
+                              ticks_interval=50,   # tick marks every 50 units
+                              label_kws=dict(size=10, color=INK))
+fig = circos.plotfig(figsize=(6, 6))               # CALL: matplotlib Figure
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6
+#| fig-height: 6
+
+from pycirclize import Circos
+
+tissues = ["liver", "brain", "heart", "kidney", "lung", "muscle"]
+M = rng.integers(5, 80, size=(6, 6))
+M = (M + M.T) // 2
+np.fill_diagonal(M, 0)
+mat = pd.DataFrame(M, index=tissues, columns=tissues)
+
+circos = Circos.chord_diagram(mat,
+                              space=4,
+                              cmap="tab10",
+                              ticks_interval=50,
+                              label_kws=dict(size=10, color=INK))
+fig = circos.plotfig(figsize=(6, 6))
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 15 -->
+## pyCirclize · Takeaway {.smaller}
+
+[pyCirclize · recap]{.eyebrow}
+
+### Three primitives, two construction routes
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **Sectors, tracks, links** — every Circos figure is some combination of these three.
+2. **Manual build** (day-2 `_06`) — declare sectors, add tracks per sector, call `link()` for each chord. Full control; ideal when each link is its own story.
+3. **Matrix build** (`Circos.chord_diagram`) — pass a symmetric DataFrame and let the library lay out sectors + draw every link. Ideal for co-expression / co-occurrence / migration tables where the matrix *is* the data.
+:::
+
+**Compare with:** the linear Manhattan in day-2 `_04` (one chromosome at a time, no cross-chrom story) and the *JCVI synteny chord* coming up in `_08`, which is the same idea on two genomes — chords as homology between query and target rather than co-expression between tissues. Three names, one geometry.

@@ -1,0 +1,61 @@
+---
+title: "Genomics Data Visualization"
+subtitle: "<span style='font-size:1.25em;'>with Python</span> · Day 3 · Production-grade tools"
+author: "<div style='width: 100%; text-align: center; margin-left: auto; margin-right: auto;'><a href='https://github.com/loukesio' style='color:#208462;font-weight:600;'>Dr. Loukas Theodosiou</a>&ensp;//&ensp;Day 3 &ensp;//&ensp; June 2026</div>"
+date: "2026-06-24"
+format:
+  revealjs:
+    theme: [default, style.scss]
+    width: 1280
+    height: 720
+    center: false
+    slide-number: c
+    progress: true
+    transition: fade
+    history: false
+    footer: "Genomics Viz with Python"
+    highlight-style: arrow
+    code-line-numbers: true
+    fig-align: center
+    fig-format: retina
+    fig-dpi: 192
+execute:
+  echo: true
+  warning: false
+  freeze: auto
+jupyter: python3
+---
+
+```{python}
+#| label: setup
+#| echo: false
+# Theme + everyday helpers — same single source of truth used by days 1 and 2.
+from genomics_course.theme import *                # noqa: F401,F403
+from genomics_course.data import (
+    load_deseq2, load_admixture, load_gwas, load_variants, load_lineages,
+    load_timecourse, load_coexpression, load_expression, load_expression_meta,
+    load_microbiome, load_peaks, load_peak_genes, load_qc, load_variant_classes,
+    load_enrichment,
+)
+import numpy as np, pandas as pd
+import matplotlib.pyplot as plt, seaborn as sns
+import matplotlib.patches as mpatches
+import warnings
+warnings.filterwarnings("ignore")
+
+rng = np.random.default_rng(23)   # day-3 seed
+```
+
+{{< include sections/_00_intro.qmd >}}
+{{< include sections/_01_pycomplexheatmap.qmd >}}
+{{< include sections/_02_pycirclize_xref.qmd >}}
+{{< include sections/_03_toytree.qmd >}}
+{{< include sections/_04_pymsaviz.qmd >}}
+{{< include sections/_05_dashbio.qmd >}}
+{{< include sections/_06_pygenometracks.qmd >}}
+{{< include sections/_07_dna_features_viewer.qmd >}}
+{{< include sections/_08_jcvi_mcscan.qmd >}}
+{{< include sections/_09_upsetplot.qmd >}}
+{{< include sections/_10_pywaffle.qmd >}}
+{{< include sections/_11_gget.qmd >}}
+{{< include sections/_12_biopython_phylo.qmd >}}

@@ -1,0 +1,339 @@
+<!-- slide 16 -->
+# Toytree {.divider}
+
+[Phylogenetic tree drawing]{.eyebrow}
+
+
+<!-- slide 17 -->
+## Toytree · Install + Theory {.smaller}
+
+[Toytree · setup]{.eyebrow}
+
+### A fluent tree API that returns a Toyplot canvas
+
+```bash
+pip install toytree
+```
+
+```{.python}
+import toytree                    # the package itself
+import toyplot                    # the rendering engine Toytree draws onto
+import toyplot.svg, toyplot.png   # explicit backends for export
+```
+
+**Theory.** Toytree wraps an `ete3`-style tree object behind a single fluent
+`.draw()` call. It reads **Newick / Nexus** strings or files, lets you style
+**per-tip / per-node / per-edge** with simple list arguments, and ships a
+collection of layouts — rectangular, circular ("c"), unrooted. Under the hood
+it does **not** use matplotlib; it renders to a **Toyplot Canvas** which is
+SVG-native and embeds cleanly in HTML decks like this one. For a matplotlib-
+native option see `Bio.Phylo.draw` in section 12.
+
+
+<!-- slide 18 -->
+## Toytree · The Data {.smaller}
+
+[Toytree · data peek]{.eyebrow}
+
+### Hand-write a Newick string of 9 taxa
+
+A Newick string nests sister taxa in parentheses, with `:branch_length` after
+each name. Below is a small balanced clade of 9 species (`A`…`I`). We feed it to
+`toytree.tree()` and peek at the parsed tree.
+
+```{python}
+#| echo: true
+import toytree                                                  # tree object + .draw API
+
+# 9-tip balanced phylogeny; numbers after ":" are branch lengths
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+
+tre = toytree.tree(newick)                                      # parse Newick -> ToyTree
+print("ntips:", tre.ntips)                                      # how many leaves
+print("tips :", tre.get_tip_labels())                           # leaf names in plot order
+```
+
+
+<!-- slide 19 -->
+## Toytree · Step 1 — Simplest Draw {.smaller}
+
+[Toytree · build]{.eyebrow}
+
+### 1 · `.draw()` returns (canvas, axes, mark)
+
+The minimum call. `.draw()` returns a 3-tuple: a **Toyplot Canvas** (the SVG
+container), an **axes** (the coordinate frame), and a **mark** (the tree
+graphic itself). The canvas embeds straight into Quarto reveal.js as HTML/SVG
+when it is the chunk's last expression — no matplotlib involved.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-9|11-14"}
+import toytree                                          # the package
+
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+tre = toytree.tree(newick)                              # parse Newick once
+
+# CREATE / CALL combined — .draw() builds canvas + axes + tree mark
+canvas, axes, mark = tre.draw(                          # returns 3-tuple
+    width=420, height=380,                              # canvas size in px
+    tip_labels_align=True,                              # right-align leaf labels
+)
+
+# Quarto auto-renders the Toyplot Canvas to inline SVG;
+# fallback: toyplot.svg.render(canvas, "tre.svg") then ![](tre.svg)
+canvas                                                  # last expression -> embedded
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+import toytree                                          # local import for the chunk
+
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+tre = toytree.tree(newick)
+
+canvas, axes, mark = tre.draw(width=420, height=380, tip_labels_align=True)
+canvas
+```
+:::
+::::
+
+
+<!-- slide 20 -->
+## Toytree · Step 2 — Style Tips and Nodes {.smaller}
+
+[Toytree · build]{.eyebrow}
+
+### 2 · Per-tip colours, larger nodes at the root
+
+`tip_labels_colors` takes one colour per tip (in `get_tip_labels()` order). Pass
+a list straight from the Economist palette. `node_sizes` accepts a scalar or one
+size per node — give the deeper nodes more weight so the eye finds the backbone.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-7|9-13|15-22"}
+import toytree                                          # the package
+from itertools import cycle                             # pad palette to ntips
+
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+tre = toytree.tree(newick)                              # parse once
+
+# one colour per tip from the Economist 5-hue qualitative palette
+ECON_QUAL = [GREEN, BLUE, AMBER, RED, PURPLE]           # course palette
+tip_colors = [c for c, _ in zip(cycle(ECON_QUAL),       # cycle palette
+                                tre.get_tip_labels())]  # to length ntips
+
+# CREATE / CALL — draw with per-tip colour + variable node sizes
+canvas, axes, mark = tre.draw(
+    width=460, height=400,                              # canvas size
+    tip_labels_align=True,                              # cleaner leaf column
+    tip_labels_colors=tip_colors,                       # one colour per tip
+    node_sizes=8,                                       # base size for every node
+    node_colors=INK,                                    # nodes in ink-grey
+    edge_colors=MUTED,                                  # edges in muted grey
+)
+canvas
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+import toytree
+from itertools import cycle
+
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+tre = toytree.tree(newick)
+
+ECON_QUAL = [GREEN, BLUE, AMBER, RED, PURPLE]
+tip_colors = [c for c, _ in zip(cycle(ECON_QUAL), tre.get_tip_labels())]
+
+canvas, axes, mark = tre.draw(
+    width=460, height=400,
+    tip_labels_align=True,
+    tip_labels_colors=tip_colors,
+    node_sizes=8,
+    node_colors=INK,
+    edge_colors=MUTED,
+)
+canvas
+```
+:::
+::::
+
+
+<!-- slide 21 -->
+## Toytree · Step 3 — Colour a Clade {.smaller}
+
+[Toytree · build]{.eyebrow}
+
+### 3 · Spotlight the (A,B,C,D) clade in RED
+
+Find the **most-recent common ancestor (MRCA)** of a set of tips with
+`get_mrca_node()`, list its descendants, then build per-edge colours: RED on
+the clade's edges, GREY for everything else. The story-colour rule applies —
+one clade in red, all else neutral.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-6|8-12|14-19|21-27"}
+import toytree                                          # the package
+
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+tre = toytree.tree(newick)                              # parse once
+
+# pick the clade we want to spotlight by its leaf set
+clade_tips = ["A", "B", "C", "D"]                       # the four sister taxa
+mrca = tre.get_mrca_node(*clade_tips)                   # MRCA node object
+clade_idx = {n.idx for n in mrca.get_descendants()} | {mrca.idx}  # node idxs in clade
+
+# build edge colours — RED for clade edges, GREY for the rest
+edge_colors = [RED if n.idx in clade_idx else GREY      # one colour per node (nnodes)
+               for n in tre.treenode.traverse()]
+
+# CREATE / CALL — draw with the highlighted edges
+canvas, axes, mark = tre.draw(
+    width=480, height=400,                              # canvas size
+    tip_labels_align=True,                              # leaf column aligned
+    edge_colors=edge_colors,                            # per-edge colour list
+    edge_widths=2.2,                                    # thicker to read the spotlight
+    node_sizes=0,                                       # nodes off; clade reads via edge
+)
+canvas
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+import toytree
+
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+tre = toytree.tree(newick)
+
+clade_tips = ["A", "B", "C", "D"]
+try:
+    mrca = tre.get_mrca_node(*clade_tips)
+    clade_idx = {n.idx for n in mrca.get_descendants()} | {mrca.idx}
+except AttributeError:
+    # older toytree: fall back to mrca via tip-label idx lookup
+    mrca_idx = tre.get_mrca_idx_from_tip_labels(names=clade_tips)
+    mrca = tre.idx_dict[mrca_idx]
+    clade_idx = {n.idx for n in mrca.get_descendants()} | {mrca.idx}
+
+edge_colors = [RED if n.idx in clade_idx else GREY
+               for n in tre.treenode.traverse()]
+
+canvas, axes, mark = tre.draw(
+    width=480, height=400,
+    tip_labels_align=True,
+    edge_colors=edge_colors,
+    edge_widths=2.2,
+    node_sizes=0,
+)
+canvas
+```
+:::
+::::
+
+
+<!-- slide 22 -->
+## Toytree · Step 4 — Circular Layout {.smaller}
+
+[Toytree · build]{.eyebrow}
+
+### 4 · Same tree, radial display
+
+Add `layout="c"` and the same data renders as a circular phylogeny — useful
+when you have many tips or want to compare to a circos-style figure. The
+spotlight colours port over unchanged; only the layout argument is new.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="14-19"}
+import toytree                                          # the package
+
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+tre = toytree.tree(newick)
+
+clade_tips = ["A", "B", "C", "D"]                       # same clade
+mrca = tre.get_mrca_node(*clade_tips)                   # MRCA node
+clade_idx = {n.idx for n in mrca.get_descendants()} | {mrca.idx}
+edge_colors = [RED if n.idx in clade_idx else GREY      # same per-edge colours
+               for n in tre.treenode.traverse() if not n.is_root()]
+
+# CREATE / CALL — only layout="c" changes
+canvas, axes, mark = tre.draw(
+    width=460, height=460,                              # square canvas for radial
+    layout="c",                                         # "c" = circular
+    edge_colors=edge_colors,                            # spotlight ports over
+    edge_widths=2.0,
+    tip_labels_align=True,                              # radial tip alignment
+)
+canvas
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+import toytree
+
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+tre = toytree.tree(newick)
+
+clade_tips = ["A", "B", "C", "D"]
+try:
+    mrca = tre.get_mrca_node(*clade_tips)
+    clade_idx = {n.idx for n in mrca.get_descendants()} | {mrca.idx}
+except AttributeError:
+    mrca_idx = tre.get_mrca_idx_from_tip_labels(names=clade_tips)
+    mrca = tre.idx_dict[mrca_idx]
+    clade_idx = {n.idx for n in mrca.get_descendants()} | {mrca.idx}
+
+edge_colors = [RED if n.idx in clade_idx else GREY
+               for n in tre.treenode.traverse()]
+
+canvas, axes, mark = tre.draw(
+    width=460, height=460,
+    layout="c",
+    edge_colors=edge_colors,
+    edge_widths=2.0,
+    tip_labels_align=True,
+)
+canvas
+```
+:::
+::::
+
+
+<!-- slide 23 -->
+## Toytree · Takeaway {.smaller}
+
+[Toytree · recap]{.eyebrow}
+
+### Five lines, publication-quality
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **`toytree.tree(newick)`** parses every standard tree format.
+2. **`.draw()`** returns a Toyplot Canvas — SVG-native, embeds straight into
+   reveal.js / HTML / notebooks. No matplotlib needed.
+3. **Per-tip / per-node / per-edge styling** via simple list arguments —
+   `tip_labels_colors`, `node_sizes`, `edge_colors`.
+4. **MRCA + descendants** is the standard pattern for clade highlights.
+5. **`layout="c"`** flips rectangular to circular without changing anything else.
+:::
+
+**Compare with:** `Bio.Phylo.draw` (section 12) gives you a matplotlib-native
+tree on the same `plt.subplots()` axes you use everywhere else — pick that one
+when you need to stack a tree above a heatmap. Reach for **Toytree** when the
+tree itself is the figure and you want pixel-perfect SVG output.

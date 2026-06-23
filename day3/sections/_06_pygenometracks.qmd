@@ -1,0 +1,532 @@
+<!-- slide 41 -->
+# pyGenomeTracks {.divider}
+
+[Config-driven genome browser plots]{.eyebrow}
+
+
+<!-- slide 42 -->
+## Install & Import {.smaller}
+
+[pyGenomeTracks · setup]{.eyebrow}
+
+### One INI file describes every track — the tool draws them stacked
+
+`pyGenomeTracks` is the workhorse behind many of the published ChIP-seq / ATAC-seq / Hi-C figures you've seen. The interface is unusual for Python: you write a small **INI configuration file** describing each track (file path, type, colour, height), then run the CLI on a region — out comes a PNG with everything stacked, sharing one x-axis.
+
+```bash
+pip install pyGenomeTracks
+```
+
+```{.python code-line-numbers="1-4|6-9"}
+# the package ships a CLI; we drive it from Python via subprocess
+import subprocess, os                               # CLI driver + path helpers
+from pathlib import Path                            # tidy paths
+import matplotlib.image as mpimg                    # to embed the PNG result back into matplotlib
+
+# pyGenomeTracks also exposes a Python API, but it is brittle across versions —
+# the subprocess route is what the maintainers themselves use in their docs:
+#   pyGenomeTracks --tracks config.ini --region chr1:0-20000 --outFileName out.png
+```
+
+This is the section to come back to whenever you have **real browser-style files** (BED / BigWig / BedGraph / GTF / cool) and you want a *publication-ready* multi-track figure in one shot. For pedagogy on the underlying primitives, the day-2 `_05` matplotlib peaks build is where you go first.
+
+
+<!-- slide 43 -->
+## How It Works {.smaller}
+
+[pyGenomeTracks · theory]{.eyebrow}
+
+### INI in, PNG out — every track is a section, every kwarg is a row
+
+The mental model is dead simple. Your INI file is a stack of `[track]` sections; each section has a `file =` pointing at a genomics file and a `type =` (bedgraph, bigwig, bed, gtf, links, …). pyGenomeTracks reads the lot, draws each track in order from top to bottom, and gives them all the same x-axis (the region you ask for).
+
+::: {.keybox}
+[Why this design]{.tl}
+
+- **Reproducible**: the INI **is** the figure spec — share the file, get the same picture.
+- **Composable**: stack two ChIP marks + an ATAC track + a gene model with five INI sections, no code changes.
+- **Genome-aware**: it knows about chromosomes and base pairs, so the x-axis is always honest.
+- **Publication-tuned**: defaults are paper-quality; the tool is built for figure 1 of your paper, not for a notebook.
+:::
+
+The cost is that you can't *interactively* re-style a single peak the way you would in matplotlib. If you need that, build from primitives (day-2 `_05`); if you need the final figure, reach for this.
+
+
+<!-- slide 44 -->
+## Step 1 · Write the Data Files {.smaller}
+
+[pyGenomeTracks · data prep]{.eyebrow}
+
+### Convert `load_peaks()` to bedgraph, `load_peak_genes()` to BED6
+
+pyGenomeTracks wants on-disk files in the canonical formats. We take the bundled signal tracks (position + three marks) and write a bedgraph for H3K27ac; we take the gene annotations and write a 6-column BED. Both go to `/tmp` so the slide stays self-contained.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-13|15-22"}
+from pathlib import Path                            # tidy path helper
+import pandas as pd                                 # to write tab-delimited files
+TMP = Path("/tmp/pgt"); TMP.mkdir(exist_ok=True)    # work dir for this section
+
+# 1) the H3K27ac bedgraph: chrom  start  end  value
+sig = load_peaks()                                  # position, H3K27ac, H3K4me3, ATAC
+step = sig["position"].iloc[1] - sig["position"].iloc[0]   # uniform 20 bp bins
+bg_27ac = pd.DataFrame({
+    "chrom":  "chr1",                               # one synthetic chromosome
+    "start":  sig["position"].astype(int),          # bin start (bp)
+    "end":    (sig["position"] + step).astype(int), # bin end   (bp)
+    "value":  sig["H3K27ac"]})                      # the signal column
+bg_27ac.to_csv(TMP / "h3k27ac.bedgraph", sep="\t", header=False, index=False)
+
+# 2) the gene model as BED6: chrom  start  end  name  score  strand
+genes = load_peak_genes()                           # name, start, end, strand
+bed_genes = pd.DataFrame({
+    "chrom":  "chr1",
+    "start":  genes["start"].astype(int),
+    "end":    genes["end"].astype(int),
+    "name":   genes["name"],
+    "score":  0,
+    "strand": genes["strand"]})
+bed_genes.to_csv(TMP / "genes.bed", sep="\t", header=False, index=False)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+from pathlib import Path                            # tidy path
+TMP = Path("/tmp/pgt"); TMP.mkdir(exist_ok=True)    # work dir
+sig = load_peaks()                                  # signal table
+step = sig["position"].iloc[1] - sig["position"].iloc[0]
+bg_27ac = pd.DataFrame({
+    "chrom": "chr1",
+    "start": sig["position"].astype(int),
+    "end":   (sig["position"] + step).astype(int),
+    "value": sig["H3K27ac"]})
+bg_27ac.to_csv(TMP / "h3k27ac.bedgraph", sep="\t", header=False, index=False)
+
+genes = load_peak_genes()                           # gene model
+bed_genes = pd.DataFrame({
+    "chrom": "chr1",
+    "start": genes["start"].astype(int),
+    "end":   genes["end"].astype(int),
+    "name":  genes["name"],
+    "score": 0,
+    "strand": genes["strand"]})
+bed_genes.to_csv(TMP / "genes.bed", sep="\t", header=False, index=False)
+
+# peek the first 4 lines of each file so the audience sees what the tool eats
+print("h3k27ac.bedgraph (head):")
+print(bg_27ac.head(4).to_string(index=False, header=False))
+print("\ngenes.bed:")
+print(bed_genes.to_string(index=False, header=False))
+```
+:::
+::::
+
+
+<!-- slide 45 -->
+## Step 2 · Write a Minimal INI {.smaller}
+
+[pyGenomeTracks · INI]{.eyebrow}
+
+### Two tracks: one bedgraph for the H3K27ac signal, one BED for the gene model
+
+The INI is the figure spec. Two sections is enough to make a real picture: a `bedgraph` track for the H3K27ac signal, painted GREEN; a `bed` track for the gene model, painted INK. `height = …` controls vertical real estate; `file = …` points at the data files we just wrote.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-15|17"}
+# CREATE the INI as a single triple-quoted string and write it out
+INI_MIN = f"""
+[h3k27ac]
+file = {TMP}/h3k27ac.bedgraph
+title = H3K27ac
+color = {GREEN}
+height = 2
+min_value = 0
+max_value = 1.4
+
+[genes]
+file = {TMP}/genes.bed
+title = genes
+color = {INK}
+height = 1
+"""
+
+(TMP / "tracks_min.ini").write_text(INI_MIN)        # save next to the data files
+```
+
+Every track gets a `[name]` header — the name is just a label, but it must be unique within the INI. `file`, `title`, `color` and `height` are the four kwargs you set on almost every track type.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+INI_MIN = f"""
+[h3k27ac]
+file = {TMP}/h3k27ac.bedgraph
+title = H3K27ac
+color = {GREEN}
+height = 2
+min_value = 0
+max_value = 1.4
+
+[genes]
+file = {TMP}/genes.bed
+title = genes
+color = {INK}
+height = 1
+"""
+(TMP / "tracks_min.ini").write_text(INI_MIN)        # save the INI
+print(INI_MIN)                                      # echo to the slide
+```
+:::
+::::
+
+
+<!-- slide 46 -->
+## Step 3 · Run It {.smaller}
+
+[pyGenomeTracks · render]{.eyebrow}
+
+### subprocess → PNG → matplotlib imshow → the slide
+
+The CLI takes the INI plus a region and writes a PNG. We shell-out via `subprocess.run`, read the PNG back with `matplotlib.image.imread`, and `imshow` it onto a normal matplotlib axis so the figure inherits the deck's cream canvas and IBM Plex Mono surround. (If `pyGenomeTracks` is not on PATH in this environment the executed chunk falls back to a hand-drawn matplotlib version with the same layout — the INI workflow is identical, only the renderer differs.)
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-12|14-19"}
+import subprocess                                   # to invoke the CLI
+import matplotlib.image as mpimg                    # to read the PNG back in
+PNG = TMP / "tracks_min.png"                        # output path
+
+# CALL the CLI: --tracks INI, --region "chrom:start-end", --outFileName PNG
+subprocess.run(
+    ["pyGenomeTracks",
+     "--tracks", str(TMP / "tracks_min.ini"),
+     "--region", "chr1:0-20000",
+     "--outFileName", str(PNG),
+     "--width", "20", "--dpi", "150"],
+    check=True)                                     # raise if it fails
+
+# CREATE a matplotlib canvas; CALL imshow on the rendered PNG
+img = mpimg.imread(PNG)                             # load the PNG bytes
+fig, ax = plt.subplots(figsize=(8, 4))              # CREATE
+ax.imshow(img)                                      # CALL: paint the PNG
+ax.set_axis_off()                                   # no double frame
+plt.show()
+```
+
+The takeaway: pyGenomeTracks does **all** the layout — shared x-axis, track titles, value-axis ticks. You bring the INI, it brings the picture.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8
+#| fig-height: 4
+import subprocess, shutil                           # CLI driver + which()
+import matplotlib.image as mpimg                    # PNG reader
+PNG = TMP / "tracks_min.png"                        # output target
+
+def render_pgt(ini_path, png_path, region="chr1:0-20000"):
+    """Run pyGenomeTracks if available, otherwise fall back to a clean mock.
+    The mock recreates the multi-track look from the bundled data so the deck
+    still tells the same story when the CLI isn't on PATH in this env."""
+    if shutil.which("pyGenomeTracks"):              # tool installed?
+        subprocess.run(
+            ["pyGenomeTracks", "--tracks", str(ini_path),
+             "--region", region, "--outFileName", str(png_path),
+             "--width", "20", "--dpi", "150"], check=True)
+        return mpimg.imread(png_path)
+    return None                                     # caller draws the mock
+
+img = render_pgt(TMP / "tracks_min.ini", PNG)       # try the real renderer
+
+if img is not None:
+    fig, ax = plt.subplots(figsize=(8, 4))          # CREATE
+    ax.imshow(img); ax.set_axis_off()               # CALL the imshow
+    plt.show()
+else:
+    # mock fallback: same two-track layout, hand-drawn from load_peaks/genes
+    sig = load_peaks(); genes = load_peak_genes()
+    fig, axes = plt.subplots(2, 1, figsize=(8, 4),
+                             gridspec_kw={"height_ratios": [2, 1]}, sharex=True)
+    axes[0].fill_between(sig["position"], sig["H3K27ac"], color=GREEN, alpha=0.85)
+    axes[0].set_ylabel("H3K27ac"); axes[0].set_ylim(0, 1.4)
+    axes[0].spines[["top", "right"]].set_visible(False)
+    for _, g in genes.iterrows():
+        axes[1].add_patch(mpatches.FancyBboxPatch(
+            (g["start"], 0.3), g["end"] - g["start"], 0.4,
+            boxstyle="round,pad=0.02", linewidth=0, facecolor=INK))
+        axes[1].text((g["start"] + g["end"]) / 2, 0.85, g["name"],
+                     ha="center", fontsize=8, color=INK)
+    axes[1].set_xlim(0, 20000); axes[1].set_ylim(0, 1)
+    axes[1].set_yticks([]); axes[1].set_ylabel("genes")
+    axes[1].set_xlabel("chr1 position (bp)")
+    axes[1].spines[["top", "right", "left"]].set_visible(False)
+    plt.tight_layout()
+    plt.show()
+```
+:::
+::::
+
+
+<!-- slide 47 -->
+## Step 4 · Stack a Second Mark {.smaller}
+
+[pyGenomeTracks · multi-track]{.eyebrow}
+
+### Add a second bedgraph for H3K4me3 — three tracks now, one figure
+
+The whole point of the tool is that adding a track is **one INI section**. We write an H3K4me3 bedgraph the same way, drop a `[h3k4me3]` block into the INI, and re-render. Notice how the enhancer at ~8.5 kb has H3K27ac but **no** H3K4me3 — that's the canonical "active enhancer vs promoter" pattern, and the multi-track stack is the figure that tells that story.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-7|9-26"}
+# write the second bedgraph (H3K4me3) alongside the first
+bg_4me3 = pd.DataFrame({
+    "chrom": "chr1",
+    "start": sig["position"].astype(int),
+    "end":   (sig["position"] + step).astype(int),
+    "value": sig["H3K4me3"]})
+bg_4me3.to_csv(TMP / "h3k4me3.bedgraph", sep="\t", header=False, index=False)
+
+INI_MULTI = f"""
+[h3k27ac]
+file = {TMP}/h3k27ac.bedgraph
+title = H3K27ac
+color = {GREEN}
+height = 2
+min_value = 0
+max_value = 1.4
+
+[h3k4me3]
+file = {TMP}/h3k4me3.bedgraph
+title = H3K4me3
+color = {BLUE}
+height = 2
+min_value = 0
+max_value = 1.4
+
+[genes]
+file = {TMP}/genes.bed
+title = genes
+color = {INK}
+height = 1
+"""
+(TMP / "tracks_multi.ini").write_text(INI_MULTI)    # save INI v2
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8
+#| fig-height: 5
+bg_4me3 = pd.DataFrame({
+    "chrom": "chr1",
+    "start": sig["position"].astype(int),
+    "end":   (sig["position"] + step).astype(int),
+    "value": sig["H3K4me3"]})
+bg_4me3.to_csv(TMP / "h3k4me3.bedgraph", sep="\t", header=False, index=False)
+
+INI_MULTI = f"""
+[h3k27ac]
+file = {TMP}/h3k27ac.bedgraph
+title = H3K27ac
+color = {GREEN}
+height = 2
+min_value = 0
+max_value = 1.4
+
+[h3k4me3]
+file = {TMP}/h3k4me3.bedgraph
+title = H3K4me3
+color = {BLUE}
+height = 2
+min_value = 0
+max_value = 1.4
+
+[genes]
+file = {TMP}/genes.bed
+title = genes
+color = {INK}
+height = 1
+"""
+(TMP / "tracks_multi.ini").write_text(INI_MULTI)
+
+PNG2 = TMP / "tracks_multi.png"
+img = render_pgt(TMP / "tracks_multi.ini", PNG2)
+
+if img is not None:
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.imshow(img); ax.set_axis_off()
+    plt.show()
+else:
+    # mock fallback: three tracks stacked, same colour mapping as the INI
+    fig, axes = plt.subplots(3, 1, figsize=(8, 5),
+                             gridspec_kw={"height_ratios": [2, 2, 1]}, sharex=True)
+    axes[0].fill_between(sig["position"], sig["H3K27ac"], color=GREEN, alpha=0.85)
+    axes[0].set_ylabel("H3K27ac"); axes[0].set_ylim(0, 1.4)
+    axes[1].fill_between(sig["position"], sig["H3K4me3"], color=BLUE, alpha=0.85)
+    axes[1].set_ylabel("H3K4me3"); axes[1].set_ylim(0, 1.4)
+    for ax in axes[:2]:
+        ax.spines[["top", "right"]].set_visible(False)
+    for _, g in genes.iterrows():
+        axes[2].add_patch(mpatches.FancyBboxPatch(
+            (g["start"], 0.3), g["end"] - g["start"], 0.4,
+            boxstyle="round,pad=0.02", linewidth=0, facecolor=INK))
+        axes[2].text((g["start"] + g["end"]) / 2, 0.85, g["name"],
+                     ha="center", fontsize=8, color=INK)
+    axes[2].set_xlim(0, 20000); axes[2].set_ylim(0, 1)
+    axes[2].set_yticks([]); axes[2].set_ylabel("genes")
+    axes[2].set_xlabel("chr1 position (bp)")
+    axes[2].spines[["top", "right", "left"]].set_visible(False)
+    plt.tight_layout()
+    plt.show()
+```
+:::
+::::
+
+
+<!-- slide 48 -->
+## Step 5 · Polish — Spacer + X-Axis Section {.smaller}
+
+[pyGenomeTracks · polish]{.eyebrow}
+
+### `[spacer]` adds breathing room; `[x-axis]` puts the coordinate ruler at the bottom
+
+Two more INI sections turn the working figure into a paper-ready one. `[spacer]` adds vertical white space between tracks (so adjacent bedgraphs don't visually bleed into each other). `[x-axis]` draws the coordinate ruler — pyGenomeTracks figures look unfinished without it.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-29|31"}
+INI_PUB = f"""
+[h3k27ac]
+file = {TMP}/h3k27ac.bedgraph
+title = H3K27ac
+color = {GREEN}
+height = 2
+min_value = 0
+max_value = 1.4
+
+[spacer]
+height = 0.25
+
+[h3k4me3]
+file = {TMP}/h3k4me3.bedgraph
+title = H3K4me3
+color = {BLUE}
+height = 2
+min_value = 0
+max_value = 1.4
+
+[spacer]
+height = 0.25
+
+[genes]
+file = {TMP}/genes.bed
+title = genes
+color = {INK}
+height = 1
+
+[x-axis]
+where = bottom
+fontsize = 10
+"""
+(TMP / "tracks_pub.ini").write_text(INI_PUB)        # save the publication-ready INI
+```
+
+`[spacer]` accepts only `height`; `[x-axis]` accepts `where` (`top`/`bottom`), `fontsize`, and `title`. Together they're a paper-figure unlock: the same data, presented with the breathing room and the coordinate ruler the reader needs.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8
+#| fig-height: 5.2
+INI_PUB = f"""
+[h3k27ac]
+file = {TMP}/h3k27ac.bedgraph
+title = H3K27ac
+color = {GREEN}
+height = 2
+min_value = 0
+max_value = 1.4
+
+[spacer]
+height = 0.25
+
+[h3k4me3]
+file = {TMP}/h3k4me3.bedgraph
+title = H3K4me3
+color = {BLUE}
+height = 2
+min_value = 0
+max_value = 1.4
+
+[spacer]
+height = 0.25
+
+[genes]
+file = {TMP}/genes.bed
+title = genes
+color = {INK}
+height = 1
+
+[x-axis]
+where = bottom
+fontsize = 10
+"""
+(TMP / "tracks_pub.ini").write_text(INI_PUB)
+
+PNG3 = TMP / "tracks_pub.png"
+img = render_pgt(TMP / "tracks_pub.ini", PNG3)
+
+if img is not None:
+    fig, ax = plt.subplots(figsize=(8, 5.2))
+    ax.imshow(img); ax.set_axis_off()
+    plt.show()
+else:
+    # mock fallback with explicit spacers (extra gridspec rows) and an x-axis ruler
+    fig, axes = plt.subplots(
+        3, 1, figsize=(8, 5.2),
+        gridspec_kw={"height_ratios": [2, 2, 1], "hspace": 0.4}, sharex=True)
+    axes[0].fill_between(sig["position"], sig["H3K27ac"], color=GREEN, alpha=0.85)
+    axes[0].set_ylabel("H3K27ac"); axes[0].set_ylim(0, 1.4)
+    axes[1].fill_between(sig["position"], sig["H3K4me3"], color=BLUE, alpha=0.85)
+    axes[1].set_ylabel("H3K4me3"); axes[1].set_ylim(0, 1.4)
+    for ax in axes[:2]:
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.set_xticks([])
+    for _, g in genes.iterrows():
+        axes[2].add_patch(mpatches.FancyBboxPatch(
+            (g["start"], 0.3), g["end"] - g["start"], 0.4,
+            boxstyle="round,pad=0.02", linewidth=0, facecolor=INK))
+        axes[2].text((g["start"] + g["end"]) / 2, 0.85, g["name"],
+                     ha="center", fontsize=8, color=INK)
+    axes[2].set_xlim(0, 20000); axes[2].set_ylim(0, 1)
+    axes[2].set_yticks([]); axes[2].set_ylabel("genes")
+    axes[2].set_xlabel("chr1 position (bp)")
+    axes[2].set_xticks([0, 5000, 10000, 15000, 20000])
+    axes[2].spines[["top", "right", "left"]].set_visible(False)
+    plt.tight_layout()
+    plt.show()
+```
+:::
+::::
+
+
+<!-- slide 49 -->
+## pyGenomeTracks · Takeaway {.smaller}
+
+[pyGenomeTracks · recap]{.eyebrow}
+
+### INI in, PNG out — the production path
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **Write each data file** to disk in its canonical format (bedgraph / BED / bigwig / GTF).
+2. **Write an INI** with one `[track]` section per file — `file`, `title`, `color`, `height` are the four kwargs you set on almost every track.
+3. **Run `pyGenomeTracks --tracks ini --region chrom:start-end --outFileName out.png`** from the shell or via `subprocess.run`.
+4. **Add `[spacer]` + `[x-axis]`** sections for the publication polish.
+
+**Compare with day-2 `_05`:** the day-2 matplotlib peaks build teaches the **primitives** — `fill_between`, `add_patch`, shared x-axis — so you understand what a genome-browser track *is*. `pyGenomeTracks` is the **production** path: drop your real BigWig + BED + GTF files into an INI and ship a paper figure in one shot.
+:::

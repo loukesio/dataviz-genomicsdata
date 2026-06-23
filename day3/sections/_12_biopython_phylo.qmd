@@ -1,0 +1,387 @@
+<!-- slide 77 -->
+# Biopython · Phylo & Graphics {.divider}
+
+[Tree IO + feature diagrams]{.eyebrow}
+
+
+<!-- slide 78 -->
+## Biopython · Install + Theory {.smaller}
+
+[Biopython · setup]{.eyebrow}
+
+### The plumbing: read every format, draw on matplotlib
+
+```bash
+pip install biopython
+```
+
+```{.python}
+from io import StringIO                                         # read newick from a string
+from Bio import Phylo, SeqIO                                    # tree IO + record IO
+from Bio.Graphics import GenomeDiagram                          # circular + linear maps
+from Bio.SeqRecord import SeqRecord                             # holds a sequence + features
+from Bio.Seq import Seq                                         # the sequence itself
+from Bio.SeqFeature import SeqFeature, SimpleLocation           # gene / CDS features
+```
+
+**Theory.** Biopython is the **plumbing of bioinformatics**: it reads/writes
+**every common format** (Newick, Nexus, PhyloXML, FASTA, GenBank, EMBL …) and
+exposes the result as plain Python objects.
+
+- **`Bio.Phylo`** — tree IO + a matplotlib `draw()` that lays out the tree on a
+  normal `Axes`. Stack it above a heatmap, side-by-side with a Manhattan plot,
+  anywhere you'd put any other matplotlib panel.
+- **`Bio.Graphics.GenomeDiagram`** — high-level builder for **publication-quality
+  plasmid maps** (circular) and **linear gene tracks** with arrow sigils. Renders
+  to PNG/SVG/PDF directly; no matplotlib needed under the hood.
+
+
+<!-- slide 79 -->
+## Biopython · The Data {.smaller}
+
+[Biopython · data peek]{.eyebrow}
+
+### Same 9-tip Newick, parsed by Phylo + ASCII preview
+
+We reuse the Newick string from the Toytree section. `Phylo.read(StringIO(...))`
+returns a `Tree` object; `Phylo.draw_ascii` prints it as text — useful for log
+files and sanity-checking parsing before drawing.
+
+```{python}
+#| echo: true
+from io import StringIO                                         # treat the string as a file
+from Bio import Phylo                                           # tree IO + draw
+
+# same 9-tip phylogeny we used in the Toytree section
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+
+tree = Phylo.read(StringIO(newick), "newick")                   # parse Newick -> Tree
+print("terminals:", [t.name for t in tree.get_terminals()])     # leaf names
+Phylo.draw_ascii(tree)                                          # text-art preview
+```
+
+
+<!-- slide 80 -->
+## Biopython · Step 1 — `Phylo.draw` on Matplotlib {.smaller}
+
+[Biopython · build]{.eyebrow}
+
+### 1 · Draws on the current axes — `None` return value
+
+`Phylo.draw(tree)` does **not** return a figure; it draws onto the **current
+matplotlib axes** (or creates one). Create the `Axes` yourself with
+`plt.subplots()` so you control the size + can stack the tree with other panels.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-7|9-14"}
+from io import StringIO                                 # newick from string
+from Bio import Phylo                                   # tree IO + draw
+
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+tree = Phylo.read(StringIO(newick), "newick")           # parse once
+
+fig, ax = plt.subplots(figsize=(6.5, 4.5))              # CREATE axes for the tree
+Phylo.draw(                                             # CALL — draws on `ax`
+    tree,
+    axes=ax,                                            # explicit axes target
+    do_show=False,                                      # don't pop a window
+)
+ax.spines[["top", "right"]].set_visible(False)          # match cream style
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+from io import StringIO
+from Bio import Phylo
+
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+tree = Phylo.read(StringIO(newick), "newick")
+
+fig, ax = plt.subplots(figsize=(6.5, 4.5))
+Phylo.draw(tree, axes=ax, do_show=False)
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 81 -->
+## Biopython · Step 2 — Colour Branches by Clade {.smaller}
+
+[Biopython · build]{.eyebrow}
+
+### 2 · Walk the tree, set `clade.color`
+
+Bio.Phylo's `Tree` is a recursive structure. Walk it with
+`tree.find_clades()`, set `clade.color = "#hex"` on each non-terminal subtree,
+and `Phylo.draw` picks up the colours automatically. Below: each top-level
+clade in a different Economist hue.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-7|9-13|15-19"}
+from io import StringIO                                 # newick from string
+from Bio import Phylo                                   # tree IO + draw
+
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+tree = Phylo.read(StringIO(newick), "newick")           # parse Tree
+
+# colour the two top-level children of the root in two course hues
+palette = [GREEN, BLUE]                                 # one hue per major clade
+for clade, colour in zip(tree.root.clades, palette):    # iterate top-level subtrees
+    clade.color = colour                                # set hex; Phylo.draw honours it
+
+# CREATE the axes, CALL Phylo.draw — colours come through automatically
+fig, ax = plt.subplots(figsize=(6.5, 4.5))              # CREATE axes
+Phylo.draw(tree, axes=ax, do_show=False)                # CALL — picks up clade.color
+ax.spines[["top", "right"]].set_visible(False)          # cream style
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+from io import StringIO
+from Bio import Phylo
+
+newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \
+         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
+tree = Phylo.read(StringIO(newick), "newick")
+
+palette = [GREEN, BLUE]
+for clade, colour in zip(tree.root.clades, palette):
+    clade.color = colour
+
+fig, ax = plt.subplots(figsize=(6.5, 4.5))
+Phylo.draw(tree, axes=ax, do_show=False)
+ax.spines[["top", "right"]].set_visible(False)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 82 -->
+## Biopython · Step 3 — Circular Plasmid Diagram {.smaller}
+
+[Biopython · build]{.eyebrow}
+
+### 3 · `GenomeDiagram` — five genes on a 5 kb plasmid
+
+`GenomeDiagram` builds publication-quality plasmid maps. The pattern:
+1. wrap the sequence in a `SeqRecord`,
+2. attach `SeqFeature` objects (gene boxes),
+3. create a `Diagram`, add a `Track`, add a `FeatureSet`,
+4. `.draw(format="circular", ...)`,
+5. `.write(path, "PNG")`.
+
+We embed the resulting PNG with `![](...)`.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-12|14-22|24-31|33-37"}
+from pathlib import Path                                # cross-platform paths
+from Bio.SeqRecord import SeqRecord; from Bio.Seq import Seq
+from Bio.SeqFeature import SeqFeature, SimpleLocation
+from Bio.Graphics import GenomeDiagram                  # the diagram builder
+
+# 5 kb dummy plasmid backbone + 5 gene features
+record = SeqRecord(Seq("N" * 5000), id="plasmid")       # 5000-bp scaffold
+gene_spans = [(  50,  900, +1, "geneA", GREEN),         # (start, end, strand, name, hue)
+              (1100, 1900, +1, "geneB", BLUE),
+              (2200, 3000, -1, "geneC", AMBER),
+              (3200, 3900, +1, "geneD", RED),
+              (4100, 4900, -1, "geneE", PURPLE)]
+for s, e, strand, name, _ in gene_spans:                # build SeqFeature objects
+    record.features.append(SeqFeature(
+        SimpleLocation(s, e, strand=strand),            # interval + strand
+        type="gene", qualifiers={"label": [name]}))     # label shows on diagram
+
+# CREATE — Diagram -> Track -> FeatureSet (three layers)
+gd  = GenomeDiagram.Diagram("toy plasmid")              # top-level container
+trk = gd.new_track(1, name="genes", greytrack=False,    # one ring track
+                   scale_largetick_interval=1000)       # axis tick every 1 kb
+fs  = trk.new_set()                                     # features live on this set
+for (s, e, strand, name, hue), feat in zip(gene_spans, record.features):
+    fs.add_feature(feat, color=hue, label=True,         # paint + label this gene
+                   sigil="ARROW", label_size=10,
+                   label_angle=0)
+
+# CALL — draw circular + write PNG to disk
+out = Path("figures/biopy_plasmid.svg"); out.parent.mkdir(exist_ok=True)
+gd.draw(format="circular", circular=True,               # circular layout
+        pagesize=(800, 800), start=0, end=5000,         # full extent
+        circle_core=0.6)                                # inner radius
+gd.write(str(out), "SVG")                               # SVG avoids the rlPyCairo PNG backend
+
+# embed the rendered PNG via markdown
+from IPython.display import Image
+from IPython.display import SVG
+SVG(filename=str(out))
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+from pathlib import Path
+from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq
+from Bio.SeqFeature import SeqFeature, SimpleLocation
+from Bio.Graphics import GenomeDiagram
+from IPython.display import Image
+
+record = SeqRecord(Seq("N" * 5000), id="plasmid")
+gene_spans = [(  50,  900, +1, "geneA", GREEN),
+              (1100, 1900, +1, "geneB", BLUE),
+              (2200, 3000, -1, "geneC", AMBER),
+              (3200, 3900, +1, "geneD", RED),
+              (4100, 4900, -1, "geneE", PURPLE)]
+for s, e, strand, name, _ in gene_spans:
+    record.features.append(SeqFeature(
+        SimpleLocation(s, e, strand=strand),
+        type="gene", qualifiers={"label": [name]}))
+
+gd  = GenomeDiagram.Diagram("toy plasmid")
+trk = gd.new_track(1, name="genes", greytrack=False,
+                   scale_largetick_interval=1000)
+fs  = trk.new_set()
+for (s, e, strand, name, hue), feat in zip(gene_spans, record.features):
+    fs.add_feature(feat, color=hue, label=True,
+                   sigil="ARROW", label_size=10, label_angle=0)
+
+out = Path("figures/biopy_plasmid.svg"); out.parent.mkdir(exist_ok=True)
+gd.draw(format="circular", circular=True,
+        pagesize=(800, 800), start=0, end=5000,
+        circle_core=0.6)
+gd.write(str(out), "SVG")
+from IPython.display import SVG
+SVG(filename=str(out))
+```
+:::
+::::
+
+
+<!-- slide 83 -->
+## Biopython · Step 4 — Linear Gene Track {.smaller}
+
+[Biopython · build]{.eyebrow}
+
+### 4 · Same features, `format="linear"`, ARROW sigils
+
+Switch `format="circular"` to `"linear"` and the same `Diagram` redraws as a
+horizontal gene track. Arrows now point in the strand direction — forward
+genes right, reverse genes left. Same data, same colours, different geometry.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="24-31"}
+from pathlib import Path                                # cross-platform paths
+from Bio.SeqRecord import SeqRecord; from Bio.Seq import Seq
+from Bio.SeqFeature import SeqFeature, SimpleLocation
+from Bio.Graphics import GenomeDiagram                  # the diagram builder
+
+# same 5 gene features as the circular step
+record = SeqRecord(Seq("N" * 5000), id="plasmid")
+gene_spans = [(  50,  900, +1, "geneA", GREEN),
+              (1100, 1900, +1, "geneB", BLUE),
+              (2200, 3000, -1, "geneC", AMBER),
+              (3200, 3900, +1, "geneD", RED),
+              (4100, 4900, -1, "geneE", PURPLE)]
+for s, e, strand, name, _ in gene_spans:
+    record.features.append(SeqFeature(
+        SimpleLocation(s, e, strand=strand),
+        type="gene", qualifiers={"label": [name]}))
+
+gd  = GenomeDiagram.Diagram("toy genome")               # new top-level container
+trk = gd.new_track(1, name="genes", greytrack=False,    # one horizontal track
+                   scale_largetick_interval=1000)
+fs  = trk.new_set()
+for (s, e, strand, name, hue), feat in zip(gene_spans, record.features):
+    fs.add_feature(feat, color=hue, label=True,
+                   sigil="ARROW", label_size=9, label_angle=30,
+                   arrowshaft_height=0.7)               # chunky strand arrows
+
+# CALL — linear layout, wider than tall
+out = Path("figures/biopy_linear.svg"); out.parent.mkdir(exist_ok=True)
+gd.draw(format="linear", orientation="landscape",       # horizontal track
+        pagesize=(900, 220), start=0, end=5000,         # full extent
+        fragments=1)                                    # one row, no wrap
+gd.write(str(out), "SVG")
+
+from IPython.display import Image
+from IPython.display import SVG
+SVG(filename=str(out))
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+from pathlib import Path
+from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq
+from Bio.SeqFeature import SeqFeature, SimpleLocation
+from Bio.Graphics import GenomeDiagram
+from IPython.display import Image
+
+record = SeqRecord(Seq("N" * 5000), id="plasmid")
+gene_spans = [(  50,  900, +1, "geneA", GREEN),
+              (1100, 1900, +1, "geneB", BLUE),
+              (2200, 3000, -1, "geneC", AMBER),
+              (3200, 3900, +1, "geneD", RED),
+              (4100, 4900, -1, "geneE", PURPLE)]
+for s, e, strand, name, _ in gene_spans:
+    record.features.append(SeqFeature(
+        SimpleLocation(s, e, strand=strand),
+        type="gene", qualifiers={"label": [name]}))
+
+gd  = GenomeDiagram.Diagram("toy genome")
+trk = gd.new_track(1, name="genes", greytrack=False,
+                   scale_largetick_interval=1000)
+fs  = trk.new_set()
+for (s, e, strand, name, hue), feat in zip(gene_spans, record.features):
+    fs.add_feature(feat, color=hue, label=True,
+                   sigil="ARROW", label_size=9, label_angle=30,
+                   arrowshaft_height=0.7)
+
+out = Path("figures/biopy_linear.svg"); out.parent.mkdir(exist_ok=True)
+gd.draw(format="linear", orientation="landscape",
+        pagesize=(900, 220), start=0, end=5000,
+        fragments=1)
+gd.write(str(out), "SVG")
+from IPython.display import SVG
+SVG(filename=str(out))
+```
+:::
+::::
+
+
+<!-- slide 84 -->
+## Biopython · Takeaway {.smaller}
+
+[Biopython · recap]{.eyebrow}
+
+### The plumbing for trees + feature diagrams
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **`Phylo.read(file, format)`** parses Newick / Nexus / PhyloXML; **`Phylo.draw`**
+   lays the tree on any matplotlib `Axes`.
+2. **`clade.color = "#hex"`** colours subtrees in-place — `Phylo.draw` picks it up.
+3. **`GenomeDiagram`** stacks `Diagram → Track → FeatureSet`; one `Diagram` can
+   render circular **and** linear without rebuilding the features.
+4. **`sigil="ARROW"`** + strand sign gives canonical gene-track arrows.
+5. Output is **PNG / SVG / PDF directly** — no matplotlib needed under the hood.
+:::
+
+**Compare with:** pair **`Phylo`** with **Toytree** (section 3) — Phylo for IO,
+Toytree for prettier display. Pair **`Bio.Graphics`** with
+**`dna_features_viewer`** (section 7) — Bio.Graphics for plasmid-style circular
+publication output, dna_features_viewer for matplotlib-native gene maps you can
+stack with the rest of your figure. Biopython is the plumbing; the other
+libraries are the polish.

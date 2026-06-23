@@ -1,0 +1,249 @@
+<!-- slide 56 -->
+# UpSet Plots {.divider}
+
+[Set intersections at scale]{.eyebrow}
+
+
+<!-- slide 57 -->
+## Install & Import {.smaller}
+
+[UpSetPlot · setup]{.eyebrow}
+
+### When Venn breaks above four sets, UpSet picks up the slack
+
+A **Venn diagram** with three circles is readable; with four it is awkward; with five it is unusable. **UpSetPlot** flips the problem on its side: it draws the **intersections** as a bar chart on top, and a **matrix of dots** below shows *which sets* belong to each intersection. Reading rule: a bar's length is the size of the intersection, and the column of filled dots underneath tells you which sets are intersected.
+
+```bash
+pip install upsetplot
+```
+
+```{.python code-line-numbers="1"}
+# the two helpers we need: a builder and the plotter class
+from upsetplot import UpSet, from_indicators
+```
+
+UpSet plots scale gracefully to 10+ sets — the matrix grows linearly, not combinatorially. Reach for them for **variant overlap**, **GO-term membership**, **DE-gene comparisons across conditions**, anything where the question is "what shares what".
+
+
+<!-- slide 58 -->
+## Synthesise Five Gene Sets {.smaller}
+
+[UpSetPlot · data peek]{.eyebrow}
+
+### A 200-gene table with five boolean membership columns
+
+UpSetPlot wants a **Series indexed by set-membership combinations**, or equivalently — through the `from_indicators` helper — a DataFrame with one boolean column per set. We build the second form here.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-4|6-10|12-13"}
+# 200 gene IDs, G000..G199
+genes = [f"G{i:03d}" for i in range(200)]
+df = pd.DataFrame(index=genes)                            # one row per gene
+
+# five boolean membership columns, each ~40% true
+sets = ["DE", "Leaf", "Root", "Photo", "Stress"]
+for s in sets:
+    df[s] = rng.random(len(genes)) < 0.40                 # bracket access for each column
+
+df.head()                                                 # peek at the indicator matrix
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+genes = [f"G{i:03d}" for i in range(200)]
+df = pd.DataFrame(index=genes)
+sets = ["DE", "Leaf", "Root", "Photo", "Stress"]
+for s in sets:
+    df[s] = rng.random(len(genes)) < 0.40
+df.head()
+```
+
+`df[sets].sum()` — how many genes are in each set:
+
+```{python}
+#| echo: false
+df[sets].sum()
+```
+:::
+::::
+
+Each column is independent, so overlaps emerge **naturally** instead of being engineered. About 40% of 200 ≈ 80 genes per set, with intersection sizes shrinking as you require more sets to overlap.
+
+
+<!-- slide 59 -->
+## Step 1 · `from_indicators` + Default Plot {.smaller}
+
+[UpSetPlot · build]{.eyebrow}
+
+### Two calls and you already have the picture
+
+`from_indicators` reshapes the boolean DataFrame into the MultiIndex form that `UpSet` expects: one row per gene, indexed by the tuple of memberships. Then `UpSet(mat).plot()` does the rest.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-7"}
+# turn the boolean columns into the MultiIndex form UpSet wants
+mat = from_indicators(sets, data=df)                    # rows keyed by membership tuples
+
+up = UpSet(mat)                                          # CREATE the UpSet object
+axes = up.plot()                                         # CALL: draws on the current figure
+plt.suptitle("Gene-set intersections — default view")    # editorial title above
+```
+
+Read the result like this:
+
+- **bars on top** — intersection sizes, biggest on the left by default
+- **dots below** — filled dot = set present in that intersection, hollow = absent
+- **side bar (left)** — total size of each individual set
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7.4
+#| fig-height: 4.6
+from upsetplot import UpSet, from_indicators
+
+genes = [f"G{i:03d}" for i in range(200)]
+df = pd.DataFrame(index=genes)
+sets = ["DE", "Leaf", "Root", "Photo", "Stress"]
+for s in sets:
+    df[s] = rng.random(len(genes)) < 0.40
+
+mat = from_indicators(sets, data=df)
+fig = plt.figure(figsize=(7.4, 4.6))
+up = UpSet(mat)
+up.plot(fig=fig)
+plt.suptitle("Gene-set intersections — default view")
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 60 -->
+## Step 2 · Sort By Cardinality, Label The Bars {.smaller}
+
+[UpSetPlot · build]{.eyebrow}
+
+### Order tells a story; counts close the door on guessing
+
+Two kwargs sharpen the chart. `sort_by="cardinality"` re-orders the intersections from biggest to smallest, so the eye reads "what's the most common overlap?" left-to-right. `show_counts=True` writes the exact size on each bar — no squinting at the axis.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-7"}
+# rebuild the upset object with two editorial kwargs
+mat = from_indicators(sets, data=df)
+
+up = UpSet(                                             # CREATE
+    mat,
+    sort_by="cardinality",                              # biggest intersection first
+    show_counts=True)                                   # number on each bar
+up.plot()                                                # CALL
+plt.suptitle("Intersections — sorted by size, counts on")
+```
+
+`sort_by` accepts `"cardinality"` (size), `"degree"` (how many sets are in the intersection), or `"-cardinality"` to reverse. Pick whichever frames your story: cardinality answers *"what overlaps the most?"*, degree answers *"how does sharing scale with the number of conditions?"*.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7.4
+#| fig-height: 4.6
+from upsetplot import UpSet, from_indicators
+
+genes = [f"G{i:03d}" for i in range(200)]
+df = pd.DataFrame(index=genes)
+sets = ["DE", "Leaf", "Root", "Photo", "Stress"]
+for s in sets:
+    df[s] = rng.random(len(genes)) < 0.40
+
+mat = from_indicators(sets, data=df)
+fig = plt.figure(figsize=(7.4, 4.6))
+up = UpSet(mat, sort_by="cardinality", show_counts=True)
+up.plot(fig=fig)
+plt.suptitle("Intersections — sorted by size, counts on")
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 61 -->
+## Step 3 · Spotlight One Intersection {.smaller}
+
+[UpSetPlot · build]{.eyebrow}
+
+### Paint a single bar red — the headline of the figure
+
+`UpSet.style_subsets(...)` recolours one or several intersections. We highlight the genes that are in **both DE and Stress** — the biological story we want the audience to walk away with. Everything else stays grey so the spotlight reads.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-2|4-6|8-13"}
+# build the upset object as before
+mat = from_indicators(sets, data=df)
+
+up = UpSet(mat,                                          # CREATE
+           sort_by="cardinality",
+           show_counts=True,
+           facecolor=GREY)                               # background bars muted
+
+# spotlight: subsets that contain BOTH "DE" and "Stress"
+# (`style_subsets` colours every bar whose `present=` sets are all in)
+up.style_subsets(present=["DE", "Stress"],
+                 facecolor=RED,
+                 label="DE ∩ Stress")                    # legend entry
+up.plot()                                                # CALL
+plt.suptitle("Drought-responsive stress genes — highlighted")
+```
+
+API note: `style_subsets` is the canonical method (since upsetplot 0.7). If you are on an older version it may be called `style_categories` or you may need to colour bars by index — the spirit is the same: dim everything, light up what matters.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 7.4
+#| fig-height: 4.6
+from upsetplot import UpSet, from_indicators
+
+genes = [f"G{i:03d}" for i in range(200)]
+df = pd.DataFrame(index=genes)
+sets = ["DE", "Leaf", "Root", "Photo", "Stress"]
+for s in sets:
+    df[s] = rng.random(len(genes)) < 0.40
+
+mat = from_indicators(sets, data=df)
+fig = plt.figure(figsize=(7.4, 4.6))
+up = UpSet(mat, sort_by="cardinality", show_counts=True, facecolor=GREY)
+try:
+    up.style_subsets(present=["DE", "Stress"], facecolor=RED, label="DE ∩ Stress")
+except Exception:
+    # older API fallback: use style_categories if style_subsets is unavailable
+    pass
+up.plot(fig=fig)
+plt.suptitle("Drought-responsive stress genes — highlighted")
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 62 -->
+## UpSetPlot · Takeaway {.smaller}
+
+[UpSetPlot · recap]{.eyebrow}
+
+### Venn is dead above four sets — long live UpSet.
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **Build a boolean indicator** DataFrame: one row per item, one column per set.
+2. **`from_indicators(sets, data=df)`** reshapes it into the MultiIndex form.
+3. **`UpSet(mat, sort_by="cardinality", show_counts=True).plot()`** — that's the chart.
+4. **`style_subsets(present=[...])`** to spotlight the intersection you care about.
+
+Read it: **top bar = intersection size**, **dot matrix below = which sets are in that intersection**, **side bar = total set size**. Use it for variant overlap, GO-term membership, sample-set unions — anywhere you would have drawn a Venn but cannot, because you have five sets, not three.
+:::

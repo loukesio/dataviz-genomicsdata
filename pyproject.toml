@@ -34,6 +34,12 @@ dependencies = [
     "holoviews",
     "scikit-image",
     "colorcet",
+    "pyMSAviz",
+    "dash-bio",
+    "pyGenomeTracks",
+    "dna_features_viewer",
+    "jcvi",
+    "upsetplot",
 ]
 
 [tool.setuptools.packages.find]

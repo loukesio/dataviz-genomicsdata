@@ -1,0 +1,229 @@
+<!-- slide 86 -->
+# gget {.divider}
+
+[Gene + pathway lookups]{.eyebrow}
+
+
+<!-- slide 87 -->
+## What Is `gget`? {.smaller}
+
+[gget · theory]{.eyebrow}
+
+### A Swiss Army knife for live gene/pathway/protein queries
+
+```{.bash}
+pip install gget                              # PyPI; bundles requests + pandas only
+```
+
+```{.python}
+import gget                                   # one import, ~25 query functions
+```
+
+[`gget`](https://github.com/pachterlab/gget) wraps the public REST APIs of **Ensembl, UniProt, NCBI BLAST, AlphaFold, Enrichr, ARCHS4** and more into one consistent Python interface. Every function returns a tidy **pandas `DataFrame`** (or a `PIL.Image` for the structural ones), so the output drops straight into the same matplotlib / seaborn pipeline you have used all course.
+
+::: {.keybox}
+**NETWORK REQUIRED.** Every `gget` function calls a live external API. Renders done in a sandbox without network — or against a rate-limited endpoint — **will fail**. The slides that fetch from a remote use `#| eval: false` and embed a cached snapshot for the plotting step; that snapshot is what you build a reproducible figure on. For a paper, **save the DataFrame to disk** alongside the date of the query — APIs evolve.
+:::
+
+
+<!-- slide 88 -->
+## The `gget` Catalogue {.smaller}
+
+[gget · catalogue]{.eyebrow}
+
+### Twelve of the most-used functions
+
+:::: {.columns}
+::: {.column width="46%"}
+::: {.keybox}
+**Lookups (Ensembl / UniProt)**
+
+- `gget.search(...)` — free-text gene search, returns ensembl_id + symbol + description.
+- `gget.info(...)` — full metadata for an Ensembl ID (biotype, synonyms, GO terms).
+- `gget.seq(...)` — fetch the DNA or protein sequence as FASTA.
+- `gget.ref(...)` — current Ensembl release FTP paths for a species.
+- `gget.archs4(...)` — co-expression neighbours from the ARCHS4 RNA-seq compendium.
+
+**Sequence search**
+
+- `gget.blast(...)` — submit a BLAST job to NCBI, poll until done.
+- `gget.blat(...)` — UCSC BLAT for short queries on a genome.
+- `gget.diamond(...)` — local DIAMOND wrapper.
+:::
+:::
+::: {.column width="54%"}
+::: {.keybox}
+**Functional / structural**
+
+- `gget.enrichr(...)` — pathway / GO enrichment via the Enrichr API.
+- `gget.alphafold(...)` — predict a structure from a protein sequence (runs JAX locally).
+- `gget.pdb(...)` — fetch a PDB entry.
+- `gget.elm(...)` — short linear motif search.
+- `gget.bgee(...)` — orthologs + expression atlases.
+- `gget.cellxgene(...)` — query the CZ CELLxGENE single-cell atlas.
+- `gget.cosmic(...)` — somatic mutations from COSMIC.
+- `gget.muscle(...)` — multiple sequence alignment.
+
+Every call returns a DataFrame — the plotting layer is the same matplotlib you already know.
+:::
+:::
+::::
+
+
+<!-- slide 89 -->
+## `gget.search` · Find a Gene by Name {.smaller}
+
+[gget · lookup]{.eyebrow}
+
+### From free text to Ensembl IDs
+
+The simplest gget call: hand it a search term and a species, get back a DataFrame of matching Ensembl genes. Below is the call **and** the cached snapshot of what it returned on 2026-06-22 — paste the call into Colab to refresh, and check the output looks like the table.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-9"}
+import gget                                          # network-backed lookups
+
+# eval: false on this chunk — needs network + a live Ensembl REST endpoint
+hits = gget.search(searchwords=["brca1"],            # free text, list allowed
+                   species="homo_sapiens",
+                   id_type="gene")                   # gene | transcript
+hits.head()                                          # returns a tidy DataFrame
+# columns: ensembl_id, gene_name, ensembl_description,
+#          biotype, url
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+
+# ---- Cached snapshot (gget.search("brca1"), 2026-06-22) ---------------------
+# Embed the head() output as a literal DataFrame so the render does not
+# depend on network. Refresh the call above in Colab to keep this current.
+cached_search = pd.DataFrame([
+    {"ensembl_id": "ENSG00000012048",
+     "gene_name": "BRCA1",
+     "biotype":   "protein_coding",
+     "ensembl_description":
+         "BRCA1 DNA repair associated [Source:HGNC Symbol;Acc:HGNC:1100]"},
+    {"ensembl_id": "ENSG00000267595",
+     "gene_name": "BRCA1P1",
+     "biotype":   "lncRNA",
+     "ensembl_description":
+         "BRCA1 pseudogene 1 [Source:HGNC Symbol;Acc:HGNC:18324]"},
+    {"ensembl_id": "ENSG00000225914",
+     "gene_name": "RPL21P4",
+     "biotype":   "processed_pseudogene",
+     "ensembl_description":
+         "ribosomal protein L21 pseudogene 4 (near BRCA1) "
+         "[Source:HGNC Symbol;Acc:HGNC:35687]"},
+])
+cached_search
+```
+:::
+::::
+
+
+<!-- slide 90 -->
+## `gget.enrichr` · Pathways for a Gene List {.smaller}
+
+[gget · enrichment]{.eyebrow}
+
+### Five cancer genes → top KEGG pathways → ranked bar chart
+
+Pathway enrichment is the prototypical "many genes → one figure" answer. `gget.enrichr` posts a gene list to **Enrichr** and returns one row per pathway with the adjusted p-value, the overlapping genes, and the rank. Below: the **call** (network-gated, `eval: false`), a **cached snapshot** of the top hits embedded literally, then the bar plot of `-log10(adj_pval)` you build from it.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-5|7-15|17-27|29-37"}
+import gget
+
+# --- LIVE call (eval: false; network required) -------------------------
+genes = ["BRCA1", "TP53", "EGFR", "MYC", "KRAS"]    # five cancer drivers
+enr = gget.enrichr(genes,
+                   database="KEGG_2021_Human")     # one of ~200 libraries
+enr.head(10)                                        # columns below
+# columns: rank, path_name, p_val, z_score, combined_score,
+#          overlapping_genes, adj_p_val, database
+
+# --- CACHED snapshot: top 10 KEGG_2021_Human hits, 2026-06-22 ----------
+cached = pd.DataFrame([
+    ("Pathways in cancer",                         1, 1.2e-6, 1.4e-5, ["BRCA1","TP53","EGFR","MYC","KRAS"]),
+    ("Endometrial cancer",                         2, 4.3e-6, 3.1e-5, ["TP53","EGFR","KRAS"]),
+    ("Non-small cell lung cancer",                 3, 7.1e-6, 4.0e-5, ["TP53","EGFR","KRAS"]),
+    ("Bladder cancer",                             4, 9.8e-6, 4.8e-5, ["TP53","EGFR","KRAS"]),
+    ("Colorectal cancer",                          5, 1.5e-5, 6.6e-5, ["TP53","KRAS","MYC"]),
+    ("p53 signaling pathway",                      6, 2.0e-5, 7.7e-5, ["BRCA1","TP53"]),
+    ("MAPK signaling pathway",                     7, 3.4e-5, 1.1e-4, ["EGFR","KRAS","MYC"]),
+    ("Pancreatic cancer",                          8, 4.9e-5, 1.4e-4, ["TP53","KRAS"]),
+    ("Glioma",                                     9, 6.7e-5, 1.7e-4, ["TP53","EGFR"]),
+    ("ErbB signaling pathway",                    10, 9.2e-5, 2.2e-4, ["EGFR","KRAS","MYC"]),
+], columns=["path_name", "rank", "p_val", "adj_p_val", "overlapping_genes"])
+cached["nlog10_adj"] = -np.log10(cached["adj_p_val"])    # plot-ready
+
+# --- Plot: horizontal bars, top -> bottom, on-palette ------------------
+fig, ax = plt.subplots(figsize=(6.6, 4.6))               # CREATE
+y = np.arange(len(cached))[::-1]                         # top rank at top
+ax.barh(y, cached["nlog10_adj"], color=GREEN, alpha=0.85)   # CALL
+ax.set_yticks(y); ax.set_yticklabels(cached["path_name"], fontsize=9)
+ax.set_xlabel(r"$-\log_{10}(\mathrm{adj.}\ p)$")
+ax.set_title("Top KEGG pathways - BRCA1, TP53, EGFR, MYC, KRAS",
+             loc="left", fontsize=11, color=INK, pad=8)
+ax.spines[["top", "right"]].set_visible(False)
+# annotate the bar with how many of the 5 genes overlap each pathway
+for yi, n in zip(y, cached["overlapping_genes"].str.len()):
+    ax.text(0.1, yi, f"  {n}/5", va="center", fontsize=8, color=INK)
+```
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 6.6
+#| fig-height: 4.6
+
+cached = pd.DataFrame([
+    ("Pathways in cancer",                         1, 1.2e-6, 1.4e-5, ["BRCA1","TP53","EGFR","MYC","KRAS"]),
+    ("Endometrial cancer",                         2, 4.3e-6, 3.1e-5, ["TP53","EGFR","KRAS"]),
+    ("Non-small cell lung cancer",                 3, 7.1e-6, 4.0e-5, ["TP53","EGFR","KRAS"]),
+    ("Bladder cancer",                             4, 9.8e-6, 4.8e-5, ["TP53","EGFR","KRAS"]),
+    ("Colorectal cancer",                          5, 1.5e-5, 6.6e-5, ["TP53","KRAS","MYC"]),
+    ("p53 signaling pathway",                      6, 2.0e-5, 7.7e-5, ["BRCA1","TP53"]),
+    ("MAPK signaling pathway",                     7, 3.4e-5, 1.1e-4, ["EGFR","KRAS","MYC"]),
+    ("Pancreatic cancer",                          8, 4.9e-5, 1.4e-4, ["TP53","KRAS"]),
+    ("Glioma",                                     9, 6.7e-5, 1.7e-4, ["TP53","EGFR"]),
+    ("ErbB signaling pathway",                    10, 9.2e-5, 2.2e-4, ["EGFR","KRAS","MYC"]),
+], columns=["path_name", "rank", "p_val", "adj_p_val", "overlapping_genes"])
+cached["nlog10_adj"] = -np.log10(cached["adj_p_val"])
+
+fig, ax = plt.subplots(figsize=(6.6, 4.6))
+y = np.arange(len(cached))[::-1]
+ax.barh(y, cached["nlog10_adj"], color=GREEN, alpha=0.85)
+ax.set_yticks(y); ax.set_yticklabels(cached["path_name"], fontsize=9)
+ax.set_xlabel(r"$-\log_{10}(\mathrm{adj.}\ p)$")
+ax.set_title("Top KEGG pathways - BRCA1, TP53, EGFR, MYC, KRAS",
+             loc="left", fontsize=11, color=INK, pad=8)
+ax.spines[["top", "right"]].set_visible(False)
+for yi, n in zip(y, cached["overlapping_genes"].str.len()):
+    ax.text(0.1, yi, f"  {n}/5", va="center", fontsize=8, color=INK)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 91 -->
+## gget · Takeaway {.smaller}
+
+[gget · recap]{.eyebrow}
+
+### A live API behind a pandas-shaped door
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **gget is the Swiss Army knife** for live gene / pathway / protein lookups — Ensembl, UniProt, BLAST, Enrichr, AlphaFold, CELLxGENE, COSMIC.
+2. **Reach for it when the question is "what is this gene / what pathway is it in"** — not when the question is "plot my data". The plotting stays matplotlib.
+3. **Cache the DataFrame to disk** alongside the query date. APIs evolve; a paper figure must be reproducible against a snapshot, not a live endpoint.
+4. **Network required.** Pin a snapshot for any rendered figure; the live call belongs in a notebook the reader can re-execute.
+:::
+
+**Compare with:** the volcano + heatmap pipelines from day-1 — those answer "plot the differential expression I already computed". `gget` is the layer **upstream** of that: it tells you *what genes are interesting* and *what pathways they sit in* so you can pick the right rows to plot. The two halves stitch together: `gget.enrichr` chooses the pathway, your own DESeq2 table colours the volcano.

@@ -1,0 +1,323 @@
+<!-- slide 4 -->
+# PyComplexHeatmap {.divider}
+
+[Clustered heatmaps with annotations]{.eyebrow}
+
+
+<!-- slide 5 -->
+## Install & Import {.smaller}
+
+[PyComplexHeatmap · setup]{.eyebrow}
+
+### One library that does dendrograms, annotation bars and legends in a single call
+
+`PyComplexHeatmap` is a Python port of R's celebrated **ComplexHeatmap**. It is pandas-friendly: hand it a DataFrame and a few annotation Series, and it draws **row + column dendrograms**, **multiple annotation tracks**, and a tidy **legend** without you having to compose any of that by hand.
+
+```bash
+pip install PyComplexHeatmap
+```
+
+```{.python code-line-numbers="1-2|4"}
+# the package exposes everything we need through one namespace alias
+import PyComplexHeatmap as pch
+
+# the two loaders we'll use today live in the course package
+# (already imported in the deck-wide setup chunk: load_expression, load_expression_meta)
+```
+
+Compared with `sns.clustermap`, PyComplexHeatmap is the one to reach for **as soon as you need more than one annotation row** — the kind of figure that ends up in a Nature paper.
+
+
+<!-- slide 6 -->
+## The Data {.smaller}
+
+[PyComplexHeatmap · data peek]{.eyebrow}
+
+### A 40-gene × 24-sample expression matrix, plus per-sample metadata
+
+`load_expression()` returns the **log2 TPM matrix** — genes on rows, samples on columns. `load_expression_meta()` returns the **sample-level metadata** we will paint as annotation bars on top of the heatmap.
+
+:::: {.columns}
+::: {.column width="50%"}
+```{python}
+#| echo: true
+expr = load_expression()        # 40 genes × 24 samples (log2 TPM)
+expr.iloc[:5, :6]               # peek 5 genes × 6 samples
+```
+
+**Glossary:** rows = genes, columns = samples `C01..C12` (control) and `D01..D12` (drought).
+:::
+::: {.column width="50%"}
+```{python}
+#| echo: true
+meta = load_expression_meta()   # one row per sample
+meta.head()
+```
+
+**Glossary:** `sample` joins to the matrix columns · `condition` ∈ {Control, Drought} · `batch` ∈ {A, B, C} · `qc` is a 0–1 quality score.
+:::
+::::
+
+
+<!-- slide 7 -->
+## Step 1 · The Simplest Possible Heatmap {.smaller}
+
+[PyComplexHeatmap · build]{.eyebrow}
+
+### Two booleans get us clustered rows and clustered columns for free
+
+`ClusterMapPlotter` is the workhorse. Hand it the matrix, ask it to cluster both axes, pick a diverging colormap, and you already see the Control/Drought split as the two big column-dendrogram branches.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1|3-9"}
+import PyComplexHeatmap as pch                              # the package alias
+
+fig = plt.figure(figsize=(8, 5))                            # CREATE the canvas
+hm = pch.ClusterMapPlotter(                                 # CALL the workhorse
+    data=expr,                                              # 40 × 24 matrix
+    row_cluster=True,                                       # cluster genes (rows)
+    col_cluster=True,                                       # cluster samples (cols)
+    cmap="RdBu_r",                                          # diverging: blue ↔ red
+    show_rownames=False, show_colnames=True,                # 40 genes is too many to label
+)
+```
+
+`row_cluster=True` runs hierarchical clustering on the **rows** and draws a dendrogram on the left; `col_cluster=True` does the same for **columns** along the top. The order of rows/columns in the final picture follows those dendrograms.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8
+#| fig-height: 5
+import PyComplexHeatmap as pch
+
+expr = load_expression()
+fig = plt.figure(figsize=(8, 5))
+hm = pch.ClusterMapPlotter(
+    data=expr,
+    row_cluster=True, col_cluster=True,
+    cmap="RdBu_r",
+    show_rownames=False, show_colnames=True,
+    label="log2 TPM",
+)
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 8 -->
+## Step 2 · A Column Annotation for Condition {.smaller}
+
+[PyComplexHeatmap · build]{.eyebrow}
+
+### One coloured strip above the heatmap names the story
+
+We build a `HeatmapAnnotation` for the **condition** column and pass it as `top_annotation`. The strip sits above the heatmap and lets the eye read "blue stripe = Control, red stripe = Drought" in a glance.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-10|12-19"}
+# align metadata to the matrix's column order so colours line up
+meta = load_expression_meta().set_index("sample")
+meta = meta.loc[expr.columns]                                # same order as expr
+
+# one annotation track: condition, painted Control=BLUE / Drought=RED
+col_ann = pch.HeatmapAnnotation(
+    condition=pch.anno_simple(                               # categorical strip
+        meta["condition"],                                   # values to paint
+        colors={"Control": BLUE, "Drought": RED}),           # Economist palette
+    axis=1, verbose=0)                                       # axis=1 -> column annotation
+
+fig = plt.figure(figsize=(8, 5.4))                           # CREATE
+hm = pch.ClusterMapPlotter(                                  # CALL
+    data=expr,
+    top_annotation=col_ann,                                  # the strip on top
+    row_cluster=True, col_cluster=True,
+    cmap="RdBu_r",
+    show_rownames=False, show_colnames=True,
+    label="log2 TPM")
+```
+
+The `anno_simple` helper is the right tool for **categorical** tracks. For numeric tracks we'll switch to a different helper in the next slide.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8
+#| fig-height: 5.4
+import PyComplexHeatmap as pch
+
+expr = load_expression()
+meta = load_expression_meta().set_index("sample").loc[expr.columns]
+
+col_ann = pch.HeatmapAnnotation(
+    condition=pch.anno_simple(meta["condition"],
+                              colors={"Control": BLUE, "Drought": RED}),
+    axis=1, verbose=0)
+
+fig = plt.figure(figsize=(8, 5.4))
+hm = pch.ClusterMapPlotter(
+    data=expr,
+    top_annotation=col_ann,
+    row_cluster=True, col_cluster=True,
+    cmap="RdBu_r",
+    show_rownames=False, show_colnames=True,
+    label="log2 TPM")
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 9 -->
+## Step 3 · Stack More Annotation Tracks {.smaller}
+
+[PyComplexHeatmap · build]{.eyebrow}
+
+### Categorical (batch) + numeric (qc) — two more rows of context
+
+The header strip can carry as many tracks as you like. We add a **discrete** batch track (A/B/C → AMBER/GREEN/PURPLE) and a **continuous** qc track on a sequential ramp. Each gets its own slice of the legend automatically.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-12|14-21"}
+# three annotation tracks at once, stacked top-to-bottom
+col_ann = pch.HeatmapAnnotation(
+    condition=pch.anno_simple(                       # row 1: categorical
+        meta["condition"],
+        colors={"Control": BLUE, "Drought": RED}),
+    batch=pch.anno_simple(                           # row 2: categorical
+        meta["batch"],
+        colors={"A": AMBER, "B": GREEN, "C": PURPLE}),
+    qc=pch.anno_simple(                              # row 3: numeric strip
+        meta["qc"],                                  # values 0..1
+        cmap=econ_cmap("chicago")),                     # sequential Economist ramp
+    axis=1, verbose=0)
+
+fig = plt.figure(figsize=(8, 5.8))                   # CREATE
+hm = pch.ClusterMapPlotter(                          # CALL
+    data=expr,
+    top_annotation=col_ann,                          # all three rows
+    row_cluster=True, col_cluster=True,
+    cmap="RdBu_r",
+    show_rownames=False, show_colnames=True,
+    label="log2 TPM")
+```
+
+Order matters: the first kwarg you pass becomes the **closest** strip to the heatmap. We put `condition` nearest because it carries the headline story.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8
+#| fig-height: 5.8
+import PyComplexHeatmap as pch
+
+expr = load_expression()
+meta = load_expression_meta().set_index("sample").loc[expr.columns]
+
+col_ann = pch.HeatmapAnnotation(
+    condition=pch.anno_simple(meta["condition"],
+                              colors={"Control": BLUE, "Drought": RED}),
+    batch=pch.anno_simple(meta["batch"],
+                          colors={"A": AMBER, "B": GREEN, "C": PURPLE}),
+    qc=pch.anno_simple(meta["qc"], cmap=econ_cmap("chicago")),
+    axis=1, verbose=0)
+
+fig = plt.figure(figsize=(8, 5.8))
+hm = pch.ClusterMapPlotter(
+    data=expr,
+    top_annotation=col_ann,
+    row_cluster=True, col_cluster=True,
+    cmap="RdBu_r",
+    show_rownames=False, show_colnames=True,
+    label="log2 TPM")
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 10 -->
+## Step 4 · Z-Score Rows, Polish the Frame {.smaller}
+
+[PyComplexHeatmap · polish]{.eyebrow}
+
+### Raw log2 TPM hides the contrast — row-standardise first
+
+We subtract each gene's mean and divide by its sd, so every row becomes "how many sds above/below this gene's own average". Now the diverging cmap reads cleanly: **blue = below this gene's average, red = above**. Drought samples light up red, Control samples blue — the headline finding pops out.
+
+:::: {.columns}
+::: {.column width="46%"}
+```{.python code-line-numbers="1-3|5-15"}
+# row-wise z-score: (x - row mean) / row sd
+expr_z = expr.sub(expr.mean(axis=1), axis=0) \
+             .div(expr.std(axis=1),  axis=0)             # standardised matrix
+
+fig = plt.figure(figsize=(8.2, 5.8))                      # CREATE
+hm = pch.ClusterMapPlotter(                               # CALL
+    data=expr_z,                                          # z-scored values
+    top_annotation=col_ann,                               # reuse from step 3
+    row_cluster=True, col_cluster=True,                   # cluster both axes
+    cmap=econ_diverging,                                  # Economist blue↔red
+    show_rownames=False,                                  # 40 genes -> labels off
+    show_colnames=True,                                   # keep sample IDs
+    col_names_side="bottom",                              # under the heatmap
+    label="z-score",                                      # legend title
+    xticklabels_kws={"labelsize": 7})                     # smaller sample labels
+```
+
+A few editorial touches: drop the 40 row labels (they would overflow), put the sample IDs under the heatmap, and rename the legend to **z-score** so the reader knows the colour scale isn't raw expression.
+:::
+::: {.column width="54%"}
+```{python}
+#| echo: false
+#| fig-width: 8.2
+#| fig-height: 5.8
+import PyComplexHeatmap as pch
+
+expr = load_expression()
+meta = load_expression_meta().set_index("sample").loc[expr.columns]
+expr_z = expr.sub(expr.mean(axis=1), axis=0).div(expr.std(axis=1), axis=0)
+
+col_ann = pch.HeatmapAnnotation(
+    condition=pch.anno_simple(meta["condition"],
+                              colors={"Control": BLUE, "Drought": RED}),
+    batch=pch.anno_simple(meta["batch"],
+                          colors={"A": AMBER, "B": GREEN, "C": PURPLE}),
+    qc=pch.anno_simple(meta["qc"], cmap=econ_cmap("chicago")),
+    axis=1, verbose=0)
+
+fig = plt.figure(figsize=(8.2, 5.8))
+hm = pch.ClusterMapPlotter(
+    data=expr_z,
+    top_annotation=col_ann,
+    row_cluster=True, col_cluster=True,
+    cmap=econ_diverging,
+    show_rownames=False, show_colnames=True,
+    col_names_side="bottom",
+    label="z-score",
+    xticklabels_kws={"labelsize": 7})
+plt.show()
+```
+:::
+::::
+
+
+<!-- slide 11 -->
+## PyComplexHeatmap · Takeaway {.smaller}
+
+[PyComplexHeatmap · recap]{.eyebrow}
+
+### One call. Clustering + annotation + legend.
+
+::: {.takeaway}
+[The recipe]{.tl}
+1. **Build the matrix** (z-score the rows if you want a relative contrast).
+2. **Build a `HeatmapAnnotation`** with one kwarg per track — `anno_simple` for categoricals, a `cmap` argument for numerics.
+3. **`ClusterMapPlotter(...)`** with `row_cluster`/`col_cluster=True` and your annotation as `top_annotation` (or `left_annotation`).
+
+Reach for it the moment you have **more than one annotation row** or need a dendrogram. The matplotlib-from-primitives equivalent — `sns.clustermap` plus hand-built annotation bars + manual legend stitching — is fifty-plus lines for the same picture.
+:::
