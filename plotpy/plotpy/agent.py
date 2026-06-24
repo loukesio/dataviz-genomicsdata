@@ -256,13 +256,19 @@ class PlotAgent:
                 " variables and restructure, but keep the palette + spine rules."
             )
 
+        available = ", ".join(self._injected_names(entry))
+
         system = dedent(
             f"""
             You write Python code that produces a single plot.
 
             - Respond with EXACTLY ONE fenced ```python``` code block and nothing else.
             - The pandas DataFrame is already in scope as `df` — do not redefine it.
-            - The chosen library and palette constants are already imported.
+            - The following names are ALREADY in your namespace; do not import or
+              redefine them, and do NOT reference any name outside this list:
+                {available}
+            - For colours, use the named constants (GREEN, BLUE, AMBER, RED, PURPLE,
+              GREY) or the COURSE_PAL list.  There is no variable called `palette`.
             - Assign the final plot to a variable named `p`.
             - Do NOT call plt.show(), fig.show(), or save the figure.
             - {instruction}
@@ -313,6 +319,37 @@ class PlotAgent:
             )
         return ns["p"]
 
+    _PALETTE_NAMES = (
+        "GREEN BLUE AMBER RED PURPLE GREY INK CREAM LINE MUTED "
+        "COURSE_PAL FONT_FAMILY"
+    ).split()
+    _THEME_HELPERS = [
+        "apply_base_theme_mpl", "apply_base_theme_sns",
+        "apply_base_theme_p9", "apply_base_theme_plotly",
+    ]
+    _LIB_NAMES: dict[str, list[str]] = {
+        "matplotlib": ["plt"],
+        "seaborn":    ["plt", "sns"],
+        "plotly":     ["px", "go"],
+        "plotnine":   ["p9", "ggplot", "aes", "geom_point", "geom_line",
+                       "geom_bar", "geom_boxplot", "geom_smooth", "labs", "theme"],
+    }
+
+    @classmethod
+    def _injected_names(cls, entry: specs.CatalogEntry) -> list[str]:
+        """Names the agent will bind in the exec namespace for ``entry``.
+
+        Used both to build the namespace at exec time AND to enumerate the
+        available names in the generation system prompt — keeping the LLM
+        from inventing variables like ``palette`` that nothing binds.
+        """
+        return (
+            ["df", "np", "pd"]
+            + cls._LIB_NAMES[entry["library"]]
+            + cls._PALETTE_NAMES
+            + cls._THEME_HELPERS
+        )
+
     def _build_namespace(self, entry: specs.CatalogEntry) -> dict[str, Any]:
         """Pre-import the libraries the chosen entry's code expects."""
         ns: dict[str, Any] = {"df": self._df}
@@ -323,16 +360,11 @@ class PlotAgent:
         ns["np"] = np
         ns["pd"] = pd
 
-        # palette + theme helpers
-        for name in (
-            "GREEN BLUE AMBER RED PURPLE GREY INK CREAM LINE MUTED "
-            "COURSE_PAL FONT_FAMILY"
-        ).split():
+        # palette + theme helpers (sourced from specs)
+        for name in self._PALETTE_NAMES:
             ns[name] = getattr(specs, name)
-        ns["apply_base_theme_mpl"] = specs.apply_base_theme_mpl
-        ns["apply_base_theme_sns"] = specs.apply_base_theme_sns
-        ns["apply_base_theme_p9"] = specs.apply_base_theme_p9
-        ns["apply_base_theme_plotly"] = specs.apply_base_theme_plotly
+        for name in self._THEME_HELPERS:
+            ns[name] = getattr(specs, name)
 
         # library-specific imports
         lib = entry["library"]
