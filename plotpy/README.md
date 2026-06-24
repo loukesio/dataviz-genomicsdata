@@ -30,7 +30,7 @@ Provider defaults to [Groq](https://console.groq.com). Swap to OpenAI / Together
 Some plots in `CATALOG` reference optional packages (adjustText, pywaffle, squarify, ternary-diagram, pypalettes, scipy, scikit-learn). Install them on demand:
 
 ```bash
-pip install "git+https://github.com/loukesio/dataviz-genomicsdata.git@Python_2026#subdirectory=plotpy[extras]"
+pip install "plotpy[extras] @ git+https://github.com/loukesio/dataviz-genomicsdata.git@Python_2026#subdirectory=plotpy"
 ```
 
 The agent emits a clean error if a missing import is hit during `exec()`; nothing crashes silently.
@@ -50,7 +50,7 @@ Open [console.groq.com](https://console.groq.com), sign up (no credit card), cli
 ### 1. Install PlotPy — Cell 1
 
 ```python
-!pip install -q "git+https://github.com/loukesio/dataviz-genomicsdata.git@Python_2026#subdirectory=plotpy[extras]"
+!pip install -q "plotpy[extras] @ git+https://github.com/loukesio/dataviz-genomicsdata.git@Python_2026#subdirectory=plotpy"
 ```
 
 The `[extras]` pulls in scikit-learn, pywaffle, squarify, ternary-diagram — a few catalog entries need them.
