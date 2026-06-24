@@ -41,22 +41,24 @@ do the heavy lifting.
 2. Run the setup cell to import the theme + the bundled loaders.
 3. Each cell below is **self-contained** — re-run any cell in any order.
 
-The 12 packages covered:
+The tools covered:
 
-| # | Package | What it does |
+| # | Tool | What it does |
 |---|---|---|
-| 1 | PyComplexHeatmap | Clustered heatmaps with row/col annotations |
-| 2 | pyCirclize | Circular genome plots (also day-2 _06) |
-| 3 | Toytree | Phylogenetic tree drawing |
-| 4 | pyMSAviz | Multiple sequence alignment viewer |
-| 5 | DashBio | Interactive Plotly bio widgets |
-| 6 | pyGenomeTracks | Genome-browser tracks (CLI-driven) |
-| 7 | dna_features_viewer | Gene maps + plasmid features |
-| 8 | JCVI / MCscan | Synteny + comparative graphics |
-| 9 | UpSetPlot | Set intersections |
-| 10 | PyWaffle | Waffle composition charts |
-| 11 | gget | Gene / pathway lookups (network) |
-| 12 | Biopython (Phylo + Graphics) | Tree IO + feature diagrams |
+| 1a | seaborn heatmap | Simple z-scored heatmap, no clustering |
+| 1b | PyComplexHeatmap | Clustered heatmap + row/col annotations |
+| 2 | Toytree | Phylogenetic tree drawing |
+| 3 | pyMSAviz | Multiple sequence alignment viewer |
+| 4 | DashBio | Interactive Plotly bio widgets |
+| 5 | pyGenomeTracks | Genome-browser tracks (CLI-driven) |
+| 6 | dna_features_viewer | Gene maps + plasmid features |
+| 7 | Synteny dot plot | matplotlib version of the JCVI / MCscan view |
+| 8a | UpSetPlot | Set intersections (many sets) |
+| 8b | matplotlib_venn | Venn diagram (2–3 sets) |
+| 9 | PyWaffle | Waffle composition charts |
+| 10 | gget | Gene / pathway lookups (network) |
+| 11a | Bio.Phylo | matplotlib-native phylogenetic tree |
+| 11b | Bio.Graphics | SVG plasmid diagram |
 
 Every line has an inline comment. **Read the comments — they're the lesson.**
 """
@@ -65,7 +67,7 @@ INSTALL = """\
 # One-line install: pulls every package today needs + their dependencies
 # directly from the course GitHub branch. Run this once per Colab session.
 # Coffee-break install — ~2 minutes on a fresh Colab kernel.
-!pip install -q "git+https://github.com/loukesio/dataviz-genomicsdata.git@Python_2026"
+!pip install -q "git+https://github.com/loukesio/dataviz-genomicsdata.git@Python_2026" matplotlib-venn
 """
 
 SETUP = """\
@@ -89,21 +91,45 @@ rng = np.random.default_rng(23)             # day-3 seed
 print("setup OK — palette:", [GREEN, BLUE, AMBER, RED, PURPLE])
 """
 
-PYCOMPLEXHEATMAP_MD = """\
-## 1 · PyComplexHeatmap — Clustered Heatmap with Annotations
+HEATMAP_SIMPLE_MD = """\
+## 1a · Heatmap — Simple (seaborn)
 
-40 genes × 24 samples. Annotation bars for condition, batch, and QC.
-One call replaces a 50-line manual sns.clustermap + annotation rig.
+Start with the bare-bones version: z-score by row, render with
+`sns.heatmap`. No clustering, no annotation — just the matrix.
 """
 
-PYCOMPLEXHEATMAP = """\
+HEATMAP_SIMPLE = """\
+expr = load_expression()                                   # 40 genes x 24 samples
+expr_z = expr.sub(expr.mean(axis=1), axis=0).div(expr.std(axis=1), axis=0)
+
+fig, ax = plt.subplots(figsize=(8, 5))                     # CREATE
+sns.heatmap(                                               # CALL
+    expr_z,                                                # row-z-scored matrix
+    cmap="RdBu_r", center=0,                               # diverging palette centred at 0
+    cbar_kws={"label": "z-score"},
+    xticklabels=True, yticklabels=False,                   # too many genes to label
+    linewidths=0, ax=ax)
+ax.set_title("Expression z-score (40 genes × 24 samples)")
+ax.set_xlabel("sample"); ax.set_ylabel("gene")
+plt.tight_layout(); plt.show()
+"""
+
+HEATMAP_COMPLEX_MD = """\
+## 1b · Heatmap — Complex (PyComplexHeatmap)
+
+Now layer the things PyComplexHeatmap does in one call: row + column
+dendrograms, a three-row sample annotation bar (condition / batch /
+QC), and the diverging colour scale. Same data, paper-ready output.
+"""
+
+HEATMAP_COMPLEX = """\
 import PyComplexHeatmap as pch
 
 expr = load_expression()                                   # 40 genes x 24 samples
 meta = load_expression_meta().set_index("sample").loc[expr.columns]
-expr_z = expr.sub(expr.mean(axis=1), axis=0).div(expr.std(axis=1), axis=0)  # row z-score
+expr_z = expr.sub(expr.mean(axis=1), axis=0).div(expr.std(axis=1), axis=0)
 
-# Column annotation: three rows stacked above the heatmap
+# Three-row column annotation bar above the heatmap
 col_ann = pch.HeatmapAnnotation(
     condition=pch.anno_simple(meta["condition"],
                               colors={"Control": BLUE, "Drought": RED}),
@@ -112,61 +138,16 @@ col_ann = pch.HeatmapAnnotation(
     qc=pch.anno_simple(meta["qc"], cmap=econ_cmap("chicago")),
     axis=1, verbose=0)
 
-fig = plt.figure(figsize=(9, 6))                           # CREATE the canvas
-pch.ClusterMapPlotter(                                     # CALL — clustering + annot + legend in one
-    data=expr_z,                                           # z-scored matrix
-    top_annotation=col_ann,                                # the 3-row annotation
-    row_cluster=True, col_cluster=True,                    # both dendrograms on
-    cmap="RdBu_r",                                         # diverging palette
-    show_rownames=False, show_colnames=True,               # 40 row names = too many
-    label="z-score",                                       # colorbar title
-    verbose=0)
-plt.show()
-"""
-
-CIRCOS_MD = """\
-## 2 · pyCirclize — Manhattan on a Ring (compact recap of day-2 _06)
-
-Same GWAS data, bent into a circle.
-"""
-
-CIRCOS = """\
-from pycirclize import Circos
-
-gwas = load_gwas("height").copy()
-gwas["nlog10p"] = -np.log10(gwas["pval"])
-chrom_len = gwas.groupby("chrom")["pos"].max().to_dict()
-sectors = {f"chr{c}": chrom_len[c] for c in sorted(chrom_len)}
-gw_thresh = -np.log10(5e-8)
-
-circos = Circos(sectors, space=2)                          # CREATE
-for sector in circos.sectors:                              # circos.sectors is a list
-    name = sector.name
-    sector.text(name, r=108, size=8, color=INK)
-    sector.axis(fc=CREAM, ec=INK, lw=0.6)
-    track = sector.add_track((60, 90))                     # data band radii 60-90
-    chrom_num = int(name.replace("chr", ""))
-    df = gwas[gwas["chrom"] == chrom_num]
-    track.scatter(df["pos"].to_numpy(), df["nlog10p"].to_numpy(),
-                  s=1.5, color=GREY, alpha=0.6)
-    hits = df[df["pval"] < 5e-8]
-    if not hits.empty:                                     # most chroms have no hits
-        track.scatter(hits["pos"].to_numpy(), hits["nlog10p"].to_numpy(),
-                      s=10, color=RED, alpha=0.95)
-    track.line([0, chrom_len[chrom_num]], [gw_thresh, gw_thresh],
-               color=RED, lw=0.6, ls="--")
-
-# top-5 hits → chord links across chromosomes
-top5 = gwas.nsmallest(5, "pval").reset_index(drop=True)
-for i in range(len(top5) - 1):
-    a, b = top5.iloc[i], top5.iloc[i + 1]
-    if a["chrom"] == b["chrom"]:
-        continue
-    circos.link((f"chr{a['chrom']}", int(a['pos']) - 1, int(a['pos']) + 1),
-                (f"chr{b['chrom']}", int(b['pos']) - 1, int(b['pos']) + 1),
-                color=PURPLE, alpha=0.55)
-
-fig = circos.plotfig(figsize=(7, 7))                       # CALL
+# CREATE — ClusterMapPlotter draws into the *current* matplotlib figure;
+# size it before calling, then plt.show() to flush it inline.
+plt.figure(figsize=(9, 6))
+pch.ClusterMapPlotter(                                     # CALL — clustering + annot + legend
+    data=expr_z,
+    top_annotation=col_ann,
+    row_cluster=True, col_cluster=True,
+    cmap="RdBu_r",
+    show_rownames=False, show_colnames=True,
+    label="z-score", verbose=0)
 plt.show()
 """
 
@@ -339,44 +320,45 @@ plt.show()
 """
 
 JCVI_MD = """\
-## 8 · JCVI / MCscan — Synteny Dot Plot
+## 8 · Synteny Dot Plot (matplotlib)
 
-Synthesised anchor file with one inversion + one duplication. JCVI's
-graphics module renders the canonical dot plot.
+A dot plot is the canonical way to look at synteny between two genomes:
+x = gene index in genome A, y = gene index in genome B. Anchors fall on
+the diagonal when order is conserved, flip onto the antidiagonal under
+an inversion, and scatter off the line for translocations or duplications.
+
+The full **JCVI / MCscan** pipeline (FASTA → LAST → `.anchors` →
+`jcvi.graphics.dotplot`) renders the same picture from real anchor files
+— pip-install `jcvi` and call `jcvi.graphics.dotplot.dotplot(anchorfile,
+qbed, sbed, fig, root, ax)` once you have one. Here we draw the same
+plot from primitives so the cell runs without the LAST binary.
 """
 
 JCVI = """\
-import tempfile, os
-from jcvi.graphics.dotplot import dotplot
+# === Synteny dot plot (pure matplotlib) ===
+# Three block types, one per colour:
+#   collinear (grey) — same gene index in both genomes
+#   inversion (red)  — genome B index runs backwards over a window
+#   duplication (blue) — one A gene maps to two B positions
 
-tmp = tempfile.mkdtemp()
-bed1 = os.path.join(tmp, "a.bed")
-bed2 = os.path.join(tmp, "b.bed")
-anchors = os.path.join(tmp, "ab.anchors")
+N = 50
+collinear = [(i, i) for i in range(N) if not (20 <= i < 30)]   # most of the genome
+inversion = [(i, 49 - i) for i in range(20, 30)]               # window 20-30 flips
+duplicate = [(i, i + 30) for i in range(5, 10)]                # 5 extra hits, off-diagonal
 
-# tiny synthetic genomes — 50 genes each, single chromosome
-with open(bed1, "w") as f:
-    for i in range(50):
-        f.write(f"chrA\\t{i*100}\\t{i*100+90}\\tg{i:03d}\\t0\\t+\\n")
-with open(bed2, "w") as f:
-    for i in range(50):
-        f.write(f"chrB\\t{i*100}\\t{i*100+90}\\tg{i:03d}\\t0\\t+\\n")
+fig, ax = plt.subplots(figsize=(6, 6))                          # CREATE
+xs, ys = zip(*collinear); ax.scatter(xs, ys, color=GREY, s=22, label="syntenic")
+xs, ys = zip(*inversion); ax.scatter(xs, ys, color=RED, s=36, label="inversion")
+xs, ys = zip(*duplicate); ax.scatter(xs, ys, color=BLUE, s=36, label="duplication")
 
-# anchors: collinear, inversion (20-30 reversed), duplication
-with open(anchors, "w") as f:
-    f.write("###\\n")
-    for i in range(50):
-        if 20 <= i < 30:
-            f.write(f"g{i:03d}\\tg{49-i:03d}\\t100\\n")     # inversion
-        else:
-            f.write(f"g{i:03d}\\tg{i:03d}\\t100\\n")
-    for i in range(5, 10):
-        f.write(f"g{i:03d}\\tg{i+30:03d}\\t100\\n")        # duplication
-
-dotplot(anchors, bed1, bed2,                               # CALL
-        image_name=os.path.join(tmp, "dot.png"), iopts=None)
-from IPython.display import Image
-Image(filename=os.path.join(tmp, "dot.png"))
+ax.set_xlim(-1, N); ax.set_ylim(-1, N)
+ax.set_xlabel("gene index — Genome A")
+ax.set_ylabel("gene index — Genome B")
+ax.set_title("Synteny dot plot — collinear + 1 inversion + 1 duplication")
+ax.legend(frameon=False, loc="upper left")
+ax.spines[["top", "right"]].set_visible(False)
+ax.set_aspect("equal")
+plt.tight_layout(); plt.show()
 """
 
 UPSET_MD = """\
@@ -402,6 +384,47 @@ up  = UpSet(mat,
             facecolor=GREEN)                               # primary colour
 up.plot()                                                  # CALL — UpSetPlot draws several axes
 plt.show()
+"""
+
+VENN_MD = """\
+## 9b · Venn Diagram — 3-Set Overlap
+
+UpSet scales to many sets; **Venn** is the canonical view for 2 or 3.
+Past 3 sets the regions become unreadable, so use it sparingly — but
+for the classic "what's shared between three groups" question, nothing
+beats it for instant pattern recognition. Uses `matplotlib_venn`.
+"""
+
+VENN = """\
+# install once per Colab session if matplotlib_venn isn't already there:
+#   !pip install -q matplotlib-venn
+from matplotlib_venn import venn3, venn3_circles
+
+# build three gene sets from the same indicator frame as the UpSet cell
+genes = [f"G{i:03d}" for i in range(200)]
+sets  = ["DE", "Photo", "Stress"]                              # three sets only
+df    = pd.DataFrame({s: rng.random(200) < 0.4 for s in sets}, index=genes)
+gene_sets = {s: set(df.index[df[s]]) for s in sets}            # name -> set of genes
+
+fig, ax = plt.subplots(figsize=(6.5, 5))                       # CREATE
+v = venn3(                                                     # CALL — fills regions
+    [gene_sets["DE"], gene_sets["Photo"], gene_sets["Stress"]],
+    set_labels=("DE", "Photo", "Stress"),
+    set_colors=(GREEN, BLUE, AMBER),
+    alpha=0.55, ax=ax)
+venn3_circles(                                                 # outline pass for crisp edges
+    [gene_sets["DE"], gene_sets["Photo"], gene_sets["Stress"]],
+    color=INK, linewidth=0.8, ax=ax)
+
+# bump the count labels into INK so they read on the cream canvas
+for label in (v.subset_labels or []):
+    if label is not None:
+        label.set_color(INK); label.set_fontsize(11)
+for label in v.set_labels:
+    label.set_color(INK); label.set_fontsize(12); label.set_fontweight("bold")
+
+ax.set_title("Gene overlap across three pathway categories")
+plt.tight_layout(); plt.show()
 """
 
 PYWAFFLE_MD = """\
@@ -476,42 +499,52 @@ ax.spines[["top", "right"]].set_visible(False)
 plt.tight_layout(); plt.show()
 """
 
-BIOPY_MD = """\
-## 12 · Biopython — Phylo tree + GenomeDiagram plasmid (SVG)
+BIOPY_TREE_MD = """\
+## 12a · Biopython — Bio.Phylo Tree (matplotlib)
 
-Two demos in one cell: a matplotlib phylogenetic tree, then a circular
-plasmid diagram written to SVG (since the PNG backend requires rlPyCairo
-which isn't always available).
+Read a Newick tree and draw it onto matplotlib axes.  Compact, no
+extra dependencies beyond biopython itself.
 """
 
-BIOPY = """\
+BIOPY_TREE = """\
 from io import StringIO
-from pathlib import Path
 from Bio import Phylo
+
+# tiny synthesised tree with 9 leaves and 4 internal clades
+newick = ("((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0,"
+          "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);")
+tree = Phylo.read(StringIO(newick), "newick")
+
+fig, ax = plt.subplots(figsize=(7, 4.2))                   # CREATE
+Phylo.draw(tree, axes=ax, do_show=False)                   # CALL — draws onto ax
+ax.set_title("Bio.Phylo — matplotlib tree")
+plt.show()
+"""
+
+BIOPY_PLASMID_MD = """\
+## 12b · Biopython — Bio.Graphics Plasmid (SVG)
+
+`Bio.Graphics.GenomeDiagram` builds publication-quality plasmid maps.
+The PNG backend requires `rlPyCairo` (which itself needs a Cairo system
+library), so we write **SVG** instead — universal, scalable, no compile
+step.  Same diagram, no install pain.
+"""
+
+BIOPY_PLASMID = """\
+from pathlib import Path
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio.SeqFeature import SeqFeature, SimpleLocation
 from Bio.Graphics import GenomeDiagram
 from IPython.display import SVG
 
-# --- Phylo: matplotlib-native tree ---
-newick = "((((A:1.2,B:1.5):2.1,(C:0.9,D:1.7):1.8):3.0," \\
-         "(E:2.3,F:1.6):2.7):1.5,((G:1.9,H:2.0):2.3,I:3.5):1.4);"
-tree = Phylo.read(StringIO(newick), "newick")
-
-fig, ax = plt.subplots(figsize=(7, 4))                     # CREATE on matplotlib
-Phylo.draw(tree, axes=ax, do_show=False)                   # CALL — draws onto ax
-ax.set_title("Bio.Phylo — matplotlib tree")
-plt.show()
-
-# --- Bio.Graphics: plasmid diagram (SVG) ---
+# 5-kb pseudo-plasmid with five labelled genes (mixed strands)
 record = SeqRecord(Seq("N" * 5000), id="plasmid")
 gene_spans = [(  50,  900, +1, "geneA", GREEN),
               (1100, 1900, +1, "geneB", BLUE),
               (2200, 3000, -1, "geneC", AMBER),
               (3200, 3900, +1, "geneD", RED),
               (4100, 4900, -1, "geneE", PURPLE)]
-
 for s, e, strand, name, _ in gene_spans:
     record.features.append(SeqFeature(
         SimpleLocation(s, e, strand=strand),
@@ -528,7 +561,7 @@ for (s, e, strand, name, hue), feat in zip(gene_spans, record.features):
 out = Path("biopy_plasmid.svg")
 gd.draw(format="circular", circular=True,
         pagesize=(800, 800), start=0, end=5000, circle_core=0.6)
-gd.write(str(out), "SVG")                                  # SVG — no rlPyCairo needed
+gd.write(str(out), "SVG")                                  # SVG bypasses the PNG backend
 SVG(filename=str(out))
 """
 
@@ -548,8 +581,8 @@ cells = [
     md(HEADER_MD),
     code(INSTALL),
     code(SETUP),
-    md(PYCOMPLEXHEATMAP_MD), code(PYCOMPLEXHEATMAP),
-    md(CIRCOS_MD),           code(CIRCOS),
+    md(HEATMAP_SIMPLE_MD),   code(HEATMAP_SIMPLE),
+    md(HEATMAP_COMPLEX_MD),  code(HEATMAP_COMPLEX),
     md(TOYTREE_MD),          code(TOYTREE),
     md(PYMSAVIZ_MD),         code(PYMSAVIZ),
     md(DASHBIO_MD),          code(DASHBIO),
@@ -557,9 +590,11 @@ cells = [
     md(DNAVIEWER_MD),        code(DNAVIEWER),
     md(JCVI_MD),             code(JCVI),
     md(UPSET_MD),            code(UPSET),
+    md(VENN_MD),             code(VENN),
     md(PYWAFFLE_MD),         code(PYWAFFLE),
     md(GGET_MD),             code(GGET),
-    md(BIOPY_MD),            code(BIOPY),
+    md(BIOPY_TREE_MD),       code(BIOPY_TREE),
+    md(BIOPY_PLASMID_MD),    code(BIOPY_PLASMID),
     md(CLOSER_MD),
 ]
 
