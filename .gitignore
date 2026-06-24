@@ -55,3 +55,6 @@ __pycache__/
 # Claude Code
 .claude/
 
+# uv virtual envs (plotpy/ subpackage and any future ones)
+.venv/
+

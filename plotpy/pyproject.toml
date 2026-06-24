@@ -1,0 +1,63 @@
+[project]
+name = "plotpy"
+version = "0.1.0"
+description = "LLM-driven plotting agent for the Genomics Viz with Python course — Python sibling of PlotR."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Loukas Theodosiou", email = "theodosiou@evolbio.mpg.de" },
+]
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=1.30",
+    "matplotlib>=3.7",
+    "seaborn>=0.13",
+    "plotnine>=0.13",
+    "plotly>=5.20",
+    "pandas>=2.0",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+# Some strict-mode plots in CATALOG use these in their templates. They are
+# OPTIONAL — install only the ones you'll use. The agent will report a
+# clean error if a missing import is hit during exec().
+extras = [
+    "adjustText>=1.0",
+    "pywaffle>=1.1",
+    "squarify>=0.4",
+    "ternary-diagram>=3.0",
+    "pypalettes>=0.1.4",
+    "scikit-learn>=1.3",
+    "scipy>=1.11",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[project.urls]
+Source = "https://github.com/loukesio/PlotPy"
+"R sibling" = "https://github.com/loukesio/PlotR"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["plotpy*"]
+exclude = ["tests*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+extend-select = ["I", "UP"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.15.19",
+]

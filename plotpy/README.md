@@ -1,0 +1,269 @@
+# PlotPy
+
+An LLM-driven plotting agent — Python sibling of [PlotR](https://github.com/loukesio/PlotR).
+
+PlotPy takes a `pandas.DataFrame` and a sentence ("show me which genes go up in drought"), picks the right chart from a catalog of recipes pulled from the **Genomics Viz with Python** course, and generates the matplotlib / seaborn / plotnine / plotly code to draw it. The recipe is either **strict** (verbatim course template, fastest, on-deck aesthetics) or **loose** (prose conventions the LLM adapts to your data).
+
+It is a teaching tool first and a library second: every plot you ask for comes back with the *source code that produced it* — read `result.code`, paste it into your own notebook, modify it. The agent is the on-ramp; matplotlib is still the road.
+
+---
+
+## Install
+
+PlotPy lives inside the course repo at [`plotpy/`](.) — install it from there:
+
+```bash
+# In a Colab cell (or any terminal) — install the agent directly from GitHub:
+pip install "git+https://github.com/loukesio/dataviz-genomicsdata.git@Python_2026#subdirectory=plotpy"
+
+# Or if you already cloned the course repo:
+git clone https://github.com/loukesio/dataviz-genomicsdata.git
+cd dataviz-genomicsdata
+pip install -e ./plotpy
+
+# Then set your key (Groq's fast free tier is the default provider):
+cp plotpy/.env.example .env         # then edit PLOTPY_API_KEY=...
+```
+
+Provider defaults to [Groq](https://console.groq.com). Swap to OpenAI / Together / Fireworks / Ollama / vLLM by changing one env var — see [Swap provider](#swap-provider) below.
+
+Some plots in `CATALOG` reference optional packages (adjustText, pywaffle, squarify, ternary-diagram, pypalettes, scipy, scikit-learn). Install them on demand:
+
+```bash
+pip install "git+https://github.com/loukesio/dataviz-genomicsdata.git@Python_2026#subdirectory=plotpy[extras]"
+```
+
+The agent emits a clean error if a missing import is hit during `exec()`; nothing crashes silently.
+
+---
+
+## Quick start
+
+```python
+import pandas as pd
+import plotpy
+
+plotpy.set_key("gsk_...")            # or put it in .env once
+
+df = pd.read_csv("expression.csv")   # gene, time, tpm, sem
+res = plotpy.ask(df, "Show how expression changes over time, with uncertainty.")
+
+res.plot                             # the matplotlib figure
+res.chosen                           # 'timecourse_line'
+res.alternatives                     # ['ridgeline_pseudotime', 'boxplot_distributions']
+res.code                             # the Python source the LLM produced
+```
+
+Already know what you want? Skip the LLM selection step:
+
+```python
+plotpy.scatter(df, "Two genes, colour by tissue.", mode="loose")
+plotpy.manhattan(gwas_df, interactive=True)
+```
+
+---
+
+## The four files (mirror of PlotR)
+
+PlotPy mirrors PlotR's architecture so students can flip between the two repos line-by-line.
+
+| PlotR (R)         | PlotPy (Python)         | Role                                                          |
+| ----------------- | ----------------------- | ------------------------------------------------------------- |
+| `R/api_key.R`     | `plotpy/api_key.py`     | LLM credentials + provider-agnostic OpenAI-compatible client  |
+| `R/plotr_agent.R` | `plotpy/agent.py`       | `PlotAgent` class — selection + generation + exec loop        |
+| `R/specs.R`       | `plotpy/specs.py`       | `CATALOG` of strict/loose plot recipes + BASE_THEME appliers  |
+| `R/plots.R`       | `plotpy/plots.py`       | Public `ask()` + per-plot wrappers (`scatter`, `manhattan`, …) |
+| `DESCRIPTION`     | `pyproject.toml`        | Package metadata + deps                                       |
+| `LICENSE`         | `LICENSE`               | MIT, same copyright holder                                    |
+
+Class fields / methods also line up: `last_code`, `last_raw`, `last_prompt`, `inspect(df)`, `ask(prompt)`.
+
+---
+
+## Strict vs Loose
+
+Side-by-side for the scatter plot.
+
+```python
+df = pd.read_csv("coexpression.csv")   # sample, tissue, gene_x, gene_y
+prompt = "Show how the two genes covary across tissues."
+```
+
+### `mode="strict"`
+
+The LLM gets the **course's exact code** as a template and is told to change *only* the column names. Output is predictable, matches the deck visually, and survives ambiguous prompts.
+
+```python
+plotpy.ask(df, prompt, mode="strict")
+```
+
+Roughly produces (verbatim from `specs.py:CATALOG['scatter_coexpression']['strict']`):
+
+```python
+pal = {"Leaf": GREEN, "Root": BLUE, "Seed": AMBER}
+fig, ax = plt.subplots(figsize=(5.6, 4.8))
+for tissue, c in pal.items():
+    g = df[df["tissue"] == tissue]
+    ax.scatter(g["gene_x"], g["gene_y"], color=c, s=50, alpha=.4,
+               edgecolors=CREAM, label=tissue, zorder=3)
+m, b = np.polyfit(df["gene_x"], df["gene_y"], 1)
+xs = np.array([df["gene_x"].min(), df["gene_x"].max()])
+ax.plot(xs, m * xs + b, color=RED, lw=2.2, zorder=1)
+ax.set_title("Two genes, one trend")
+p = fig
+```
+
+### `mode="loose"`
+
+The LLM gets **prose conventions** instead of code, and adapts the chart to whatever your DataFrame actually contains. Works on data the course never saw.
+
+```python
+plotpy.ask(df, prompt, mode="loose")
+```
+
+The model receives this instead of code:
+
+> Scatter of two continuous variables, coloured by a categorical column.
+> - mark every point with low alpha so density reads
+> - overlay a single linear fit across ALL groups (np.polyfit then ax.plot)
+> - title states the finding ("X and Y co-vary" etc.)
+> - legend in the empty corner, no frame
+
+… and freelances the column names from your `df`. Reach for loose when your column names don't match the course's (e.g. `protein_A` / `protein_B` instead of `gene_x` / `gene_y`).
+
+**Rule of thumb:** start strict; fall through to loose when the strict result looks wrong because your columns aren't named like the course.
+
+---
+
+## Swap provider
+
+PlotPy talks the OpenAI Chat Completions wire format — any compatible endpoint works. Set in `.env` or via `plotpy.set_key(...)`.
+
+| Provider  | `PLOTPY_BASE_URL`                       | `PLOTPY_MODEL` (example)                            |
+| --------- | --------------------------------------- | --------------------------------------------------- |
+| Groq      | `https://api.groq.com/openai/v1`        | `llama-3.3-70b-versatile`                           |
+| OpenAI    | `https://api.openai.com/v1`             | `gpt-4o-mini`                                       |
+| Together  | `https://api.together.xyz/v1`           | `meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo`      |
+| Fireworks | `https://api.fireworks.ai/inference/v1` | `accounts/fireworks/models/llama-v3p3-70b-instruct` |
+| Ollama    | `http://localhost:11434/v1`             | `llama3.1`                                          |
+| vLLM      | `http://<host>:8000/v1`                 | whatever you served                                 |
+
+One line each, in code:
+
+```python
+plotpy.set_key("sk-...", base_url="https://api.openai.com/v1", model="gpt-4o-mini")
+plotpy.set_key("ollama", base_url="http://localhost:11434/v1", model="llama3.1")
+```
+
+---
+
+## Catalog — what PlotPy knows how to draw
+
+Every entry has both `strict` (code) and `loose` (prose) specs. Browse with `plotpy.list_plots(day=1)`.
+
+### Day 1 — Foundations & differential expression
+
+| Plot name                          | Library    | Interactive | Summary                                                       |
+| ---------------------------------- | ---------- | ----------- | ------------------------------------------------------------- |
+| `timecourse_line`                  | matplotlib | —           | Gene expression over time, one line per gene, SEM error bars  |
+| `timecourse_line_interactive`      | plotly     | hover       | Same — hover for gene/value, click to toggle traces           |
+| `bar_simple`                       | matplotlib | —           | Sorted horizontal bar, one bar highlighted in RED             |
+| `scatter_coexpression`             | matplotlib | —           | Two-gene scatter coloured by tissue, with linear fit          |
+| `scatter_coexpression_interactive` | plotly     | hover       | Same — hover for sample id, toggle by tissue                  |
+| `boxplot_distributions`            | matplotlib | —           | Boxplot across groups with jittered raw points                |
+| `violin_shape`                     | matplotlib | —           | Violin + inner boxplot — reveals bimodality                   |
+| `ridgeline_pseudotime`             | matplotlib | —           | Stacked KDE distributions along an ordered axis               |
+| `volcano_deseq2`                   | matplotlib | —           | Differential expression — log2FC vs −log10(p), red/green/grey |
+| `volcano_interactive`              | plotly     | hover       | Same — hover for gene + raw p, toggle up/down                 |
+| `pca_population`                   | matplotlib | —           | 2-component PCA scatter coloured by population                |
+| `heatmap_expression`               | seaborn    | —           | Clustered z-scored heatmap with sample annotation strip       |
+| `heatmap_expression_interactive`   | plotly     | hover       | Same as a static heatmap — no dendrograms                     |
+| `ternary_admixture`                | matplotlib | —           | Three-component composition on a ternary triangle             |
+| `waffle_variant_classes`           | matplotlib | —           | 10×10 waffle of categorical counts                            |
+| `waterfall_tmb`                    | matplotlib | —           | Patients ranked by mutation burden, coloured by subtype       |
+
+### Day 2 — Genome-scale charts
+
+| Plot name                | Library    | Interactive | Summary                                                                |
+| ------------------------ | ---------- | ----------- | ---------------------------------------------------------------------- |
+| `stacked_bar_admixture`  | matplotlib | —           | One bar per individual summing to 1, sorted within each population     |
+| `stacked_bar_microbiome` | matplotlib | —           | Composition over time, taxa ordered by mean abundance                  |
+| `manhattan_gwas`         | matplotlib | —           | GWAS Manhattan with cumulative bp x-axis and threshold lines           |
+| `manhattan_interactive`  | plotly     | hover       | Same Manhattan — hover for rsID                                        |
+| `treemap_microbiome`     | matplotlib | —           | Area-proportional treemap of taxon abundance                           |
+
+### Day 3 — Production-grade packages
+
+Day 3 of the course covers PyComplexHeatmap, pyCirclize, Toytree, pyMSAviz, DashBio, pyGenomeTracks, dna_features_viewer, JCVI, UpSetPlot, PyWaffle, gget, and Biopython. These aren't in the PlotPy CATALOG yet — the API surface is much wider per package and they don't reduce cleanly to "strict template + adapt column names." The Day-3 notebooks in the course repo show the canonical usage of each.
+
+---
+
+## Public API
+
+```python
+plotpy.ask(df, prompt, mode="strict", interactive=None)   # the main entry point
+plotpy.list_plots(library=None, interactive=None, day=None)
+
+# direct (skip LLM selection)
+plotpy.scatter(df, ...)         plotpy.bar(df, ...)
+plotpy.boxplot(df, ...)         plotpy.violin(df, ...)
+plotpy.volcano(df, ...)         plotpy.manhattan(df, ...)
+plotpy.timecourse(df, ...)      plotpy.heatmap(df, ...)
+plotpy.pca(df, ...)             plotpy.admixture(df, ...)
+plotpy.microbiome(df, ...)      plotpy.waterfall(df, ...)
+plotpy.ternary(df, ...)         plotpy.waffle(df, ...)
+plotpy.ridgeline(df, ...)       plotpy.treemap(df, ...)
+
+# advanced
+agent = plotpy.PlotAgent().inspect(df)
+agent.ask(prompt, mode="loose")
+agent.last_raw     # the raw LLM response
+agent.last_code    # the executed Python
+agent.last_prompt  # the user prompt
+```
+
+Pass `interactive=True` to any per-plot wrapper that has a plotly sibling (`scatter`, `timecourse`, `volcano`, `manhattan`, `heatmap`) to switch to the hoverable variant.
+
+---
+
+## Theming
+
+`plotpy.specs` exports four library-specific theme appliers so every figure looks "on-deck" — Economist palette on cream canvas, IBM Plex Mono, no top/right spines, dashed major grid where it helps.
+
+```python
+from plotpy.specs import (
+    apply_base_theme_mpl,      # matplotlib Axes
+    apply_base_theme_sns,      # seaborn FacetGrid / ClusterGrid
+    apply_base_theme_p9,       # plotnine ggplot
+    apply_base_theme_plotly,   # plotly Figure
+)
+
+fig, ax = plt.subplots()
+ax.scatter(df["x"], df["y"])
+apply_base_theme_mpl(ax)        # cream + spines + grid + font
+```
+
+The palette constants (`GREEN`, `BLUE`, `AMBER`, `RED`, `PURPLE`, `GREY`, `INK`, `CREAM`, `LINE`, `MUTED`, `COURSE_PAL`) are exported from `plotpy.specs` too — use them in any code you write outside the agent.
+
+---
+
+## Notebooks vs app
+
+Notebooks are the course; an app is dessert. The agent exposes a four-step pipeline (data summary → plot choice → generated code → rendered figure), and a notebook is the medium that *shows every step*. A Streamlit button hides those steps behind a click, which is the opposite of what a teaching tool should do.
+
+Planned shape:
+
+```
+notebooks/
+  01_intro.ipynb              the smallest plotpy.ask example
+  02_strict_vs_loose.ipynb    same prompt + DataFrame, two modes side by side
+  03_agent_internals.ipynb    last_raw / last_code / last_prompt walkthrough
+
+app.py                        ~50 lines of Streamlit — the "give it to my PI" demo
+```
+
+---
+
+## License
+
+MIT — © 2026 Loukas Theodosiou. See [LICENSE](LICENSE).
