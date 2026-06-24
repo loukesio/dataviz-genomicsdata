@@ -37,6 +37,92 @@ The agent emits a clean error if a missing import is hit during `exec()`; nothin
 
 ---
 
+## Run it in Google Colab — step by step
+
+Colab is the path of least resistance: no local setup, your students just click a link.  Each numbered block below is **one cell** in a new Colab notebook.
+
+### 0. Get a free Groq API key (one time, ~30 seconds)
+
+Open [console.groq.com](https://console.groq.com), sign up (no credit card), click **API Keys → Create API Key**, copy the `gsk_...` string somewhere private.  This is what the agent uses to call the LLM.
+
+### 1. Install PlotPy — Cell 1
+
+```python
+!pip install -q "git+https://github.com/loukesio/dataviz-genomicsdata.git@Python_2026#subdirectory=plotpy[extras]"
+```
+
+The `[extras]` pulls in scikit-learn, pywaffle, squarify, ternary-diagram — a few catalog entries need them.
+
+> **Already installed once and want to update?**  Pip caches GitHub installs, so a plain re-install is a no-op.  Force a fresh download:
+> ```python
+> !pip install -q --upgrade --force-reinstall --no-deps "git+https://github.com/loukesio/dataviz-genomicsdata.git@Python_2026#subdirectory=plotpy"
+> ```
+
+### 2. Restart the runtime ⚠️
+
+**Runtime → Restart session** (or `Ctrl+M` then `.`).  This is required after the first install — otherwise the old `plotpy` is already in memory and Python won't see the new module.  Skipping this step is the #1 source of `AttributeError: module 'plotpy' has no attribute 'datasets'`.
+
+### 3. Import and set your key — Cell 2
+
+```python
+import plotpy
+plotpy.set_key("gsk_...")           # paste your Groq key here
+```
+
+### 4. Your first plot — Cell 3
+
+Strict mode is the safe path — it uses the verbatim course template, no LLM freelancing:
+
+```python
+df = plotpy.datasets.expression()   # synthetic time-course, no download needed
+plotpy.timecourse(df)               # one of the per-plot wrappers in plotpy.plots
+```
+
+Let the agent pick the chart instead:
+
+```python
+res = plotpy.ask(df, "Show how expression changes over time, with uncertainty.")
+res.plot                            # the matplotlib figure (auto-displays in Colab)
+res.chosen                          # which catalog entry it picked
+res.code                            # the Python source the LLM produced
+```
+
+### 5. Try the other plots — Cell 4
+
+```python
+plotpy.datasets.list_datasets()     # full menu: dataset → plot → schema
+plotpy.manhattan(plotpy.datasets.gwas(), interactive=True)
+plotpy.volcano(plotpy.datasets.deseq2())
+plotpy.heatmap(plotpy.datasets.expression_matrix()[0])   # generator returns (expr, meta) — heatmap wants expr
+```
+
+### 6. Bring your own data — Cell 5
+
+Upload a CSV via the Colab Files pane (left sidebar → folder icon → upload), then:
+
+```python
+import pandas as pd
+df = pd.read_csv("/content/my_expression.csv")   # adjust path
+plotpy.timecourse(df)                            # if columns match: gene, time, tpm, sem
+```
+
+If your columns don't match the course's names (e.g. `protein` instead of `gene`), use `mode="loose"` and the LLM will adapt:
+
+```python
+plotpy.ask(df, "show each protein's response over time", mode="loose")
+```
+
+### If something breaks
+
+| Symptom                                                                  | Fix                                                                                                                                                                |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AttributeError: module 'plotpy' has no attribute 'datasets'`            | Old install is cached.  Run the `--force-reinstall` cell in step 1, then **Restart runtime**.                                                                      |
+| `NameError` from generated code in `mode="loose"`                        | LLMs are stochastic — re-run the cell, or fall back to `mode="strict"`.  Read what the model wrote with `agent.last_code` (see *advanced* in the API section).     |
+| `ModuleNotFoundError: pywaffle / squarify / ternary_diagram / sklearn`   | Reinstall with the `[extras]` form from step 1.                                                                                                                    |
+| `Could not parse plot-selection JSON`                                    | The free Groq model occasionally drops the JSON envelope.  Re-run, or pass `plot_type="..."` to skip the selection step.                                            |
+
+---
+
 ## Quick start
 
 ```python
