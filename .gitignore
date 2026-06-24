@@ -29,10 +29,11 @@ Thumbs.db
 # Keep the Plot Directory PDF — students download it
 !day1/images/*.pdf
 
-# Keep the rendered Day-1 deck — students download it
+# Keep the rendered Day-1 deck + Colab notebook — students download both
 !day1/day1.html
 !day1/day1_files/
 !day1/day1_files/**
+!day1/day1.ipynb
 
 # Keep the rendered Day-2 deck + Colab notebook — students download both
 !day2/day2.html
