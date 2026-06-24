@@ -182,7 +182,14 @@ canvas, axes, mark = tre.draw(                             # CREATE+CALL (Toyplo
     edge_colors=edge_colors,
     edge_widths=2.2,
     node_sizes=0)
-canvas
+
+# Render as SVG explicitly — Toyplot's default repr in Colab triggers PNG,
+# which silently calls ghostscript and crashes on a fresh runtime.  SVG
+# uses the built-in renderer (no system dependency).
+import toyplot.svg
+toyplot.svg.render(canvas, "toytree.svg")
+from IPython.display import SVG
+SVG(filename="toytree.svg")
 """
 
 PYMSAVIZ_MD = """\
