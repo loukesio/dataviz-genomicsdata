@@ -19,6 +19,7 @@ The four modules mirror PlotR one-for-one:
 
 from __future__ import annotations
 
+from . import datasets
 from .agent import PlotAgent, PlotResult
 from .api_key import get_client, get_config, get_key, set_key
 from .plots import (
@@ -50,6 +51,7 @@ __all__ = [
     "ask",
     "list_plots",
     "CATALOG",
+    "datasets",
     # agent + result
     "PlotAgent",
     "PlotResult",

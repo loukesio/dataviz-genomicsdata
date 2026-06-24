@@ -73,3 +73,47 @@ def test_agent_requires_inspect_before_ask() -> None:
 
     with pytest.raises(RuntimeError, match="inspect"):
         plotpy.PlotAgent().ask("anything")
+
+
+def test_datasets_match_catalog_schemas() -> None:
+    """Every dataset generator must produce the columns its strict template reads."""
+    expected = {
+        "expression":            {"gene", "time", "tpm", "sem"},
+        "coexpression":          {"sample", "tissue", "gene_x", "gene_y"},
+        "tissue_expression":     {"tissue", "tpm"},
+        "expression_groups":     {"group", "value"},
+        "pseudotime":            {"id", "stage", "value"},
+        "deseq2":                {"gene", "log2FoldChange", "pvalue", "padj"},
+        "admixture_components":  {"A", "B", "C"},
+        "variant_classes":       {"classification", "n"},
+        "tmb_cohort":            {"patient", "value", "subtype", "msi"},
+        "admixture_kinship":     {"individual", "population", "K1", "K2", "K3", "K4", "K5"},
+        "microbiome_timeseries": {"day", "phase", "taxon", "abundance"},
+        "gwas":                  {"chrom", "pos", "pval", "snp"},
+        "microbiome_abundance":  {"taxon", "abundance"},
+    }
+    for name, cols in expected.items():
+        df = getattr(plotpy.datasets, name)()
+        assert cols.issubset(df.columns), f"{name}: missing {cols - set(df.columns)}"
+        assert len(df) > 0, f"{name}: empty DataFrame"
+
+
+def test_datasets_are_deterministic() -> None:
+    """Same seed → identical DataFrame, two calls."""
+    a = plotpy.datasets.expression()
+    b = plotpy.datasets.expression()
+    pd.testing.assert_frame_equal(a, b)
+
+
+def test_expression_matrix_returns_pair() -> None:
+    expr, meta = plotpy.datasets.expression_matrix()
+    assert expr.shape[1] == len(meta)
+    assert set(meta.columns) == {"sample", "condition"}
+    assert set(meta["condition"].unique()) == {"Control", "Drought"}
+
+
+def test_list_datasets_covers_every_generator() -> None:
+    table = plotpy.datasets.list_datasets()
+    listed = set(table["dataset"])
+    exposed = {n for n in plotpy.datasets.__all__ if n != "list_datasets"}
+    assert listed == exposed

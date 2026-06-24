@@ -40,12 +40,11 @@ The agent emits a clean error if a missing import is hit during `exec()`; nothin
 ## Quick start
 
 ```python
-import pandas as pd
 import plotpy
 
 plotpy.set_key("gsk_...")            # or put it in .env once
 
-df = pd.read_csv("expression.csv")   # gene, time, tpm, sem
+df = plotpy.datasets.expression()    # synthetic gene, time, tpm, sem — no download needed
 res = plotpy.ask(df, "Show how expression changes over time, with uncertainty.")
 
 res.plot                             # the matplotlib figure
@@ -57,8 +56,16 @@ res.code                             # the Python source the LLM produced
 Already know what you want? Skip the LLM selection step:
 
 ```python
-plotpy.scatter(df, "Two genes, colour by tissue.", mode="loose")
-plotpy.manhattan(gwas_df, interactive=True)
+plotpy.scatter(plotpy.datasets.coexpression(), "Two genes, colour by tissue.", mode="loose")
+plotpy.manhattan(plotpy.datasets.gwas(), interactive=True)
+```
+
+### Bring-your-own data
+
+Every example above uses :mod:`plotpy.datasets`, which ships deterministic synthetic data for each catalog entry — no CSVs to download. When you want to use your own data instead, just pass any DataFrame whose columns match the schema printed by `plotpy.datasets.list_datasets()`:
+
+```python
+plotpy.datasets.list_datasets()      # table: dataset, plot, schema
 ```
 
 ---
@@ -85,7 +92,7 @@ Class fields / methods also line up: `last_code`, `last_raw`, `last_prompt`, `in
 Side-by-side for the scatter plot.
 
 ```python
-df = pd.read_csv("coexpression.csv")   # sample, tissue, gene_x, gene_y
+df = plotpy.datasets.coexpression()    # sample, tissue, gene_x, gene_y
 prompt = "Show how the two genes covary across tissues."
 ```
 
