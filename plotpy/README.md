@@ -39,7 +39,9 @@ The agent emits a clean error if a missing import is hit during `exec()`; nothin
 
 ## Run it in Google Colab — step by step
 
-Colab is the path of least resistance: no local setup, your students just click a link.  Each numbered block below is **one cell** in a new Colab notebook.
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/loukesio/dataviz-genomicsdata/blob/Python_2026/plotpy/notebooks/00_colab_quickstart.ipynb)
+
+Click the badge above to open a ready-made notebook ([`notebooks/00_colab_quickstart.ipynb`](notebooks/00_colab_quickstart.ipynb)) — every cell below is already there.  The walkthrough below is the same content for skim-reading.
 
 ### 0. Get a free Groq API key (one time, ~30 seconds)
 
