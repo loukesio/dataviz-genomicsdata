@@ -368,9 +368,11 @@ plotpy.ridgeline(df, ...)       plotpy.treemap(df, ...)
 # advanced
 agent = plotpy.PlotAgent().inspect(df)
 agent.ask(prompt, mode="loose")
-agent.last_raw     # the raw LLM response
-agent.last_code    # the executed Python
-agent.last_prompt  # the user prompt
+agent.last_prompt          # the user prompt
+agent.last_code            # the executed Python
+agent.last_raw_select      # raw selection-step response (which plot the LLM picked)
+agent.last_raw_generate    # raw generation-step response (the LLM's code reply)
+agent.last_raw             # alias — most recent of the two
 ```
 
 Pass `interactive=True` to any per-plot wrapper that has a plotly sibling (`scatter`, `timecourse`, `volcano`, `manhattan`, `heatmap`) to switch to the hoverable variant.

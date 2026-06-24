@@ -86,9 +86,10 @@ class PlotAgent:
     like the R version.
     """
 
-    last_raw: str = ""
     last_code: str = ""
     last_prompt: str = ""
+    last_raw_select: str = ""
+    last_raw_generate: str = ""
 
     def __init__(
         self,
@@ -101,6 +102,11 @@ class PlotAgent:
         self._data_summary: str = ""
         self._temperature_select = temperature_select
         self._temperature_generate = temperature_generate
+
+    @property
+    def last_raw(self) -> str:
+        """The most recent raw LLM response — selection if no generation yet."""
+        return self.last_raw_generate or self.last_raw_select
 
     # ---- chainable setup mirrors PlotR's load_spec / inspect -----------
     def load_catalog(self, catalog: dict[str, specs.CatalogEntry]) -> PlotAgent:
@@ -160,7 +166,7 @@ class PlotAgent:
 
         # Step 2 — code generation
         spec_text = entry["strict"] if mode == "strict" else entry["loose"]
-        code = self._generate_code(prompt, entry, spec_text, mode)
+        code = self._generate_code(prompt, chosen, entry, spec_text, mode)
         self.last_code = code
 
         # Step 3 — execute
@@ -215,7 +221,8 @@ class PlotAgent:
         ).strip()
 
         raw = self._chat(system, user, temperature=self._temperature_select)
-        self.last_raw = raw
+        self.last_raw_select = raw
+        self.last_raw_generate = ""  # reset — a new ask() invalidates the old generation
 
         try:
             obj = json.loads(_extract_json(raw))
@@ -228,7 +235,7 @@ class PlotAgent:
 
         if chosen not in self._catalog:
             raise RuntimeError(
-                f"LLM picked unknown plot {chosen!r}.  Raw response stored on .last_raw."
+                f"LLM picked unknown plot {chosen!r}.  Raw response stored on .last_raw_select."
             )
         alts = [a for a in alts if a in self._catalog and a != chosen]
         return chosen, alts
@@ -239,6 +246,7 @@ class PlotAgent:
     def _generate_code(
         self,
         prompt: str,
+        chosen_name: str,
         entry: specs.CatalogEntry,
         spec_text: str,
         mode: str,
@@ -287,7 +295,8 @@ class PlotAgent:
 
             CHOSEN PLOT
             -----------
-            name: {self.last_raw and ''}  (library={entry["library"]}, interactive={entry["interactive"]})
+            name: {chosen_name}  (library={entry["library"]}, interactive={entry["interactive"]})
+            summary: {entry["summary"]}
 
             {"STRICT TEMPLATE" if mode == "strict" else "LOOSE CONVENTIONS"}
             ----------------
@@ -296,7 +305,7 @@ class PlotAgent:
         ).strip()
 
         raw = self._chat(system, user, temperature=self._temperature_generate)
-        self.last_raw = raw  # overwrites the selection-step raw
+        self.last_raw_generate = raw
         return _extract_python(raw)
 
     # =====================================================================
@@ -414,13 +423,32 @@ class PlotAgent:
     # =====================================================================
     @staticmethod
     def _summarize_df(df: pd.DataFrame) -> str:
+        """Compact text summary the LLM sees — columns, dtypes, categorical levels, head.
+
+        The categorical levels matter because head(4) on a grouped DataFrame
+        (e.g. coexpression() — first 4 rows are all tissue='Leaf') hides the
+        other levels and lets the LLM hard-code only what it saw.
+        """
+        col_lines: list[str] = []
+        for c in df.columns:
+            t = df[c].dtype
+            line = f"  {c}: {t}"
+            # Non-numeric dtypes (object, str/StringDtype, category, bool):
+            # list up to 8 unique levels so the LLM doesn't hardcode just
+            # whatever happens to appear in head(4).
+            if not pd.api.types.is_numeric_dtype(t):
+                uniques = df[c].dropna().unique()
+                shown = list(uniques[:8])
+                more = f" (+{len(uniques) - 8} more)" if len(uniques) > 8 else ""
+                line += f"  levels={shown}{more}"
+            col_lines.append(line)
+
         head = df.head(4).to_string(max_cols=12)
-        dtypes = "\n".join(f"  {c}: {t}" for c, t in df.dtypes.items())
         return dedent(
             f"""
             shape: {df.shape[0]} rows × {df.shape[1]} columns
             columns:
-            {dtypes}
+            {chr(10).join(col_lines)}
 
             head:
             {head}
@@ -430,21 +458,59 @@ class PlotAgent:
 
 # ---------------------------------------------------------------- regex parsers
 _PY_FENCE = re.compile(r"```(?:python|py)?\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
-_JSON_OBJ = re.compile(r"\{.*\}", re.DOTALL)
 
 
 def _extract_python(text: str) -> str:
-    """Pull the first fenced ```python``` block out of an LLM response."""
+    """Pull the first fenced ```python``` block out of an LLM response.
+
+    Falls back to the raw text only if it parses as Python — otherwise raises,
+    so a refusal like "I cannot help with that" surfaces as a clear error
+    instead of a cryptic SyntaxError from exec().
+    """
     m = _PY_FENCE.search(text)
     if m:
         return m.group(1).strip()
-    # fall back: assume the whole response is code (some models drop fences)
-    return text.strip()
+    candidate = text.strip()
+    try:
+        compile(candidate, "<llm-response>", "exec")
+    except SyntaxError as e:
+        raise RuntimeError(
+            "LLM response contained no fenced ```python``` block and the raw "
+            f"text does not parse as Python ({e.msg}).  See .last_raw_generate "
+            "for the full response."
+        ) from None
+    return candidate
 
 
 def _extract_json(text: str) -> str:
-    """Pull the first ``{...}`` object out of an LLM response."""
-    m = _JSON_OBJ.search(text)
-    if not m:
+    """Pull the first complete ``{...}`` object out of an LLM response.
+
+    Uses brace counting so we stop at the first balanced object, immune to
+    stray braces in prose around or after it.
+    """
+    start = text.find("{")
+    if start == -1:
         raise ValueError("no JSON object found in LLM response")
-    return m.group(0)
+    depth = 0
+    in_str = False
+    escape = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if escape:
+            escape = False
+            continue
+        if ch == "\\" and in_str:
+            escape = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    raise ValueError("unbalanced JSON object in LLM response")

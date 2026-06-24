@@ -117,3 +117,84 @@ def test_list_datasets_covers_every_generator() -> None:
     listed = set(table["dataset"])
     exposed = {n for n in plotpy.datasets.__all__ if n != "list_datasets"}
     assert listed == exposed
+
+
+# ===================================================================
+# agent-level regression tests for the fixes shipped 2026-06-24
+# ===================================================================
+def test_generation_prompt_contains_chosen_name() -> None:
+    """Fix A — the LLM must be told which catalog entry it's generating for."""
+    from plotpy.agent import PlotAgent
+
+    captured: dict[str, str] = {}
+
+    def fake_chat(self: PlotAgent, system: str, user: str, temperature: float) -> str:
+        captured.setdefault("user", user)
+        return "```python\np = None\n```"
+
+    PlotAgent._chat = fake_chat  # type: ignore[method-assign]
+    df = plotpy.datasets.coexpression()
+    agent = plotpy.PlotAgent().inspect(df)
+    agent.ask("show", mode="loose", plot_type="scatter_coexpression")
+    assert "scatter_coexpression" in captured["user"]
+
+
+def test_last_raw_split() -> None:
+    """Fix B — selection and generation raw responses are separately readable."""
+    from plotpy.agent import PlotAgent
+
+    sequence = iter([
+        '{"chosen": "scatter_coexpression", "alternatives": []}',  # selection
+        "```python\np = None\n```",                                # generation
+    ])
+
+    def fake_chat(self: PlotAgent, system: str, user: str, temperature: float) -> str:
+        return next(sequence)
+
+    PlotAgent._chat = fake_chat  # type: ignore[method-assign]
+    df = plotpy.datasets.coexpression()
+    agent = plotpy.PlotAgent().inspect(df)
+    agent.ask("scatter please", mode="loose")
+    assert "scatter_coexpression" in agent.last_raw_select
+    assert "```python" in agent.last_raw_generate
+    # backwards-compatible alias points at the most recent one
+    assert agent.last_raw == agent.last_raw_generate
+
+
+def test_extract_python_raises_on_garbage() -> None:
+    """Fix C — a non-code refusal must surface as a clear error, not SyntaxError."""
+    import pytest
+    from plotpy.agent import _extract_python
+
+    with pytest.raises(RuntimeError, match="no fenced"):
+        _extract_python("Sorry, I cannot help with that.")
+
+
+def test_extract_python_accepts_unfenced_valid_code() -> None:
+    """Fix C — models that drop the fence but emit valid Python still work."""
+    from plotpy.agent import _extract_python
+    assert _extract_python("p = 1 + 1") == "p = 1 + 1"
+
+
+def test_extract_json_finds_first_balanced_object() -> None:
+    """Fix D — brace counting beats greedy regex when prose has stray braces."""
+    from plotpy.agent import _extract_json
+
+    raw = (
+        'Sure! Here is my pick:\n'
+        '{"chosen": "scatter_coexpression", "alternatives": ["scatter", "bar"]}\n'
+        'I hope that helps {with your plot}.'
+    )
+    extracted = _extract_json(raw)
+    assert extracted.startswith("{") and extracted.endswith("}")
+    import json as _json
+    parsed = _json.loads(extracted)
+    assert parsed["chosen"] == "scatter_coexpression"
+
+
+def test_data_summary_shows_categorical_levels() -> None:
+    """Fix E — head(4) hides levels when rows are grouped; summary must list them."""
+    df = plotpy.datasets.coexpression()   # tissue column groups Leaf/Root/Seed
+    summary = plotpy.PlotAgent()._summarize_df(df)
+    for level in ("Leaf", "Root", "Seed"):
+        assert level in summary, f"summary missed tissue level {level!r}"
