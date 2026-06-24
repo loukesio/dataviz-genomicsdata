@@ -100,19 +100,75 @@ plotpy.heatmap(plotpy.datasets.expression_matrix()[0])   # generator returns (ex
 
 ### 6. Bring your own data — Cell 5
 
-Upload a CSV via the Colab Files pane (left sidebar → folder icon → upload), then:
+Two parts: get your file into Colab, then either let the agent explore it or force a specific chart.
+
+**Upload your CSV — drag and drop:**
+
+1. Click the **folder icon** in the left sidebar of Colab.
+2. Drag the `.csv` from your computer into the file list — it lands at `/content/your_file.csv`.
 
 ```python
 import pandas as pd
-df = pd.read_csv("/content/my_expression.csv")   # adjust path
-plotpy.timecourse(df)                            # if columns match: gene, time, tpm, sem
+df = pd.read_csv("/content/your_file.csv")
+df.head()                       # confirm it loaded
+df.columns                      # see the column names
 ```
 
-If your columns don't match the course's names (e.g. `protein` instead of `gene`), use `mode="loose"` and the LLM will adapt:
+**Or — file-picker widget (no sidebar fiddling):**
 
 ```python
-plotpy.ask(df, "show each protein's response over time", mode="loose")
+from google.colab import files
+import pandas as pd
+uploaded = files.upload()       # opens a native file picker
+df = pd.read_csv(next(iter(uploaded)))
+df.head()
 ```
+
+**Let the agent explore — it picks the chart:**
+
+```python
+res = plotpy.ask(df, "Explore this dataset — pick the best chart for it.")
+res.plot                        # the figure
+res.chosen                      # which catalog entry it picked
+res.alternatives                # two runners-up
+res.code                        # the source the LLM produced
+```
+
+Re-run with different prompts to see what the agent suggests:
+
+```python
+plotpy.ask(df, "Compare distributions across groups.").plot
+plotpy.ask(df, "Show me how my measurement changes across conditions.").plot
+plotpy.ask(df, "Show the correlation between two variables.").plot
+```
+
+**Force a specific chart (e.g. time-course):**
+
+Works directly if your columns match the course schema (`gene, time, tpm, sem`):
+
+```python
+plotpy.timecourse(df)
+```
+
+If they don't, either rename to match:
+
+```python
+df = df.rename(columns={
+    "feature":    "gene",       # whatever your category column is called
+    "hour":       "time",       # …your time column
+    "expression": "tpm",        # …your measurement
+    "stderr":     "sem",        # …your uncertainty
+})
+plotpy.timecourse(df)
+```
+
+…or let the LLM adapt your columns on the fly with `mode="loose"`:
+
+```python
+plotpy.ask(df, "Plot a time-course line, one line per category, with error bars.", mode="loose")
+```
+
+`plotpy.datasets.list_datasets()` shows the schema each per-plot wrapper expects — handy for knowing what to rename to.
 
 ### If something breaks
 
