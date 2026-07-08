@@ -91,6 +91,7 @@ def test_datasets_match_catalog_schemas() -> None:
         "microbiome_timeseries": {"day", "phase", "taxon", "abundance"},
         "gwas":                  {"chrom", "pos", "pval", "snp"},
         "microbiome_abundance":  {"taxon", "abundance"},
+        "gene_sets":             {"DE", "Leaf", "Root", "Photo", "Stress"},
     }
     for name, cols in expected.items():
         df = getattr(plotpy.datasets, name)()
@@ -122,38 +123,36 @@ def test_list_datasets_covers_every_generator() -> None:
 # ===================================================================
 # agent-level regression tests for the fixes shipped 2026-06-24
 # ===================================================================
+class _MockChat:
+    """Duck-typed stand-in for providers.Chat — scripted, offline."""
+
+    def __init__(self, responses):
+        self._responses = list(responses)
+        self.calls = []  # list of (messages, json_mode)
+
+    def complete(self, messages, temperature=None, json_mode=False):
+        self.calls.append((messages, json_mode))
+        return self._responses.pop(0)
+
+
 def test_generation_prompt_contains_chosen_name() -> None:
     """Fix A — the LLM must be told which catalog entry it's generating for."""
-    from plotpy.agent import PlotAgent
-
-    captured: dict[str, str] = {}
-
-    def fake_chat(self: PlotAgent, system: str, user: str, temperature: float) -> str:
-        captured.setdefault("user", user)
-        return "```python\np = None\n```"
-
-    PlotAgent._chat = fake_chat  # type: ignore[method-assign]
+    mock = _MockChat(["```python\nfig, ax = plt.subplots(); p = fig\n```"])
     df = plotpy.datasets.coexpression()
-    agent = plotpy.PlotAgent().inspect(df)
+    agent = plotpy.PlotAgent(chat=mock).inspect(df)
     agent.ask("show", mode="loose", plot_type="scatter_coexpression")
-    assert "scatter_coexpression" in captured["user"]
+    user_prompt = mock.calls[0][0][1]["content"]  # first call, user message
+    assert "scatter_coexpression" in user_prompt
 
 
 def test_last_raw_split() -> None:
     """Fix B — selection and generation raw responses are separately readable."""
-    from plotpy.agent import PlotAgent
-
-    sequence = iter([
-        '{"chosen": "scatter_coexpression", "alternatives": []}',  # selection
-        "```python\np = None\n```",                                # generation
+    mock = _MockChat([
+        '{"chosen": "scatter_coexpression", "alternatives": []}',   # selection
+        "```python\nfig, ax = plt.subplots(); p = fig\n```",        # generation
     ])
-
-    def fake_chat(self: PlotAgent, system: str, user: str, temperature: float) -> str:
-        return next(sequence)
-
-    PlotAgent._chat = fake_chat  # type: ignore[method-assign]
     df = plotpy.datasets.coexpression()
-    agent = plotpy.PlotAgent().inspect(df)
+    agent = plotpy.PlotAgent(chat=mock).inspect(df)
     agent.ask("scatter please", mode="loose")
     assert "scatter_coexpression" in agent.last_raw_select
     assert "```python" in agent.last_raw_generate
@@ -164,6 +163,7 @@ def test_last_raw_split() -> None:
 def test_extract_python_raises_on_garbage() -> None:
     """Fix C — a non-code refusal must surface as a clear error, not SyntaxError."""
     import pytest
+
     from plotpy.agent import _extract_python
 
     with pytest.raises(RuntimeError, match="no fenced"):

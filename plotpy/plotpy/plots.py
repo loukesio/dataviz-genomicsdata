@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .agent import PlotAgent, PlotResult
+from .agent import PlotAgent, PlotResult, Suggestion
+from .providers import Chat
 from .specs import CATALOG
 from .specs import list_plots as _list_plots
 
@@ -25,6 +26,8 @@ def ask(
     prompt: str,
     mode: str = "strict",
     interactive: bool | None = None,
+    llm: Chat | None = None,
+    max_repairs: int | None = None,
 ) -> PlotResult:
     """Primary entry point — let the agent pick and render.
 
@@ -36,23 +39,48 @@ def ask(
     prompt
         What you want the plot to show, in plain English.
     mode
-        ``"strict"`` (default) — use the catalog's verbatim template,
-        only swapping column names.  Fast, predictable, on-deck aesthetics.
-        ``"loose"`` — let the LLM adapt the chart to your DataFrame and
-        prompt.  Slower, more variable, but works on data the course
-        didn't anticipate.
+        ``"strict"`` (default) — verbatim catalog template, only column names
+        change.  ``"loose"`` — adapt the recipe to your data.  ``"free"`` —
+        open-ended chart, no catalog, grounded in the course theme (best for
+        data or plot types the catalog never saw).
     interactive
         ``True`` to force a plotly variant, ``False`` for static only,
         ``None`` (default) to let the LLM choose.
+    llm
+        A :class:`plotpy.providers.Chat` to use for this call only (e.g.
+        ``plotpy.chat_openai()``).  ``None`` uses the active model — set one
+        globally with ``plotpy.use(...)``.
+    max_repairs
+        Override the self-repair attempt budget for this call.
 
     Returns
     -------
     PlotResult
         ``.plot`` is the figure; ``.code`` is the source that produced it.
     """
-    agent = PlotAgent()
+    agent = PlotAgent(chat=llm)
     agent.inspect(df)
-    return agent.ask(prompt=prompt, mode=mode, interactive=interactive)
+    return agent.ask(prompt=prompt, mode=mode, interactive=interactive, max_repairs=max_repairs)
+
+
+def suggest(
+    df: pd.DataFrame,
+    n: int = 6,
+    interactive: bool | None = None,
+    llm: Chat | None = None,
+) -> list[Suggestion]:
+    """Ask the agent for a ranked menu of plot ideas for ``df`` — no code yet.
+
+    Each :class:`~plotpy.agent.Suggestion` has a ``name`` (catalog entry or a
+    custom slug) and a one-line ``reason``.  Pick one and render it::
+
+        for s in plotpy.suggest(df):
+            print(s.name, "—", s.reason)
+        plotpy.ask(df, "make the manhattan one interactive", interactive=True)
+    """
+    agent = PlotAgent(chat=llm)
+    agent.inspect(df)
+    return agent.suggest(n=n, interactive=interactive)
 
 
 def list_plots(library: str | None = None, interactive: bool | None = None, day: int | None = None):
@@ -188,3 +216,16 @@ def treemap(df, prompt="Treemap of taxon abundance.",
             *, mode="strict", interactive=False):
     """Area-proportional treemap of a composition."""
     return _pinned(df, prompt, "treemap_microbiome", mode, interactive)
+
+
+# ------------------------------------------------------------------ Day 3
+def upset(df, prompt="UpSet plot of set intersections, sorted by size.",
+          *, mode="strict", interactive=False):
+    """UpSet plot from boolean membership columns (needs ``upsetplot``)."""
+    return _pinned(df, prompt, "upset_gene_sets", mode, interactive)
+
+
+def complexheatmap(df, prompt="Clustered heatmap with annotation tracks.",
+                   *, mode="strict", interactive=False):
+    """Annotated clustered heatmap from a matrix (needs ``PyComplexHeatmap``)."""
+    return _pinned(df, prompt, "heatmap_annotated", mode, interactive)

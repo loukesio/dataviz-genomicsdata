@@ -220,10 +220,11 @@ PlotPy mirrors PlotR's architecture so students can flip between the two repos l
 
 | PlotR (R)         | PlotPy (Python)         | Role                                                          |
 | ----------------- | ----------------------- | ------------------------------------------------------------- |
-| `R/api_key.R`     | `plotpy/api_key.py`     | LLM credentials + provider-agnostic OpenAI-compatible client  |
-| `R/plotr_agent.R` | `plotpy/agent.py`       | `PlotAgent` class — selection + generation + exec loop        |
+| `R/api_key.R`     | `plotpy/providers.py`   | ellmer-style multi-LLM: `chat_*` constructors + `use()`       |
+| —                 | `plotpy/api_key.py`     | Legacy `set_key` / `.env` shim over `providers.py`            |
+| `R/plotr_agent.R` | `plotpy/agent.py`       | `PlotAgent` — suggest + select + generate + **self-repair**   |
 | `R/specs.R`       | `plotpy/specs.py`       | `CATALOG` of strict/loose plot recipes + BASE_THEME appliers  |
-| `R/plots.R`       | `plotpy/plots.py`       | Public `ask()` + per-plot wrappers (`scatter`, `manhattan`, …) |
+| `R/plots.R`       | `plotpy/plots.py`       | Public `ask()` / `suggest()` + per-plot wrappers              |
 | `DESCRIPTION`     | `pyproject.toml`        | Package metadata + deps                                       |
 | `LICENSE`         | `LICENSE`               | MIT, same copyright holder                                    |
 
@@ -286,25 +287,86 @@ The model receives this instead of code:
 
 ---
 
-## Swap provider
+## Pick your LLM — one constructor per provider (ellmer-style)
 
-PlotPy talks the OpenAI Chat Completions wire format — any compatible endpoint works. Set in `.env` or via `plotpy.set_key(...)`.
-
-| Provider  | `PLOTPY_BASE_URL`                       | `PLOTPY_MODEL` (example)                            |
-| --------- | --------------------------------------- | --------------------------------------------------- |
-| Groq      | `https://api.groq.com/openai/v1`        | `llama-3.3-70b-versatile`                           |
-| OpenAI    | `https://api.openai.com/v1`             | `gpt-4o-mini`                                       |
-| Together  | `https://api.together.xyz/v1`           | `meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo`      |
-| Fireworks | `https://api.fireworks.ai/inference/v1` | `accounts/fireworks/models/llama-v3p3-70b-instruct` |
-| Ollama    | `http://localhost:11434/v1`             | `llama3.1`                                          |
-| vLLM      | `http://<host>:8000/v1`                 | whatever you served                                 |
-
-One line each, in code:
+Like R's [`ellmer`](https://ellmer.tidyverse.org), PlotPy gives you one `chat_*`
+constructor per provider. They all return the same `Chat` object, so you can
+**swap the model behind your code at any time** with `plotpy.use(...)`:
 
 ```python
-plotpy.set_key("sk-...", base_url="https://api.openai.com/v1", model="gpt-4o-mini")
-plotpy.set_key("ollama", base_url="http://localhost:11434/v1", model="llama3.1")
+import plotpy
+from plotpy import chat_groq, chat_openai, chat_anthropic, chat_ollama
+
+plotpy.use(chat_groq())                          # free default (llama-3.3-70b)
+plotpy.use(chat_openai(model="gpt-4o-mini"))     # stronger first-try code
+plotpy.use(chat_anthropic())                     # Claude, via its OpenAI-compat endpoint
+plotpy.use(chat_ollama(model="llama3.1"))        # fully local, no key
+
+# …or use a specific model for one call only, without changing the default:
+plotpy.ask(df, "interactive GWAS plot", interactive=True, llm=chat_openai())
 ```
+
+Each constructor finds its key from the `api_key=` argument, the provider's
+usual env var (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, …), or the
+generic `PLOTPY_API_KEY`. Local servers (Ollama, vLLM) need no key.
+
+| Constructor        | Provider  | Default model                                  | Key env var          |
+| ------------------ | --------- | ---------------------------------------------- | -------------------- |
+| `chat_groq()`      | Groq      | `llama-3.3-70b-versatile`                      | `GROQ_API_KEY`       |
+| `chat_openai()`    | OpenAI    | `gpt-4o-mini`                                  | `OPENAI_API_KEY`     |
+| `chat_anthropic()` | Anthropic | `claude-3-5-sonnet-latest`                     | `ANTHROPIC_API_KEY`  |
+| `chat_google()`    | Google    | `gemini-1.5-flash`                             | `GEMINI_API_KEY`     |
+| `chat_together()`  | Together  | `Meta-Llama-3.1-70B-Instruct-Turbo`            | `TOGETHER_API_KEY`   |
+| `chat_fireworks()` | Fireworks | `llama-v3p3-70b-instruct`                      | `FIREWORKS_API_KEY`  |
+| `chat_ollama()`    | Ollama    | `llama3.1`                                     | — (local)            |
+| `chat_vllm(model)` | vLLM      | (you name it)                                  | — (local)            |
+
+The legacy `plotpy.set_key("sk-...", base_url=..., model=...)` and `.env`
+(`PLOTPY_API_KEY` / `PLOTPY_BASE_URL` / `PLOTPY_MODEL`) still work — they now
+just install a matching active `Chat` under the hood.
+
+---
+
+## Suggest, free mode, and self-repair
+
+Three things the redesign added on top of strict/loose:
+
+**`suggest(df)` — a ranked menu, no code yet.** Ask "what should I even plot?"
+and get catalog-grounded ideas (plus custom ones the catalog doesn't cover),
+each with a one-line reason:
+
+```python
+for s in plotpy.suggest(df):
+    print(s.name, "⚡" if s.interactive else "", "—", s.reason)
+# manhattan_gwas ⚡ — genome-wide p-values across chromosomes
+# volcano_deseq2   — log2FC vs -log10(p) separates up/down hits
+# …then render the one you like:
+plotpy.ask(df, "make the manhattan interactive", interactive=True)
+```
+
+**`mode="free"` — open-ended, beyond the catalog.** No template; the model
+writes the chart from scratch, still grounded in the course theme/palette. This
+is how you get Day-3 / novel plots on data the catalog never saw:
+
+```python
+plotpy.ask(df, "interactive GWAS Manhattan, colour alternate chromosomes", mode="free", interactive=True)
+```
+
+**Self-repair — the reliability fix.** Every generated snippet is executed; if
+it raises (wrong column, bad API call), the traceback is fed back to the model
+and the code is regenerated, up to `max_repairs` times (default 3). Inspect what
+happened:
+
+```python
+res = plotpy.ask(df, "…", mode="free")
+res.repairs          # 0 if it worked first try, else how many fixes it took
+agent = plotpy.PlotAgent().inspect(df)
+agent.ask("…", mode="free")
+agent.last_repairs   # [{"error": "...", "code": "..."}] per failed attempt
+```
+
+This is why the free Groq model went from flaky to usable: first-try failures
+get fixed instead of surfacing as an exception.
 
 ---
 
@@ -345,15 +407,37 @@ Every entry has both `strict` (code) and `loose` (prose) specs. Browse with `plo
 
 ### Day 3 — Production-grade packages
 
-Day 3 of the course covers PyComplexHeatmap, pyCirclize, Toytree, pyMSAviz, DashBio, pyGenomeTracks, dna_features_viewer, JCVI, UpSetPlot, PyWaffle, gget, and Biopython. These aren't in the PlotPy CATALOG yet — the API surface is much wider per package and they don't reduce cleanly to "strict template + adapt column names." The Day-3 notebooks in the course repo show the canonical usage of each.
+| Plot name           | Library    | Interactive | Summary                                                                    |
+| ------------------- | ---------- | ----------- | -------------------------------------------------------------------------- |
+| `upset_gene_sets`   | matplotlib | —           | UpSet plot of set intersections — the scalable Venn for 4+ sets            |
+| `heatmap_annotated` | matplotlib | —           | Clustered heatmap with annotation tracks (PyComplexHeatmap)                |
+
+These two Day-3 tools take a DataFrame directly, so they fit the catalog
+(`plotpy.upset(df)`, `plotpy.complexheatmap(df)`). They need optional packages
+(`pip install upsetplot PyComplexHeatmap`); if one is missing the agent fails
+fast with an install hint rather than guessing.
+
+The rest of Day 3 — pyCirclize, Toytree, pyMSAviz, DashBio, pyGenomeTracks,
+dna_features_viewer, JCVI, gget, Biopython — takes non-DataFrame inputs (newick
+trees, alignments, feature records), so it doesn't reduce to "DataFrame in →
+plot out." For those, reach for `mode="free"` (the agent writes the code
+grounded in the course theme) or the Day-3 course notebooks directly.
 
 ---
 
 ## Public API
 
 ```python
-plotpy.ask(df, prompt, mode="strict", interactive=None)   # the main entry point
+plotpy.ask(df, prompt, mode="strict", interactive=None, llm=None, max_repairs=None)  # main entry
+plotpy.suggest(df, n=6, interactive=None, llm=None)       # ranked menu of ideas, no code
 plotpy.list_plots(library=None, interactive=None, day=None)
+
+# pick / switch the model (ellmer-style)
+plotpy.use(plotpy.chat_openai(model="gpt-4o-mini"))       # active model for bare ask()
+plotpy.chat_groq(), plotpy.chat_anthropic(), plotpy.chat_ollama()  # …one per provider
+
+# mode="free" — open-ended, no catalog template (Day-3 / novel charts)
+plotpy.ask(df, "interactive GWAS Manhattan", mode="free", interactive=True)
 
 # direct (skip LLM selection)
 plotpy.scatter(df, ...)         plotpy.bar(df, ...)

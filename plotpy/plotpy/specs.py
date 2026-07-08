@@ -821,6 +821,63 @@ Treemap: each rectangle's area encodes the value.
 - ax.set_axis_off — there are no axes to read
 """,
     ),
+    # ============================================================ DAY 3 ====
+    # Production packages. These import their own library inside the template
+    # (upsetplot / PyComplexHeatmap are optional deps); the agent injects only
+    # plt/np/pd/palette, and raises a clean install hint if the package is absent.
+    "upset_gene_sets": dict(
+        library="matplotlib",
+        interactive=False,
+        day=3,
+        summary="UpSet plot of set intersections — for 4+ overlapping sets where a Venn breaks down (variant/GO/DE-gene overlaps).",
+        strict="""
+# df: gene index + one boolean column per set (e.g. DE, Leaf, Root, Photo, Stress)
+from upsetplot import UpSet, from_indicators
+sets = [c for c in df.columns if df[c].dtype == bool]
+mat = from_indicators(sets, data=df)
+fig = plt.figure(figsize=(7.4, 4.6))
+up = UpSet(mat, sort_by="cardinality", show_counts=True)
+up.plot(fig=fig)
+fig.suptitle("Set intersections")
+p = fig
+""",
+        loose="""
+UpSet plot — the scalable replacement for a 4+ circle Venn diagram.
+- input is one boolean column per set (membership indicators)
+- build with upsetplot.from_indicators(sets, data=df), then UpSet(mat).plot(fig=fig)
+- sort_by="cardinality" so the biggest intersections read left-to-right
+- show_counts=True to label each bar
+- assign the matplotlib Figure to p
+""",
+    ),
+    "heatmap_annotated": dict(
+        library="matplotlib",
+        interactive=False,
+        day=3,
+        summary="Clustered heatmap with annotation tracks (PyComplexHeatmap) — a matrix plus per-sample metadata strips, richer than a plain clustermap.",
+        strict="""
+# df: numeric matrix, rows = features, columns = samples (log2 TPM or similar)
+import PyComplexHeatmap as pch
+fig = plt.figure(figsize=(8, 5))
+hm = pch.ClusterMapPlotter(
+    data=df,
+    row_cluster=True, col_cluster=True,
+    cmap="RdBu_r",
+    show_rownames=False, show_colnames=True,
+    label="value",
+)
+p = fig
+""",
+        loose="""
+Annotated clustered heatmap (PyComplexHeatmap.ClusterMapPlotter).
+- input is a numeric matrix DataFrame (features × samples)
+- row_cluster=True + col_cluster=True for dendrograms on both axes
+- a diverging cmap ("RdBu_r") when the matrix is centred/z-scored
+- if per-column metadata is available, build a pch.HeatmapAnnotation and pass
+  it as top_annotation to paint condition/batch strips above the heatmap
+- assign the matplotlib Figure to p
+""",
+    ),
 }
 
 

@@ -40,6 +40,8 @@ __all__ = [
     "microbiome_timeseries",
     "gwas",
     "microbiome_abundance",
+    # Day 3
+    "gene_sets",
 ]
 
 
@@ -375,6 +377,22 @@ def microbiome_abundance(seed: int = 14) -> pd.DataFrame:
     return pd.DataFrame({"taxon": taxa, "abundance": props})
 
 
+# --------------------------------------------------------------------- Day 3
+def gene_sets(seed: int = 15) -> pd.DataFrame:
+    """Boolean set-membership matrix — index ``gene``, columns are the sets.
+
+    Used by ``upset_gene_sets``.  200 genes × 5 boolean columns
+    (DE, Leaf, Root, Photo, Stress), each ~40% True, so intersections
+    emerge naturally.  Feed straight to ``upsetplot.from_indicators``.
+    """
+    rng = np.random.default_rng(seed)
+    genes = [f"G{i:03d}" for i in range(200)]
+    df = pd.DataFrame(index=pd.Index(genes, name="gene"))
+    for s in ["DE", "Leaf", "Root", "Photo", "Stress"]:
+        df[s] = rng.random(len(genes)) < 0.40
+    return df
+
+
 # ---------------------------------------------------------------- catalogue
 _DATASET_INDEX: dict[str, dict[str, str]] = {
     "expression":            {"plot": "timecourse_line",            "schema": "gene, time, tpm, sem"},
@@ -392,6 +410,7 @@ _DATASET_INDEX: dict[str, dict[str, str]] = {
     "microbiome_timeseries": {"plot": "stacked_bar_microbiome",     "schema": "day, phase, taxon, abundance"},
     "gwas":                  {"plot": "manhattan_gwas",             "schema": "chrom, pos, pval, snp"},
     "microbiome_abundance":  {"plot": "treemap_microbiome",         "schema": "taxon, abundance"},
+    "gene_sets":             {"plot": "upset_gene_sets",            "schema": "gene index, 5 bool set columns"},
 }
 
 
