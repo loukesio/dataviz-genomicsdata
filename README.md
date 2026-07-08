@@ -112,15 +112,47 @@ By the end of the workshop you will be able to:
 
 ```
 dataviz-genomicsdata/
-├── slides/
-│   ├── day1_python_gendataviz26.qmd   # Quarto source — Day 1
-│   ├── day2_python_gendataviz26.qmd   # Quarto source — Day 2
-│   └── day3_python_gendataviz26.qmd   # Quarto source — Day 3
-├── genomicsviz/                        # pip-installable course package
-│   ├── __init__.py
-│   └── themes.py
-└── pyproject.toml
+├── day1/  day2/  day3/          # one folder per course day
+│   ├── dayN.qmd                 #   Quarto reveal.js source
+│   ├── sections/*.qmd           #   the deck split into slide sections
+│   ├── dayN.html                #   rendered deck (students view this)
+│   ├── dayN.ipynb               #   companion Colab notebook
+│   └── dayN.pdf                 #   landscape PDF export (kept local, git-ignored)
+├── genomics_course/             # the pip-installable course package
+│   └── genomics_course/         #   datasets + publication theme (theme.py)
+├── plotpy/                      # LLM plotting agent — "describe a chart, get the code"
+│   ├── plotpy/                  #   providers (multi-LLM) · agent · catalog · datasets
+│   ├── tests/                   #   offline tests (no API key needed)
+│   └── README.md                #   ← full usage guide for the agent
+├── fonts/                       # deck fonts (IBM Plex Mono, …)
+├── pyproject.toml               # course package metadata + dependency stack
+└── README.md
 ```
+
+Each deck is authored in Quarto (`dayN.qmd` + `sections/`), rendered to
+`dayN.html` for viewing, and also shipped as a Colab notebook and a landscape
+PDF. The PDFs live on disk but are git-ignored to keep the repo light — see
+each day folder to regenerate.
+
+---
+
+## 🤖 PlotPy — the plotting agent
+
+`plotpy/` is a small LLM agent built from the course material: hand it a
+`pandas.DataFrame` and a sentence ("make an interactive GWAS Manhattan"), and it
+picks the right chart, writes the code in the course house style, runs it, and
+fixes its own mistakes. It suggests plots for data you haven't seen, works with
+any LLM provider (Groq / OpenAI / Anthropic / Ollama …), and returns the source
+so students can learn from it.
+
+```python
+import plotpy
+plotpy.use(plotpy.chat_groq(api_key="gsk_..."))
+plotpy.suggest(df)                     # a ranked menu of plot ideas
+plotpy.ask(df, "volcano plot").plot    # the figure + .code that made it
+```
+
+Full instructions live in [`plotpy/README.md`](plotpy/README.md).
 
 ---
 

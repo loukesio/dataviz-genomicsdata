@@ -1,1 +1,0 @@
-<!-- Fundamentals of data visualization — principles + build-your-own palette. To be filled. -->
