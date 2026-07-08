@@ -29,26 +29,23 @@ Thumbs.db
 # Keep the Plot Directory PDF — students download it
 !day1/images/*.pdf
 
-# Keep the rendered Day-1 deck + Colab notebook + PDF — students download all
+# Keep the rendered Day-1 deck + Colab notebook — students download both
 !day1/day1.html
 !day1/day1_files/
 !day1/day1_files/**
 !day1/day1.ipynb
-!day1/day1.pdf
 
-# Keep the rendered Day-2 deck + Colab notebook + PDF — students download all
+# Keep the rendered Day-2 deck + Colab notebook — students download both
 !day2/day2.html
 !day2/day2_files/
 !day2/day2_files/**
 !day2/day2.ipynb
-!day2/day2.pdf
 
-# Keep the rendered Day-3 deck + Colab notebook + PDF — students download all
+# Keep the rendered Day-3 deck + Colab notebook — students download both
 !day3/day3.html
 !day3/day3_files/
 !day3/day3_files/**
 !day3/day3.ipynb
-!day3/day3.pdf
 
 # Python build artifacts
 __pycache__/
