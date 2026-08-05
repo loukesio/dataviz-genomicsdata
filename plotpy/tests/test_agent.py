@@ -126,6 +126,115 @@ def test_free_mode_can_use_plotly() -> None:
     assert "Figure" in res.plot.__class__.__name__
 
 
+# --------------------------------------------------------- figure hygiene
+def test_failed_attempts_do_not_leak_figures() -> None:
+    """A repair loop must not leak one open figure per failed try.
+
+    matplotlib warns past 20 open figures and a long-lived server would grow
+    without bound, so only the figure that actually succeeded stays open.
+    """
+    import matplotlib.pyplot as plt
+
+    broken = "```python\nfig, ax = plt.subplots()\np = undefined_name\n```"
+    good = "```python\nfig, ax = plt.subplots(); ax.plot(df['x'], df['y']); p = fig\n```"
+    plt.close("all")
+    agent = PlotAgent(chat=MockChat([broken, broken, good])).inspect(_xy())
+    res = agent.ask("scatter", mode="free")
+    assert res.repairs == 2
+    assert len(plt.get_fignums()) == 1          # the winner, not the two casualties
+    plt.close("all")
+
+
+def test_preexisting_figures_are_never_closed() -> None:
+    """Cleanup closes only what the attempt opened — the user's own figures stay."""
+    import matplotlib.pyplot as plt
+
+    plt.close("all")
+    mine = plt.figure()
+    broken = "```python\nfig, ax = plt.subplots()\np = undefined_name\n```"
+    agent = PlotAgent(chat=MockChat([broken] * 3)).inspect(_xy())
+    with pytest.raises(RuntimeError, match="still failing"):
+        agent.ask("scatter", mode="free", max_repairs=1)
+    assert plt.fignum_exists(mine.number)
+    assert len(plt.get_fignums()) == 1
+    plt.close("all")
+
+
+# ------------------------------------------------------- result validation
+def test_non_figure_p_is_rejected_and_repaired() -> None:
+    """`p = None` used to be returned as if it were a plot. Now it triggers repair."""
+    junk = "```python\np = None\n```"
+    good = "```python\nfig, ax = plt.subplots(); ax.plot(df['x'], df['y']); p = fig\n```"
+    agent = PlotAgent(chat=MockChat([junk, good])).inspect(_xy())
+    res = agent.ask("scatter", mode="free")
+    assert res.repairs == 1
+    assert res.plot.__class__.__name__ == "Figure"
+    assert "not a figure" in agent.last_repairs[0]["error"]
+
+
+def test_figure_bound_to_fig_is_accepted_without_a_repair() -> None:
+    """A `fig`-instead-of-`p` slip is the commonest one models make — don't
+    spend an API round-trip renaming it."""
+    code = "```python\nfig, ax = plt.subplots(); ax.plot(df['x'], df['y'])\n```"
+    res = PlotAgent(chat=MockChat([code])).inspect(_xy()).ask("scatter", mode="free")
+    assert res.repairs == 0
+    assert res.plot.__class__.__name__ == "Figure"
+
+
+# ------------------------------------------------- unknown catalog libraries
+def _entry(library: str) -> dict:
+    return {"library": library, "interactive": False, "summary": "s",
+            "strict": "t", "loose": "l", "day": 1}
+
+
+def test_unknown_library_injects_everything_instead_of_raising() -> None:
+    """External catalogs label recipes freely ("Plotly Express", "SciPy + Plotly").
+    An unknown label must not blow up namespace construction."""
+    names = PlotAgent._injected_names(_entry("Plotly Express"))
+    for n in ("plt", "sns", "px", "go", "ggplot", "df"):
+        assert n in names
+
+
+def test_unknown_library_renders_instead_of_keyerror() -> None:
+    """End-to-end: a recipe labelled with an unknown library still executes."""
+    code = "```python\np = px.scatter(df, x='x', y='y')\n```"
+    agent = PlotAgent(
+        chat=MockChat([code]),
+        catalog={"weird": _entry("SciPy + Plotly")},
+    ).inspect(_xy())
+    res = agent.ask("scatter", mode="strict", plot_type="weird")
+    assert res.repairs == 0
+    assert "Figure" in res.plot.__class__.__name__
+
+
+def test_promised_names_match_bound_names() -> None:
+    """What we tell the model is in scope must be what we actually bind."""
+    for entry in (None, _entry("matplotlib"), _entry("seaborn"),
+                  _entry("plotly"), _entry("plotnine"), _entry("Weird Lib")):
+        promised = set(PlotAgent._injected_names(entry))
+        bound = set(PlotAgent(chat=MockChat([])).inspect(_xy())._build_namespace(entry))
+        assert promised <= bound, f"{entry} promises names it never binds: {promised - bound}"
+
+
+# --------------------------------------------------------- data summary size
+def test_wide_frame_summary_stays_small() -> None:
+    """A 2000-gene matrix must not emit a 40k-char summary into every prompt."""
+    import numpy as np
+
+    wide = pd.DataFrame(np.zeros((5, 2000)), columns=[f"gene_{i}" for i in range(2000)])
+    s = PlotAgent._summarize_df(wide)
+    assert len(s) < 4000
+    assert "5 rows × 2000 columns" in s          # true shape still stated
+    assert "+1960 more columns not listed" in s
+    assert "gene_1999" in s                       # the last column is named
+
+
+def test_narrow_frame_summary_is_unchanged() -> None:
+    s = PlotAgent._summarize_df(_xy())
+    assert "more columns not listed" not in s
+    assert "x: float64" in s and "y: float64" in s
+
+
 # --------------------------------------------------------------- suggest
 def test_suggest_parses_ranked_menu() -> None:
     payload = (

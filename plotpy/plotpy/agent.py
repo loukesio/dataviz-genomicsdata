@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import traceback
 from dataclasses import dataclass, field
 from textwrap import dedent
@@ -448,6 +449,14 @@ class PlotAgent:
             + "\n\n- These names are ALREADY in scope; do not import or redefine "
             f"them:\n    {available}\n- Return the FULL corrected script, not a diff."
         )
+        # Re-state the spec on repair. Without it a strict-mode fix is generated
+        # blind to the template it was supposed to follow, so the repaired plot
+        # silently drifts off the course house style.
+        spec_block = ""
+        if entry is not None and mode in ("strict", "loose"):
+            spec_text = entry["strict"] if mode == "strict" else entry["loose"]
+            label = "STRICT TEMPLATE" if mode == "strict" else "LOOSE CONVENTIONS"
+            spec_block = f"\n{label}\n{'-' * len(label)}\n{spec_text}\n"
         user = dedent(
             f"""
             The Python below was meant to satisfy this request:
@@ -460,6 +469,7 @@ class PlotAgent:
             DATA SUMMARY
             ------------
             {self._data_summary}
+            {spec_block}
 
             CODE THAT FAILED
             ----------------
@@ -518,10 +528,16 @@ class PlotAgent:
 
     def _execute(self, code: str, entry: specs.CatalogEntry | None) -> Any:
         ns = self._build_namespace(entry)
-        exec(code, ns)  # noqa: S102
-        if "p" not in ns:
-            raise RuntimeError("Generated code did not assign `p`.")
-        return ns["p"]
+        before = _open_figure_ids()
+        try:
+            exec(code, ns)  # noqa: S102
+            return _resolve_figure(ns)
+        except BaseException:
+            # A failed attempt usually leaves a half-built figure open. Without
+            # this the repair loop leaks one figure per try — matplotlib warns
+            # past 20, and a long-lived server (BiMA) grows without bound.
+            _close_figures_since(before)
+            raise
 
     _PALETTE_NAMES = (
         "GREEN BLUE AMBER RED PURPLE GREY INK CREAM LINE MUTED "
@@ -539,14 +555,21 @@ class PlotAgent:
         "plotly":     ["px", "go"],
         "plotnine":   _PLOTNINE_NAMES,
     }
+    _ALL_LIB_NAMES = ["plt", "sns", "px", "go", *_PLOTNINE_NAMES]
 
     @classmethod
     def _injected_names(cls, entry: specs.CatalogEntry | None) -> list[str]:
-        """Names bound in the exec namespace. ``entry=None`` (free) → everything."""
+        """Names bound in the exec namespace. ``entry=None`` (free) → everything.
+
+        An entry whose ``library`` isn't one of the four known keys also gets
+        everything: external catalogs label recipes freely ("Plotly Express",
+        "SciPy + Plotly", "scikit-learn"), and injecting too much is harmless
+        where guessing wrong is a guaranteed NameError.
+        """
         if entry is None:
-            libs = ["plt", "sns", "px", "go", *cls._PLOTNINE_NAMES]
+            libs = cls._ALL_LIB_NAMES
         else:
-            libs = cls._LIB_NAMES[entry["library"]]
+            libs = cls._LIB_NAMES.get(entry["library"], cls._ALL_LIB_NAMES)
         return ["df", "np", "pd", *libs, *cls._PALETTE_NAMES, *cls._THEME_HELPERS]
 
     def _build_namespace(self, entry: specs.CatalogEntry | None) -> dict[str, Any]:
@@ -559,11 +582,13 @@ class PlotAgent:
         for name in self._THEME_HELPERS:
             ns[name] = getattr(specs, name)
 
-        lib = None if entry is None else entry["library"]
-        want_mpl = entry is None or lib in ("matplotlib", "seaborn")
-        want_sns = entry is None or lib == "seaborn"
-        want_plotly = entry is None or lib == "plotly"
-        want_p9 = entry is None or lib == "plotnine"
+        # Derive from _injected_names so what we *promise* the model is in scope
+        # and what we actually bind can never drift apart.
+        wanted = set(self._injected_names(entry))
+        want_mpl = "plt" in wanted
+        want_sns = "sns" in wanted
+        want_plotly = "px" in wanted
+        want_p9 = "p9" in wanted
 
         if want_mpl:
             import matplotlib.pyplot as plt
@@ -609,15 +634,22 @@ class PlotAgent:
     # =====================================================================
     # internal: data summary
     # =====================================================================
-    @staticmethod
-    def _summarize_df(df: pd.DataFrame) -> str:
+    _MAX_SUMMARY_COLS = 40
+
+    @classmethod
+    def _summarize_df(cls, df: pd.DataFrame) -> str:
         """Compact text summary the LLM sees — columns, dtypes, levels, head.
 
         Categorical levels matter: head(4) on a grouped frame hides other
         levels and lets the model hard-code only what it saw.
+
+        Wide frames are truncated to :attr:`_MAX_SUMMARY_COLS` columns. A
+        2000-gene expression matrix would otherwise emit a ~40k-character
+        summary into *every* prompt (select, generate, and each repair) — an
+        easy way to blow the context window and the bill on a user upload.
         """
         col_lines: list[str] = []
-        for c in df.columns:
+        for c in df.columns[: cls._MAX_SUMMARY_COLS]:
             t = df[c].dtype
             line = f"  {c}: {t}"
             if not pd.api.types.is_numeric_dtype(t):
@@ -626,6 +658,12 @@ class PlotAgent:
                 more = f" (+{len(uniques) - 8} more)" if len(uniques) > 8 else ""
                 line += f"  levels={shown}{more}"
             col_lines.append(line)
+        hidden = df.shape[1] - cls._MAX_SUMMARY_COLS
+        if hidden > 0:
+            col_lines.append(
+                f"  … +{hidden} more columns not listed (last is {df.columns[-1]!r}); "
+                "select columns programmatically rather than by name"
+            )
         head = df.head(4).to_string(max_cols=12)
         return dedent(
             f"""
@@ -637,6 +675,72 @@ class PlotAgent:
             {head}
             """
         ).strip()
+
+
+# ------------------------------------------------------------- figure hygiene
+def _pyplot() -> Any:
+    """``matplotlib.pyplot`` if it has already been imported, else ``None``.
+
+    Deliberately does not import it: if pyplot was never loaded, no figure can
+    be open, and a plotly-only run shouldn't pay to find that out.
+    """
+    return sys.modules.get("matplotlib.pyplot")
+
+
+def _open_figure_ids() -> set[int]:
+    plt = _pyplot()
+    return set(plt.get_fignums()) if plt is not None else set()
+
+
+def _close_figures_since(before: set[int]) -> None:
+    """Close figures opened since ``before`` — never ones the caller already had."""
+    plt = _pyplot()
+    if plt is None:
+        return
+    for num in set(plt.get_fignums()) - before:
+        plt.close(num)
+
+
+# --------------------------------------------------------- result validation
+_FIGURE_MODULES = {"matplotlib", "seaborn", "plotly", "plotnine"}
+# Escape hatch for figure-like objects from elsewhere (pyCirclize, pyMSAviz …).
+_FIGURE_DUCK_ATTRS = ("savefig", "to_plotly_json", "plotfig", "draw")
+
+
+def _looks_like_figure(obj: Any) -> bool:
+    if obj is None:
+        return False
+    if type(obj).__module__.split(".")[0] in _FIGURE_MODULES:
+        return True
+    return any(hasattr(obj, a) for a in _FIGURE_DUCK_ATTRS)
+
+
+def _resolve_figure(ns: dict[str, Any]) -> Any:
+    """Pull the figure out of an executed namespace, or raise so repair can fix it.
+
+    Anything raised here lands in the traceback the repair loop feeds back, so
+    the message is written for the model as much as for the user.
+    """
+    if _looks_like_figure(ns.get("p")):
+        return ns["p"]
+    # Models bind the figure to `fig` constantly. Accepting it beats spending a
+    # whole repair round-trip on a one-line rename.
+    for alt in ("fig", "figure"):
+        if _looks_like_figure(ns.get(alt)):
+            return ns[alt]
+    if "p" not in ns:
+        raise RuntimeError(
+            "Generated code did not assign `p`. Assign the final figure to `p`."
+        )
+    got = ns["p"]
+    shown = repr(got)
+    if len(shown) > 120:
+        shown = shown[:120] + "…"
+    raise RuntimeError(
+        f"Generated code assigned p = {shown} (type {type(got).__name__}), which is "
+        "not a figure. Assign the matplotlib / seaborn / plotly / plotnine figure "
+        "object to `p`."
+    )
 
 
 # ---------------------------------------------------------------- regex parsers
